@@ -84,5 +84,5 @@
 #define DEFAULT_MONEY 20000
 #define DEFAULT_BASE 500
 #define DEFAULT_TAI 200
-#define PRESS_ANY_KEY_TO_CONTINUE "½Ð«ö <ENTER> Ä~Äò......"
+#define PRESS_ANY_KEY_TO_CONTINUE "è«‹æŒ‰ <ENTER> ç¹¼çºŒ......"
 

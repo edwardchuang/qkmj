@@ -138,10 +138,10 @@ char *name;
   }
   if(!in_join && !in_serv)
   {
-    display_comment("§A­n¬d¬İ¨º¤@®à?");
+    display_comment("ä½ è¦æŸ¥çœ‹é‚£ä¸€æ¡Œ?");
     return;
   }
-  display_comment("----------------   ¦¹®à¨Ï¥ÎªÌ   ------------------");
+  display_comment("----------------   æ­¤æ¡Œä½¿ç”¨è€…   ------------------");
   msg_buf[0]=0;
   for(i=1;i<MAX_PLAYER;i++)
   {
@@ -163,25 +163,25 @@ char *name;
 
 help()
 {
-  send_gps_line("-----------------   ¨Ï¥Î»¡©ú   -------------------");
-  send_gps_line("/HELP          /H   ¬d¬İ¨Ï¥Î»¡©ú");
-  send_gps_line("/TABLE         /T   ¬d¬İ©Ò¦³ªº®à");
-  send_gps_line("/FREE               ¬d¬İ¥Ø«e¤H¼Æ¥¼º¡ªº®à");
-  send_gps_line("/PLAYER        /P   ¬d¬İ¥Ø«e¦b½u¤Wªº¨Ï¥ÎªÌ");
-  send_gps_line("/LURKER             ¬d¬İ¶~¸mªº¨Ï¥ÎªÌ");
-  send_gps_line("/FIND <¦WºÙ>        §ä´M¦¹¨Ï¥ÎªÌ");
-  send_gps_line("/WHO <¦WºÙ>    /W   ¬d¬İ¦¹®àªº¨Ï¥ÎªÌ");
-  send_gps_line("/SERV          /S   ¶}®à");
-  send_gps_line("/JOIN <¦WºÙ>   /J   ¥[¤J¤@®à");
-  send_gps_line("/MSG <¦WºÙ> <°T®§>  °e°T®§µ¹¯S©w¨Ï¥ÎªÌ");
-  send_gps_line("/INVITE <¦WºÙ>      ÁÜ½Ğ¨Ï¥ÎªÌ¨ì¦¹®à");
-  send_gps_line("/KICK <¦WºÙ>        ±N¨Ï¥ÎªÌ½ğ¥X¦¹®à (®àªø¤~¥i¥Î)");
-  send_gps_line("/NOTE <ªşµù>        §ó§ï¦¹®àªºªşµù");
-  send_gps_line("/LEAVE         /L   Â÷¶}¤@®à");
-  send_gps_line("/STAT <¦WºÙ>        ¬İ¨Ï¥ÎªÌª¬ºA");
-  send_gps_line("/BEEP [ON|OFF]      ³]©wÁn­µ¶}Ãö");
-  send_gps_line("/PASSWD             §ó§ï±K½X");
-  send_gps_line("/QUIT          /Q   Â÷¶}");
+  send_gps_line("-----------------   ä½¿ç”¨èªªæ˜   -------------------");
+  send_gps_line("/HELP          /H   æŸ¥çœ‹ä½¿ç”¨èªªæ˜");
+  send_gps_line("/TABLE         /T   æŸ¥çœ‹æ‰€æœ‰çš„æ¡Œ");
+  send_gps_line("/FREE               æŸ¥çœ‹ç›®å‰äººæ•¸æœªæ»¿çš„æ¡Œ");
+  send_gps_line("/PLAYER        /P   æŸ¥çœ‹ç›®å‰åœ¨ç·šä¸Šçš„ä½¿ç”¨è€…");
+  send_gps_line("/LURKER             æŸ¥çœ‹é–‘ç½®çš„ä½¿ç”¨è€…");
+  send_gps_line("/FIND <åç¨±>        æ‰¾å°‹æ­¤ä½¿ç”¨è€…");
+  send_gps_line("/WHO <åç¨±>    /W   æŸ¥çœ‹æ­¤æ¡Œçš„ä½¿ç”¨è€…");
+  send_gps_line("/SERV          /S   é–‹æ¡Œ");
+  send_gps_line("/JOIN <åç¨±>   /J   åŠ å…¥ä¸€æ¡Œ");
+  send_gps_line("/MSG <åç¨±> <è¨Šæ¯>  é€è¨Šæ¯çµ¦ç‰¹å®šä½¿ç”¨è€…");
+  send_gps_line("/INVITE <åç¨±>      é‚€è«‹ä½¿ç”¨è€…åˆ°æ­¤æ¡Œ");
+  send_gps_line("/KICK <åç¨±>        å°‡ä½¿ç”¨è€…è¸¢å‡ºæ­¤æ¡Œ (æ¡Œé•·æ‰å¯ç”¨)");
+  send_gps_line("/NOTE <é™„è¨»>        æ›´æ”¹æ­¤æ¡Œçš„é™„è¨»");
+  send_gps_line("/LEAVE         /L   é›¢é–‹ä¸€æ¡Œ");
+  send_gps_line("/STAT <åç¨±>        çœ‹ä½¿ç”¨è€…ç‹€æ…‹");
+  send_gps_line("/BEEP [ON|OFF]      è¨­å®šè²éŸ³é–‹é—œ");
+  send_gps_line("/PASSWD             æ›´æ”¹å¯†ç¢¼");
+  send_gps_line("/QUIT          /Q   é›¢é–‹");
   send_gps_line("--------------------------------------------------");
 }
 
@@ -202,7 +202,7 @@ command_parser(char *msg)
     switch(cmd_id)
     {
       case 0:
-        send_gps_line("¨S¦³³o­Ó«ü¥O");
+        send_gps_line("æ²’æœ‰é€™å€‹æŒ‡ä»¤");
         break;
       case TABLE:
       case S_TABLE:
@@ -220,12 +220,12 @@ command_parser(char *msg)
       case S_JOIN:
         if(!pass_login)
         {
-          display_comment("½Ğ¥ı login ¤@­Ó¦WºÙ");
+          display_comment("è«‹å…ˆ login ä¸€å€‹åç¨±");
           break;
         }
         if(in_join || in_serv)
         {
-          display_comment("½Ğ¥ıÂ÷¶}¥Ø«e®à¡A¤~¯à¥[¤J§O®à¡C(/Leave)");
+          display_comment("è«‹å…ˆé›¢é–‹ç›®å‰æ¡Œï¼Œæ‰èƒ½åŠ å…¥åˆ¥æ¡Œã€‚(/Leave)");
           break;
         }
         clear_variable();
@@ -249,28 +249,28 @@ command_parser(char *msg)
       case S_SERV:
         if(!pass_login)
         {          
-          display_comment("½Ğ¥ı login ¤@­Ó¦WºÙ");
+          display_comment("è«‹å…ˆ login ä¸€å€‹åç¨±");
           break;
         }
         if(in_join || in_serv)
         {
-          display_comment("½Ğ¥ıÂ÷¶}¦¹®à");
+          display_comment("è«‹å…ˆé›¢é–‹æ­¤æ¡Œ");
           break;
         }
         clear_variable();
-        if(in_join) //TODO: ½T»{³o¸ÌÀ³¸Ó¬O¤£·|¶]¨ìªºµ{¦¡½X§a¡H
+        if(in_join) //TODO: ç¢ºèªé€™è£¡æ‡‰è©²æ˜¯ä¸æœƒè·‘åˆ°çš„ç¨‹å¼ç¢¼å§ï¼Ÿ
         {
           close_join();
           write_msg(gps_sockfd,"205");
           init_global_screen();
         }
-        if(in_serv) //TODO: ½T»{³o¸ÌÀ³¸Ó¬O¤£·|¶]¨ìªºµ{¦¡½X§a¡H
+        if(in_serv) //TODO: ç¢ºèªé€™è£¡æ‡‰è©²æ˜¯ä¸æœƒè·‘åˆ°çš„ç¨‹å¼ç¢¼å§ï¼Ÿ
         {
           close_serv();
           write_msg(gps_sockfd,"205");
           init_global_screen();
         }
-        write_msg(gps_sockfd,"014");//ÀË¬d¶}®à±ø¥ó¡A±N¶}®àªº³¡¥÷¥t¥~©ñ¨ì message ¥h°õ¦æ
+        write_msg(gps_sockfd,"014");//æª¢æŸ¥é–‹æ¡Œæ¢ä»¶ï¼Œå°‡é–‹æ¡Œçš„éƒ¨ä»½å¦å¤–æ”¾åˆ° message å»åŸ·è¡Œ
         break;
       case QUIT:
       case S_QUIT:
@@ -317,8 +317,8 @@ show_allcard(cmd_argv[2][0]-'0');
           close_join();
           write_msg(gps_sockfd,"205");
           init_global_screen();
-          write_msg(gps_sockfd,"201");//§ó·s¤@¤U¥Ø«e½u¤W¤H¼Æ¸ò¤º®e
-          display_comment("±z¤wÂ÷¶}µP®à");
+          write_msg(gps_sockfd,"201");//æ›´æ–°ä¸€ä¸‹ç›®å‰ç·šä¸Šäººæ•¸è·Ÿå…§å®¹
+          display_comment("æ‚¨å·²é›¢é–‹ç‰Œæ¡Œ");
           display_comment("-------------------");
         }
         if(in_serv)
@@ -327,8 +327,8 @@ show_allcard(cmd_argv[2][0]-'0');
           close_serv();
           write_msg(gps_sockfd,"205");
           init_global_screen();
-          write_msg(gps_sockfd,"201");//§ó·s¤@¤U¥Ø«e½u¤W¤H¼Æ¸ò¤º®e
-          display_comment("±z¤wÃö³¬µP®à");
+          write_msg(gps_sockfd,"201");//æ›´æ–°ä¸€ä¸‹ç›®å‰ç·šä¸Šäººæ•¸è·Ÿå…§å®¹
+          display_comment("æ‚¨å·²é—œé–‰ç‰Œæ¡Œ");
           display_comment("-------------------");
         }
         input_mode=TALK_MODE;
@@ -384,7 +384,7 @@ show_allcard(cmd_argv[2][0]-'0');
       case FIND:
         if(narg<2)
         {
-          display_comment("§A­n§ä½Ö©O?");
+          display_comment("ä½ è¦æ‰¾èª°å‘¢?");
           break;
         }
         sprintf(msg_buf,"021%s",cmd_argv[2]);
@@ -406,7 +406,7 @@ show_allcard(cmd_argv[2][0]-'0');
       case BEEP:
         if(narg<2)
         {
-          sprintf(msg_buf,"¥Ø«eÁn­µ³]©w¬°%s",(set_beep==1) ? "¶}±Ò":"Ãö³¬");
+          sprintf(msg_buf,"ç›®å‰è²éŸ³è¨­å®šç‚º%s",(set_beep==1) ? "é–‹å•Ÿ":"é—œé–‰");
           display_comment(msg_buf);
         }
         else
@@ -415,28 +415,28 @@ show_allcard(cmd_argv[2][0]-'0');
           if(strcmp(ans_buf,"ON")==0)
           {
             set_beep=1;
-            display_comment("¶}±ÒÁn­µ");
+            display_comment("é–‹å•Ÿè²éŸ³");
           }
           if(strcmp(ans_buf,"OFF")==0)
           {
             set_beep=0;
-            display_comment("Ãö³¬Án­µ");
+            display_comment("é—œé–‰è²éŸ³");
           }
         }
         break;
       case PASSWD:
         ans_buf[0]=0;
-        ask_question("½Ğ¿é¤J§A­ì¨Óªº±K½X¡G",ans_buf,8,0);
+        ask_question("è«‹è¼¸å…¥ä½ åŸä¾†çš„å¯†ç¢¼ï¼š",ans_buf,8,0);
         ans_buf[8]=0;
         if(strcmp(my_pass,ans_buf)!=0)
         {
-          wait_a_key("±K½X¿ù»~,§ó§ï¥¢±Ñ!");
+          wait_a_key("å¯†ç¢¼éŒ¯èª¤,æ›´æ”¹å¤±æ•—!");
           break;
         }
         ans_buf[0]=0;
-        ask_question("½Ğ¿é¤J§A­n§ó§ïªº±K½X¡G",ans_buf,8,0);
+        ask_question("è«‹è¼¸å…¥ä½ è¦æ›´æ”¹çš„å¯†ç¢¼ï¼š",ans_buf,8,0);
         ans_buf1[0]=0;
-        ask_question("½Ğ¦A¿é¤J¤@¦¸½T»{¡G",ans_buf1,8,0);
+        ask_question("è«‹å†è¼¸å…¥ä¸€æ¬¡ç¢ºèªï¼š",ans_buf1,8,0);
         ans_buf[8]=0;
         ans_buf1[8]=0;
         if(strcmp(ans_buf,ans_buf1)==0)
@@ -444,11 +444,11 @@ show_allcard(cmd_argv[2][0]-'0');
           sprintf(msg_buf,"104%s",ans_buf);
           write_msg(gps_sockfd,msg_buf);
           strcpy(my_pass,ans_buf);
-          wait_a_key("±K½X¤w§ó§ï!");
+          wait_a_key("å¯†ç¢¼å·²æ›´æ”¹!");
         }
         else
         {
-          wait_a_key("¨â¦¸±K½X¤£¦P,§ó§ï¥¢±Ñ!");
+          wait_a_key("å…©æ¬¡å¯†ç¢¼ä¸åŒ,æ›´æ”¹å¤±æ•—!");
         }
         break;
       case KICK:
@@ -458,20 +458,20 @@ show_allcard(cmd_argv[2][0]-'0');
         {
           if(narg<2)
           {
-            display_comment("­n§â½Ö½ğ¥X¥h©O?");
+            display_comment("è¦æŠŠèª°è¸¢å‡ºå»å‘¢?");
           }
           else
           {
             if(strcmp(my_name,cmd_argv[2])==0)
             {
-              display_comment("©êºp, ¦Û¤v¤£¯à½ğ¦Û¤v");
+              display_comment("æŠ±æ­‰, è‡ªå·±ä¸èƒ½è¸¢è‡ªå·±");
               break;
             }
             for(i=2;i<MAX_PLAYER;i++)
             {
               if(player[i].in_table && strcmp(player[i].name,cmd_argv[2])==0)
               {
-                sprintf(msg_buf,"101%s ³Q½ğ¥X¦¹®à",cmd_argv[2]);
+                sprintf(msg_buf,"101%s è¢«è¸¢å‡ºæ­¤æ¡Œ",cmd_argv[2]);
                 display_comment(msg_buf+3);
                 broadcast_msg(1,msg_buf);
                 write_msg(player[i].sockfd,"200");
@@ -479,12 +479,12 @@ show_allcard(cmd_argv[2][0]-'0');
                 goto finish_kick;
               }
             }
-            display_comment("¦¹®à¨S¦³³o­Ó¤H");
+            display_comment("æ­¤æ¡Œæ²’æœ‰é€™å€‹äºº");
           }
         }
         else
         {
-          display_comment("¦¹©R¥O¥u¦³®àªø¥i¥Î");
+          display_comment("æ­¤å‘½ä»¤åªæœ‰æ¡Œé•·å¯ç”¨");
         }
         finish_kick:;
         break;
@@ -498,12 +498,12 @@ show_allcard(cmd_argv[2][0]-'0');
       case INVITE:
         if(narg<2)
         {
-          display_comment("§A¥´ºâÁÜ½Ğ½Ö?");
+          display_comment("ä½ æ‰“ç®—é‚€è«‹èª°?");
           break;
         }
         sprintf(msg_buf,"008%s",cmd_argv[2]);
         write_msg(gps_sockfd,msg_buf);
-        sprintf(msg_buf,"ÁÜ½Ğ %s ¥[¤J¦¹®à",cmd_argv[2]);
+        sprintf(msg_buf,"é‚€è«‹ %s åŠ å…¥æ­¤æ¡Œ",cmd_argv[2]);
         display_comment(msg_buf);
         break;
       default:

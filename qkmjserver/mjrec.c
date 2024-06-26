@@ -84,18 +84,18 @@ print_record ()
     char name[40];
     long money;
 
-    printf ("(1) ¥H id ¬d¬İ¯S©w¨Ï¥ÎªÌ\n");
-    printf ("(2) ¥H¦WºÙ¬d¬İ¯S©w¨Ï¥ÎªÌ\n");
-    printf ("(3) ¬d¬İ©Ò¦³¨Ï¥ÎªÌ\n");
-    printf ("(4) ¬d¬İ¦¹ª÷ÃB¥H¤Wªº¨Ï¥ÎªÌ\n");
-    printf ("(5) ¬d¬İ¦¹ª÷ÃB¥H¤Uªº¨Ï¥ÎªÌ\n");
-    printf ("\n½Ğ¿é¤J§Aªº¿ï¾Ü:");
+    printf ("(1) ä»¥ id æŸ¥çœ‹ç‰¹å®šä½¿ç”¨è€…\n");
+    printf ("(2) ä»¥åç¨±æŸ¥çœ‹ç‰¹å®šä½¿ç”¨è€…\n");
+    printf ("(3) æŸ¥çœ‹æ‰€æœ‰ä½¿ç”¨è€…\n");
+    printf ("(4) æŸ¥çœ‹æ­¤é‡‘é¡ä»¥ä¸Šçš„ä½¿ç”¨è€…\n");
+    printf ("(5) æŸ¥çœ‹æ­¤é‡‘é¡ä»¥ä¸‹çš„ä½¿ç”¨è€…\n");
+    printf ("\nè«‹è¼¸å…¥ä½ çš„é¸æ“‡:");
     scanf ("%d", &i);
 
     switch (i)
     {
     case 1:
-	printf ("½Ğ¿é¤J§A­n¬d¬İªº id:");
+	printf ("è«‹è¼¸å…¥ä½ è¦æŸ¥çœ‹çš„ id:");
 	scanf ("%d", &id);
 
 	if (id < 0)
@@ -104,7 +104,7 @@ print_record ()
 	break;
 
     case 2:
-	printf ("½Ğ¿é¤J§A­n¬d¬İªº¦WºÙ:");
+	printf ("è«‹è¼¸å…¥ä½ è¦æŸ¥çœ‹çš„åç¨±:");
 	gets (name);
 	gets (name);
 	break;
@@ -114,7 +114,7 @@ print_record ()
 
     case 4:
     case 5:
-	printf ("½Ğ¿é¤Jª÷ÃB:");
+	printf ("è«‹è¼¸å…¥é‡‘é¡:");
 	scanf ("%d", &money);
 	break;
 
@@ -168,7 +168,7 @@ print_record ()
     }
     printf ("--------------------------------------------------------------\n");
     if (i == 3)
-	printf ("¦@ %d ¤Hª`¥U\n", player_num);
+	printf ("å…± %d äººæ³¨å†Š\n", player_num);
     fclose (fp);
 }
 
@@ -180,45 +180,45 @@ modify_user ()
     char account[40];
     long money;
 
-    printf ("½Ğ¿é¤J¨Ï¥ÎªÌ±b¸¹:");
+    printf ("è«‹è¼¸å…¥ä½¿ç”¨è€…å¸³è™Ÿ:");
     gets (account);
     gets (account);
     
     int res = read_user_name(account);
     if(res == 0 ){
-    	printf(" ¬dµL¦¹¤H ");
+    	printf(" æŸ¥ç„¡æ­¤äºº ");
     	return;
     }
     
     printf ("\n");
-    printf ("(1) §ó§ï¦WºÙ\n");
-    printf ("(2) ­«³]±K½X\n");
-    printf ("(3) §ó§ïª÷ÃB\n");
-    printf ("(4) ¨ú®ø§ó§ï\n");
-    printf ("\n½Ğ¿é¤J§Aªº¿ï¾Ü:");
+    printf ("(1) æ›´æ”¹åç¨±\n");
+    printf ("(2) é‡è¨­å¯†ç¢¼\n");
+    printf ("(3) æ›´æ”¹é‡‘é¡\n");
+    printf ("(4) å–æ¶ˆæ›´æ”¹\n");
+    printf ("\nè«‹è¼¸å…¥ä½ çš„é¸æ“‡:");
     scanf ("%d", &i);
     printf ("\n");
 
     switch (i)
     {
     case 1:
-	printf ("½Ğ¿é¤J­n§ó§ïªº¦WºÙ:");
+	printf ("è«‹è¼¸å…¥è¦æ›´æ”¹çš„åç¨±:");
 	gets (name);
 	gets (name);
 	strcpy (record.name, name);
-	printf ("§ï¦W¬° %s\n", name);
+	printf ("æ”¹åç‚º %s\n", name);
 	break;
 
     case 2:
 	record.password[0] = 0;
-	printf ("±K½X¤w­«³]!\n");
+	printf ("å¯†ç¢¼å·²é‡è¨­!\n");
 	break;
 
     case 3:
-	printf ("½Ğ¿é¤J­n§ó§ïªºª÷ÃB:");
+	printf ("è«‹è¼¸å…¥è¦æ›´æ”¹çš„é‡‘é¡:");
 	scanf ("%d", &money);
 	record.money = money;
-	printf ("ª÷ÃB§ó§ï¬° %ld\n", money);
+	printf ("é‡‘é¡æ›´æ”¹ç‚º %ld\n", money);
 	break;
 
     default:
@@ -237,11 +237,11 @@ main (int argc, char **argv)
     while (1)
     {
 	printf ("\n");
-	printf ("(1) ¦C¥X©Ò¦³¨Ï¥ÎªÌ¸ê®Æ\n");
-	printf ("(2) §R°£¨Ï¥ÎªÌ\n");
-	printf ("(3) §ó§ï¨Ï¥ÎªÌ¸ê®Æ\n");
-	printf ("(4) Â÷¶}\n\n");
-	printf ("½Ğ¿é¤J§Aªº¿ï¾Ü:");
+	printf ("(1) åˆ—å‡ºæ‰€æœ‰ä½¿ç”¨è€…è³‡æ–™\n");
+	printf ("(2) åˆªé™¤ä½¿ç”¨è€…\n");
+	printf ("(3) æ›´æ”¹ä½¿ç”¨è€…è³‡æ–™\n");
+	printf ("(4) é›¢é–‹\n\n");
+	printf ("è«‹è¼¸å…¥ä½ çš„é¸æ“‡:");
 	scanf ("%d", &i);
 
 	switch (i)
@@ -251,7 +251,7 @@ main (int argc, char **argv)
 	    break;
 
 	case 2:
-	    printf ("½Ğ¿é¤J¨Ï¥ÎªÌ¥N¸¹:");
+	    printf ("è«‹è¼¸å…¥ä½¿ç”¨è€…ä»£è™Ÿ:");
 	    scanf ("%d", &id);
 
 	    if (id >= 0)

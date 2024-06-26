@@ -32,7 +32,7 @@ int login_limit;
 char gps_ip[20];
 int gps_port;
 int log_level;
-char number_map[20][5] = { "¢¯", "¢°", "¢±", "¢²", "¢³", "¢´", "¢µ", "¢¶", "¢·", "¢¸" };
+char number_map[20][5] = { "ï¼", "ï¼‘", "ï¼’", "ï¼“", "ï¼”", "ï¼•", "ï¼–", "ï¼—", "ï¼˜", "ï¼™" };
 
 #define ADMIN_USER  "mjgps"
 
@@ -211,7 +211,7 @@ void list_player(int fd) {
 	char msg_buf[1000];
 	int total_num = 0;
 
-	write_msg(fd, "101-------------    ¥Ø«e¤W½u¨Ï¥ÎªÌ    ---------------");
+	write_msg(fd, "101-------------    ç›®å‰ä¸Šç·šä½¿ç”¨è€…    ---------------");
 	strcpy(msg_buf, "101");
 	for (i = 1; i < MAX_PLAYER; i++) {
 		if (player[i].login == 2) {
@@ -228,7 +228,7 @@ void list_player(int fd) {
 		write_msg(fd, msg_buf);
 
 	write_msg(fd, "101--------------------------------------------------");
-	sprintf(msg_buf, "101¦@ %d ¤H", total_num);
+	sprintf(msg_buf, "101å…± %d äºº", total_num);
 	write_msg(fd, msg_buf);
 }
 
@@ -237,7 +237,7 @@ void list_table(int fd, int mode) {
 	char msg_buf[1000];
 	int total_num = 0;
 
-	write_msg(fd, "101   ®àªø       ¤H¼Æ  ªşµù");
+	write_msg(fd, "101   æ¡Œé•·       äººæ•¸  é™„è¨»");
 	write_msg(fd, "101--------------------------------------------------");
 	for (i = 1; i < MAX_PLAYER; i++) {
 		if (player[i].login && player[i].serv > 0) {
@@ -260,7 +260,7 @@ void list_table(int fd, int mode) {
 		}
 	}
 	write_msg(fd, "101--------------------------------------------------");
-	sprintf(msg_buf, "101¦@ %d ®à", total_num);
+	sprintf(msg_buf, "101å…± %d æ¡Œ", total_num);
 	write_msg(fd, msg_buf);
 }
 
@@ -276,11 +276,11 @@ void list_stat(int fd, char *name) {
 	total_num = 0;
 	order = 1;
 	if (!read_user_name(name)) {
-		write_msg(fd, "101§ä¤£¨ì³o­Ó¤H!");
+		write_msg(fd, "101æ‰¾ä¸åˆ°é€™å€‹äºº!");
 		return;
 	}
-	//sprintf(msg_buf, "101¡º¦WºÙ:%s  %s", record.name, record.last_login_from);
-	sprintf(msg_buf, "101¡º¦WºÙ:%s ", record.name);
+	//sprintf(msg_buf, "101â—‡åç¨±:%s  %s", record.name, record.last_login_from);
+	sprintf(msg_buf, "101â—‡åç¨±:%s ", record.name);
 	if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
 		sprintf(msg_buf, "(stat) Cannot open file\n");
 		err(msg_buf);
@@ -296,10 +296,10 @@ void list_stat(int fd, char *name) {
 			}
 		}
 	if (record.game_count < 16)
-		strcpy(order_buf, "µL");
+		strcpy(order_buf, "ç„¡");
 	else
 		sprintf(order_buf, "%d/%d", order, total_num);
-	sprintf(msg_buf1, "101¡ºª÷ÃB:%ld ±Æ¦W:%s ¤W½u¦¸¼Æ:%d ¤wª±§½¼Æ:%d", record.money,
+	sprintf(msg_buf1, "101â—‡é‡‘é¡:%ld æ’å:%s ä¸Šç·šæ¬¡æ•¸:%d å·²ç©å±€æ•¸:%d", record.money,
 			order_buf, record.login_count, record.game_count);
 	write_msg(fd, msg_buf);
 	write_msg(fd, msg_buf1);
@@ -319,11 +319,11 @@ who(int fd, char *name){
 			}
 		}
 	}
-	write_msg(fd, "101§ä¤£¨ì¦¹®à");
+	write_msg(fd, "101æ‰¾ä¸åˆ°æ­¤æ¡Œ");
 	return;
 	found_serv: ;
 	sprintf(msg_buf, "101%s  ", player[serv_id].name);
-	write_msg(fd, "101----------------   ¦¹®à¨Ï¥ÎªÌ   ------------------");
+	write_msg(fd, "101----------------   æ­¤æ¡Œä½¿ç”¨è€…   ------------------");
 	for (i = 1; i < MAX_PLAYER; i++){
 		if (player[i].join == serv_id) {
 			if ((strlen(msg_buf) + strlen(player[i].name)) > 53) {
@@ -346,7 +346,7 @@ lurker(fd)
 	char msg_buf[1000];
 
 	strcpy(msg_buf, "101");
-	write_msg(fd, "101-------------   ¥Ø«e¡¼¸m¤§¨Ï¥ÎªÌ   ---------------");
+	write_msg(fd, "101-------------   ç›®å‰â–¡ç½®ä¹‹ä½¿ç”¨è€…   ---------------");
 	for (i = 1; i < MAX_PLAYER; i++)
 		if (player[i].login == 2
 				&& (player[i].join == 0 && player[i].serv == 0)) {
@@ -361,7 +361,7 @@ lurker(fd)
 	if (strlen(msg_buf) > 4)
 		write_msg(fd, msg_buf);
 	write_msg(fd, "101--------------------------------------------------");
-	sprintf(msg_buf, "101¦@ %d ¤H", total_num);
+	sprintf(msg_buf, "101å…± %d äºº", total_num);
 	write_msg(fd, msg_buf);
 }
 
@@ -377,30 +377,30 @@ find_user(fd, name)
 	if (id > 0) {
 		if (player[id].login == 2) {
 			if (player[id].join == 0 && player[id].serv == 0) {
-				sprintf(msg_buf, "101¡º%s ¡¼¸m¤¤", name);
+				sprintf(msg_buf, "101â—‡%s â–¡ç½®ä¸­", name);
 				write_msg(fd, msg_buf);
 			}
 			if (player[id].join) {
-				sprintf(msg_buf, "101¡º%s ¦b %s ®à¤º", name,
+				sprintf(msg_buf, "101â—‡%s åœ¨ %s æ¡Œå…§", name,
 						player[player[id].join].name);
 				write_msg(fd, msg_buf);
 			}
 			if (player[id].serv) {
-				sprintf(msg_buf, "101¡º%s ¦b %s ®à¤º", name, player[id].name);
+				sprintf(msg_buf, "101â—‡%s åœ¨ %s æ¡Œå…§", name, player[id].name);
 				write_msg(fd, msg_buf);
 			}
 			return;
 		}
 	}
 	if (!read_user_name(name)) {
-		sprintf(msg_buf, "101¡º¨S¦³ %s ³o­Ó¤H", name);
+		sprintf(msg_buf, "101â—‡æ²’æœ‰ %s é€™å€‹äºº", name);
 		write_msg(fd, msg_buf);
 	} else {
-		sprintf(msg_buf, "101¡º%s ¤£¦b½u¤W", name);
+		sprintf(msg_buf, "101â—‡%s ä¸åœ¨ç·šä¸Š", name);
 		write_msg(fd, msg_buf);
 		strcpy(last_login_time, ctime(&record.last_login_time));
 		last_login_time[strlen (last_login_time) - 1] = 0;
-		sprintf(msg_buf, "101¡º¤W¦¸³s½u®É¶¡: %s", last_login_time);
+		sprintf(msg_buf, "101â—‡ä¸Šæ¬¡é€£ç·šæ™‚é–“: %s", last_login_time);
 		write_msg(fd, msg_buf);
 	}
 }
@@ -434,7 +434,7 @@ send_msg(player_id, msg)
 			write_msg(player[i].sockfd, msg_buf);
 			return;
 		}
-	write_msg(player[player_id].sockfd, "101§ä¤£¨ì³o­Ó¤H");
+	write_msg(player[player_id].sockfd, "101æ‰¾ä¸åˆ°é€™å€‹äºº");
 }
 
 invite(player_id, name)
@@ -444,13 +444,13 @@ invite(player_id, name)
 
 	for (i = 1; i < MAX_PLAYER; i++)
 		if (player[i].login == 2 && strcmp(player[i].name, name) == 0) {
-			sprintf(msg_buf, "101%s ÁÜ½Ğ§A¥[¤J %s", player[player_id].name,
+			sprintf(msg_buf, "101%s é‚€è«‹ä½ åŠ å…¥ %s", player[player_id].name,
 					(player[player_id].join == 0) ? player[player_id].name
 							: player[player[player_id].join].name);
 			write_msg(player[i].sockfd, msg_buf);
 			return;
 		}
-	write_msg(player[player_id].sockfd, "101§ä¤£¨ì³o­Ó¤H");
+	write_msg(player[player_id].sockfd, "101æ‰¾ä¸åˆ°é€™å€‹äºº");
 }
 
 init_socket() {
@@ -617,7 +617,7 @@ int check_user(int player_id) {
 		if (strcmp(email, msg_buf) == 0 || strcmp(player[player_id].username,
 				msg_buf) == 0) {
 			display_msg(player_id,
-					"§A¤w³Q­­¨î¶i¤J");
+					"ä½ å·²è¢«é™åˆ¶é€²å…¥");
 			fclose(baduser_fp);
 			return 0;
 		}
@@ -667,18 +667,18 @@ void welcome_user(int player_id) {
 	fd = player[player_id].sockfd;
 	if (strcmp(player[player_id].version, "093") < 0
 			|| player[player_id].version[0] == 0) {
-		write_msg(player[player_id].sockfd, "101½Ğ¨Ï¥Î QKMJ Ver 0.93 Beta ¥H¤Wª©¥»¤W½u");
+		write_msg(player[player_id].sockfd, "101è«‹ä½¿ç”¨ QKMJ Ver 0.93 Beta ä»¥ä¸Šç‰ˆæœ¬ä¸Šç·š");
 		write_msg(player[player_id].sockfd, "010");
 		return;
 	}
-	sprintf(msg_buf, "101¡¹¡¹¡¹¡¹¡¹¡@Åwªï %s ¨Ó¨ì¢ß¢Ù³Â±N  ¡¹¡¹¡¹¡¹¡¹", player[player_id].name);
+	sprintf(msg_buf, "101â˜…â˜…â˜…â˜…â˜…ã€€æ­¡è¿ %s ä¾†åˆ°ï¼±ï¼«éº»å°‡  â˜…â˜…â˜…â˜…â˜…", player[player_id].name);
 	write_msg(player[player_id].sockfd, msg_buf);
 	print_news(player[player_id].sockfd, NEWS_FILE);
 	/*
 	 if (record.money < 15000 && record.game_count >= 16)
 	 {
 	 record.money = 15000;
-	 write_msg (fd, "101¹B®ğ¤£¤Ó¦n¬O¶Ü? ±N§Aªºª÷ÃB´£¤É¬° 15000, ¦n¦n¥[ªo!");
+	 write_msg (fd, "101é‹æ°£ä¸å¤ªå¥½æ˜¯å—? å°‡ä½ çš„é‡‘é¡æå‡ç‚º 15000, å¥½å¥½åŠ æ²¹!");
 	 write_record ();
 	 }
 	 */
@@ -718,7 +718,7 @@ void show_online_users(int player_id){
 		if (player[i].login == 2)
 			online_num++;
 	}
-	sprintf(msg_buf, "101¡º¥Ø«e¤W½u¤H¼Æ: %d ¤H       ª`¥U¤H¼Æ: %d ¤H", online_num, total_num);
+	sprintf(msg_buf, "101â—‡ç›®å‰ä¸Šç·šäººæ•¸: %d äºº       æ³¨å†Šäººæ•¸: %d äºº", online_num, total_num);
 	write_msg(player[player_id].sockfd, msg_buf);
 }
 void show_current_state(int player_id) {
@@ -823,7 +823,7 @@ void gps_processing() {
 			if (player_id > login_limit) {
 				if (strcmp(climark, "ccsun34") != 0) {
 					write_msg(player[player_id].sockfd,
-							"101¹ï¤£°_,¥Ø«e¨Ï¥Î¤H¼Æ¶W¹L¤W­­, ½Ğµy«á¦A¶i¨Ó.");
+							"101å°ä¸èµ·,ç›®å‰ä½¿ç”¨äººæ•¸è¶…éä¸Šé™, è«‹ç¨å¾Œå†é€²ä¾†.");
 					print_news(player[player_id].sockfd, "server.lst");
 					close_id(player_id);
 				}
@@ -978,7 +978,7 @@ void gps_processing() {
 						case 6:
 							who(player[player_id].sockfd, buf + 3);
 							break;
-						case 7://¼s¼½¡AGM ¥\¯à¡C
+						case 7://å»£æ’­ï¼ŒGM åŠŸèƒ½ã€‚
 							broadcast(player_id, buf + 3);
 							break;
 						case 8:
@@ -995,13 +995,13 @@ void gps_processing() {
 							 * Check for table server  
 							 */
 							if(!read_user_name_update(player[player_id].name,player_id)){
-								sprintf(msg_buf,"101¬dµL¦¹¤H");
+								sprintf(msg_buf,"101æŸ¥ç„¡æ­¤äºº");
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
 							}						
 							update_client_money(player_id);
 							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								sprintf(msg_buf,"101±zªº½ä¹ô¡]%d¡^¤£¨¬¡A¥²¶·¶W¹L %d ¤¸¤~¯à¥[¤JµP®à",
+								sprintf(msg_buf,"101æ‚¨çš„è³­å¹£ï¼ˆ%dï¼‰ä¸è¶³ï¼Œå¿…é ˆè¶…é %d å…ƒæ‰èƒ½åŠ å…¥ç‰Œæ¡Œ",
 										player[player_id].money , MIN_JOIN_MONEY);
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
@@ -1014,7 +1014,7 @@ void gps_processing() {
 									if (strcmp(player[i].name, buf + 3) == 0) {
 										if (player[i].serv >= 4) {
 											write_msg(player[player_id].sockfd,
-													"101¦¹®à¤H¼Æ¤wº¡!");
+													"101æ­¤æ¡Œäººæ•¸å·²æ»¿!");
 											goto full;
 										}
 										sprintf(msg_buf, "120%5d%ld",
@@ -1044,13 +1044,13 @@ void gps_processing() {
 							break;
 						case 12:
 							if(!read_user_name_update(player[player_id].name,player_id)){
-								sprintf(msg_buf,"101¬dµL¦¹¤H");
+								sprintf(msg_buf,"101æŸ¥ç„¡æ­¤äºº");
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
 							}
 							update_client_money(player_id);
 							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								sprintf(msg_buf,"101±zªº½ä¹ô¡]%d¡^¤£¨¬¡A¥²¶·¶W¹L %d ¤¸¤~¯à¶}®à",
+								sprintf(msg_buf,"101æ‚¨çš„è³­å¹£ï¼ˆ%dï¼‰ä¸è¶³ï¼Œå¿…é ˆè¶…é %d å…ƒæ‰èƒ½é–‹æ¡Œ",
 										player[player_id].money , MIN_JOIN_MONEY);
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
@@ -1073,20 +1073,20 @@ void gps_processing() {
 						case 13:
 							list_table(player[player_id].sockfd, 2);
 							break;
-						case 14://ÀË¬d¶}®à¸ê®æ
+						case 14://æª¢æŸ¥é–‹æ¡Œè³‡æ ¼
 							if(!read_user_name_update(player[player_id].name,player_id)){
-								sprintf(msg_buf,"101¬dµL¦¹¤H");
+								sprintf(msg_buf,"101æŸ¥ç„¡æ­¤äºº");
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
 							}							
 							update_client_money(player_id);
 							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								sprintf(msg_buf,"101±zªº½ä¹ô¡]%d¡^¤£¨¬¡A¥²¶·¶W¹L %d ¤¸¤~¯à¶}®à",
+								sprintf(msg_buf,"101æ‚¨çš„è³­å¹£ï¼ˆ%dï¼‰ä¸è¶³ï¼Œå¿…é ˆè¶…é %d å…ƒæ‰èƒ½é–‹æ¡Œ",
 										player[player_id].money , MIN_JOIN_MONEY);
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
 							}
-							write_msg(player[player_id].sockfd,"012");//½T»{¶}®à
+							write_msg(player[player_id].sockfd,"012");//ç¢ºèªé–‹æ¡Œ
 							break;
 						case 20://WIN GAME
 							strcpy(msg_buf, buf + 3);
@@ -1118,7 +1118,7 @@ void gps_processing() {
 							 * player[player_id].serv++;
 							 */
 							break;
-						case 200://¨Ï¥ÎªÌÂ÷¶}¹CÀ¸(/LEAVE)
+						case 200://ä½¿ç”¨è€…é›¢é–‹éŠæˆ²(/LEAVE)
 							close_id(player_id);
 							break;
 						case 202:
@@ -1130,7 +1130,7 @@ void gps_processing() {
 								close_id(id);
 							}
 							break;
-						case 205://LEAVE Â÷¶}µP®à
+						case 205://LEAVE é›¢é–‹ç‰Œæ¡Œ
 							if (player[player_id].serv) {
 								/*
 								 * clear all client 
@@ -1147,7 +1147,7 @@ void gps_processing() {
 								player[player_id].join = 0;
 							}
 							break;
-						case 201: //Åã¥Ü¥Ø«eª¬ºA
+						case 201: //é¡¯ç¤ºç›®å‰ç‹€æ…‹
 							show_current_state(player_id);
 						case 500:
 							if (strcmp(player[player_id].name, ADMIN_USER) == 0)

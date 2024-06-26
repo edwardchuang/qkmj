@@ -300,9 +300,9 @@ process_key()
               {  
                 input_mode=EAT_MODE;
                 /* Display different eating choices */
-                wmvaddstr(stdscr,15,58,"¢z¢w¢w¢w¢w¢w¢w¢w¢{");
-                wmvaddstr(stdscr,16,58,"¢x              ¢x");
-                wmvaddstr(stdscr,17,58,"¢|¢w¢w¢w¢w¢w¢w¢w¢}");
+                wmvaddstr(stdscr,15,58,"â”Œâ”€â”€â”€â”€â”€â”€â”€â”");
+                wmvaddstr(stdscr,16,58,"â”‚              â”‚");
+                wmvaddstr(stdscr,17,58,"â””â”€â”€â”€â”€â”€â”€â”€â”˜");
                 for(i=0;i<m;i++)
                 {
                   if(eat_pool[i])
