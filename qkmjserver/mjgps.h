@@ -74,6 +74,9 @@ void write_record ();
 void close_id (int);
 void close_connection (int);
 void shutdown_server ();
-
+int Check_for_data(int fd);
+int read_user_name(char *name);
+int find_user_name(char *name);
+void show_online_users(int player_id);
 
 #endif

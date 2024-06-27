@@ -1,6 +1,7 @@
 /*
  * Server 
  */
+#include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
 #include <sys/types.h>
@@ -20,6 +21,8 @@
 #include <pwd.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <errno.h>
+#include <time.h>
 #include "mjgps.h"
 
 /*
@@ -306,7 +309,7 @@ void list_stat(int fd, char *name) {
 	fclose(fp);
 }
 
-who(int fd, char *name){
+void who(int fd, char *name){
 	char msg_buf[1000];
 	int i;
 	int serv_id;
@@ -340,7 +343,7 @@ who(int fd, char *name){
 	write_msg(fd, "101--------------------------------------------------");
 }
 
-lurker(fd)
+void lurker(fd)
 	int fd; {
 	int i, total_num = 0;
 	char msg_buf[1000];
@@ -365,7 +368,7 @@ lurker(fd)
 	write_msg(fd, msg_buf);
 }
 
-find_user(fd, name)
+void find_user(fd, name)
 	int fd;char *name; {
 	int i;
 	char msg_buf[1000];
@@ -405,7 +408,7 @@ find_user(fd, name)
 	}
 }
 
-broadcast(player_id, msg)
+void broadcast(player_id, msg)
 	int player_id;char *msg; {
 	int i;
 	char msg_buf[1000];
@@ -420,7 +423,7 @@ broadcast(player_id, msg)
 	}
 }
 
-send_msg(player_id, msg)
+void send_msg(player_id, msg)
 	int player_id;char *msg; {
 	char *str1, *str2;
 	int i;
@@ -437,7 +440,7 @@ send_msg(player_id, msg)
 	write_msg(player[player_id].sockfd, "101找不到這個人");
 }
 
-invite(player_id, name)
+void invite(player_id, name)
 	int player_id;char *name; {
 	int i;
 	char msg_buf[1000];
@@ -453,7 +456,7 @@ invite(player_id, name)
 	write_msg(player[player_id].sockfd, "101找不到這個人");
 }
 
-init_socket() {
+void init_socket() {
 	struct sockaddr_in serv_addr;
 	int on = 1;
 
@@ -494,7 +497,7 @@ char * lookup(struct sockaddr_in *cli_addrp) {
 	return hostname;
 }
 
-init_variable() {
+void init_variable() {
 	int i;
 
 	login_limit = LOGIN_LIMIT;
@@ -517,7 +520,7 @@ int read_user_name(name)
 	if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
 		sprintf(msg_buf, "(read_user_name) Cannot open file!\n");
 		err(msg_buf);
-		return;
+		return 0;
 	}
 	rewind(fp);
 	while (!feof(fp) && fread(&tmp_rec, sizeof (tmp_rec), 1, fp)) {
@@ -537,7 +540,7 @@ int read_user_name_update(char *name,int player_id){
 	if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
 		sprintf(msg_buf, "(read_user_name) Cannot open file!\n");
 		err(msg_buf);
-		return;
+		return 0;
 	}
 	rewind(fp);
 	while (!feof(fp) && fread(&tmp_rec, sizeof (tmp_rec), 1, fp)) {
@@ -562,12 +565,18 @@ int read_user_id(id)
 	if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
 		sprintf(msg_buf, "(read_user_id) Cannot open file!\n");
 		err(msg_buf);
-		return;
+		return -1;
 	}
 	rewind(fp);
 	fseek(fp, sizeof (record) * id, 0);
-	fread(&record, sizeof (record), 1, fp);
+	if (fread(&record, sizeof (record), 1, fp) == -1) {
+		sprintf(msg_buf, "(read_user_id) Cannot write file!\n");
+		err(msg_buf);
+		fclose(fp);
+		return -1;
+	}
 	fclose(fp);
+	return 0;
 }
 
 int add_user(int player_id, char *name, char *passwd) {
@@ -784,7 +793,7 @@ void gps_processing() {
 	for (;;) {
 		bcopy((char *) &afds, (char *) &rfds, sizeof (rfds));
 		if (select(nfds, &rfds, (fd_set *) 0, (fd_set *) 0, 0) < 0) {
-			sprintf(msg_buf, "select: %d %s\n", errno, sys_errlist[errno]);
+			sprintf(msg_buf, "select: %d %s\n", errno, strerror(errno));
 			err(msg_buf);
 			continue;
 		}
@@ -806,7 +815,7 @@ void gps_processing() {
 			err(msg_buf);
 
 			time(&current_time);
-			tim = localtime(&current_time);
+			tim = (struct tm *)localtime(&current_time);
 			/*
 			 * if(tim->tm_hour>=2 && tim->tm_hour<6)
 			 * {
@@ -1001,7 +1010,7 @@ void gps_processing() {
 							}						
 							update_client_money(player_id);
 							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								sprintf(msg_buf,"101您的賭幣（%d）不足，必須超過 %d 元才能加入牌桌",
+								sprintf(msg_buf,"101您的賭幣（%ld）不足，必須超過 %d 元才能加入牌桌",
 										player[player_id].money , MIN_JOIN_MONEY);
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
@@ -1050,7 +1059,7 @@ void gps_processing() {
 							}
 							update_client_money(player_id);
 							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								sprintf(msg_buf,"101您的賭幣（%d）不足，必須超過 %d 元才能開桌",
+								sprintf(msg_buf,"101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
 										player[player_id].money , MIN_JOIN_MONEY);
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
@@ -1081,7 +1090,7 @@ void gps_processing() {
 							}							
 							update_client_money(player_id);
 							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								sprintf(msg_buf,"101您的賭幣（%d）不足，必須超過 %d 元才能開桌",
+								sprintf(msg_buf,"101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
 										player[player_id].money , MIN_JOIN_MONEY);
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
@@ -1224,7 +1233,10 @@ void core_dump(int signo) {
         if(buf[strlen(buf) - 1] == '\n')
                 buf[strlen(buf) - 1] = '\0';
         snprintf(cmd, sizeof(cmd), "gdb %s %d", buf, getpid());
-        system(cmd);
+        if (system(cmd) != 0) {
+    		// Handle the error, e.g., print an error message
+    		err("Error executing gdb command!\n");
+		}
 
         err("CORE DUMP!\n");
         exit(0);
@@ -1282,7 +1294,7 @@ int checkpasswd(char *passwd, char *test) {
 	return (!strcmp(pw, passwd));
 }
 
-void main(int argc, char **argv) {
+int main(int argc, char **argv) {
 	int i;
 
 	/*
@@ -1307,4 +1319,6 @@ void main(int argc, char **argv) {
 	init_socket();
 	init_variable();
 	gps_processing();
+
+	return 0;
 }
