@@ -1,6 +1,7 @@
 #ifndef __MJGPS_H__
 #define __MJGPS_H__
 
+#include <netinet/in.h>
 #define DEFAULT_GPS_PORT 7001
 #define DEFAULT_GPS_IP "0.0.0.0"
 #define MAX_PLAYER 500
