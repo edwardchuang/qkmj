@@ -6,18 +6,18 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <time.h>
+#include <sys/time.h>
 
-#include "mjdef.h"
+#include "qkmj.h"
 
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
+#if defined(HAVE_LIBNCURSES)
+  #include  <ncurses.h>
 #endif
 
 #include "qkmj.h"
 
-init_check_mode() {
+void init_check_mode() {
 	int i;
 
 	if (input_mode==TALK_MODE)
@@ -45,8 +45,8 @@ init_check_mode() {
 	return_cursor();
 }
 
-process_make(sit, card)
-	char sit;char card; {
+void process_make(char sit, char card)
+{
 	int i, j, k, max_sum, max_index, sitInd;
 	char msg_buf[80];
 	char result_record_buf[2000];
@@ -129,9 +129,9 @@ process_make(sit, card)
 					card_comb[max_index].tai_score[i]);
 			/* record */
 			if (in_serv && sendlog == 1) {
-				sprintf(result_buf, "%10s::%d;;", tai[i].name,
-						card_comb[max_index].tai_score[i]);
-				strcat(result_record_buf, result_buf);
+				char buf[3000];
+				snprintf(buf, sizeof(buf), "%20s::%d;;", tai[i].name, card_comb[max_index].tai_score[i]);
+				strcat(result_record_buf, buf);
 			}
 			/* record */
 			j++;
@@ -328,8 +328,8 @@ process_make(sit, card)
 	}
 }
 
-process_epk(check)
-	char check; {
+void process_epk(char check)
+{
 	char card1, card2, card3;
 	int i;
 	char msg_buf[80];
@@ -448,8 +448,8 @@ process_epk(check)
 }
 
 /*  Draw eat,pong or kang */
-draw_epk(id, kind, card1, card2, card3)
-	char id, kind, card1, card2, card3; {
+void draw_epk(char id, char kind, char card1, char card2, char card3)
+{
 	int sit, i;
 	char msg_buf[80];
 
@@ -554,8 +554,8 @@ draw_epk(id, kind, card1, card2, card3)
 		}
 }
 
-draw_flower(sit, card)
-	char sit;char card; {
+void draw_flower(char sit, char card)
+{
 	char msg_buf[80];
 
 	/*

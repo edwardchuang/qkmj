@@ -23,9 +23,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
-#ifdef HAVE_CONFIG_H
-  #include "config.h"
-#endif
 #include "mjgps.h"
 
 /*

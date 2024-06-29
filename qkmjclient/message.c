@@ -8,18 +8,11 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/time.h>
-
-#include "mjdef.h"
-
-#ifdef  NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
-#endif
+#include <ncurses.h>
+#include <unistd.h>
 
 #include "qkmj.h"
-#include "misc.h"
-   
+
 int tt;
 
 int convert_msg_id(msg)
@@ -32,20 +25,20 @@ unsigned char *msg;
      if(msg[i]<'0' || msg[i]>'9')
      {
        display_comment("Invalid message id");
-       sprintf(msg_buf,"From %d (%d) id=%d len=%d %s", tt,gps_sockfd,msg[i],strlen(msg),msg);
+       sprintf(msg_buf,"From %d (%d) id=%d len=%lu %s", tt,gps_sockfd,msg[i],strlen((char *)msg),msg);
        display_comment(msg_buf);
       }
    return(msg[0]-'0')*100+(msg[1]-'0')*10+(msg[2]-'0');
 }
 
-process_msg(player_id,id_buf,msg_type)
+void process_msg(player_id,id_buf,msg_type)
 int player_id;
 unsigned char *id_buf;
 int msg_type;
 {
   int msg_id;
   unsigned char buf[255];
-  char msg_buf[255];
+  char msg_buf[1024];
   char ans_buf[255];
   char ans_buf1[255];
   int i,j,sit;
@@ -161,7 +154,7 @@ int msg_type;
             switch(buf[3])
             {
               case '0':
-                Tokenize(buf+4,1);
+                Tokenize(buf+4);
                 //sprintf(msg_buf,"連往 %s port %s",cmd_argv[1],cmd_argv[2]);
                 //send_gps_line(msg_buf);
                 send_gps_line("與該桌連線中...");

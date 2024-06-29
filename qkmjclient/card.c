@@ -8,7 +8,6 @@
 #include <arpa/inet.h>
 #include <math.h>
 
-#include "mjdef.h"
 #include "qkmj.h"
 
 int card_num=144;
@@ -22,7 +21,7 @@ char all_card[150]={1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,
                     41,41,41,41,42,42,42,42,43,43,43,43,51,52,53,54,
                     55,56,57,58};
 
-generate_card()
+void generate_card()
 {
   double drand48();
   long time(),seed;
@@ -53,8 +52,7 @@ generate_card()
   }
 }
 
-generate_random(range)
-int range;
+int generate_random(int range)
 {
   double rand_num;
   double drand48();

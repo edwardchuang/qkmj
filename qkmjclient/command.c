@@ -8,57 +8,13 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <ctype.h>
 
-#include "mjdef.h"
-
-
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
+#if defined(HAVE_LIBNCURSES)
+  #include  <ncurses.h>
 #endif
 
-
 #include "qkmj.h"
-
-#define TABLE 1
-#define LIST 2
-#define PLAYER 3
-#define JOIN 4
-#define SERV 5
-#define QUIT 6
-#define EXIT 7
-#define WHO 8
-#define SIT 9
-#define NUM 10
-#define NEW 11
-#define SHOW 12
-#define LEAVE 13
-#define HELP 14
-#define NOTE 15
-#define STAT 16
-#define LOGIN 17
-#define PASSWD 18
-#define preserve1 19
-#define BROADCAST 20
-#define KICK 21
-#define KILL 22
-#define INVITE 23
-#define MSG 24
-#define SHUTDOWN 25
-#define LURKER 26
-#define FIND 27
-#define BEEP 28
-#define EXEC 29
-#define FREE 30
-#define S_PLAYER 31
-#define S_JOIN 32
-#define S_HELP 33
-#define S_WHO 34
-#define S_SERV 35
-#define S_LEAVE 36
-#define S_TABLE 37
-#define S_QUIT 38
 
 int enable_kick=1;
 int enable_exec=0;
@@ -68,8 +24,7 @@ char commands[100][10]
   "BROADCAST","KICK","KILL","INVITE","MSG","SHUTDOWN","LURKER","FIND","BEEP",
   "EXEC","FREE", "P", "J", "H", "W", "S", "L", "T", "Q"};
 
-void Tokenize(strinput)
-char *strinput;
+void Tokenize(char *strinput)
 {
   int k1, klast, Ltok, k1old;
   char *token;
@@ -97,7 +52,7 @@ char *strinput;
   }
 }
 
-my_strupr(char* upper,char* org)
+void my_strupr(char* upper,char* org)
 {
   int i,len;
   len=strlen(org);
@@ -106,8 +61,7 @@ my_strupr(char* upper,char* org)
   upper[len]='\0';
 }
 
-command_mapper(cmd)
-char *cmd;
+int command_mapper(char *cmd)
 {
   char cmd_upper[255];
   int i;
@@ -124,8 +78,7 @@ char *cmd;
 
 }
 
-who(name)
-char *name;
+void who(char *name)
 {
   char msg_buf[255];
   int i;
@@ -159,9 +112,10 @@ char *name;
   if(msg_buf[0]!=0)
     display_comment(msg_buf); 
   display_comment("--------------------------------------------------");
+  return;
 }
 
-help()
+void help()
 {
   send_gps_line("-----------------   使用說明   -------------------");
   send_gps_line("/HELP          /H   查看使用說明");
@@ -185,13 +139,13 @@ help()
   send_gps_line("--------------------------------------------------");
 }
 
-command_parser(char *msg)
+void command_parser(char *msg)
 {
   int i;
   int cmd_id;
   char sit;
   char table_upper[255];
-  char msg_buf[255];
+  char msg_buf[4096];
   char ans_buf[255];
   char ans_buf1[255];
 

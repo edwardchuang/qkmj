@@ -13,20 +13,15 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "mjdef.h"
-
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
-#endif
-
 #include "qkmj.h"
+
+#if defined(HAVE_LIBNCURSES)
+  #include  <ncurses.h>
+#endif
 
 struct passwd *userdata;
 
-int Check_for_data (fd)
-     int fd;
+int Check_for_data (int fd)
 /* Checks the socket descriptor fd to see if any incoming data has
    arrived.  If yes, then returns 1.  If no, then returns 0.
    If an error, returns -1 and stores the error message in socket_error.
@@ -52,7 +47,7 @@ int Check_for_data (fd)
 
 }
 
-init_serv_socket()
+void init_serv_socket()
 {
   struct sockaddr_in serv_addr;
          
@@ -74,13 +69,13 @@ init_serv_socket()
   FD_SET(serv_sockfd,&afds);
 }
 
-get_my_info()
+void get_my_info()
 {
   userdata=getpwuid(getuid());
   strcpy(my_username,userdata->pw_name);
 }
 
-init_socket(char *host,int portnum,int *sockfd)
+int init_socket(char *host,int portnum,int *sockfd)
 {
   struct sockaddr_in serv_addr;
 
@@ -98,17 +93,20 @@ init_socket(char *host,int portnum,int *sockfd)
   serv_addr.sin_port  = htons(portnum);
 
 	/* open a TCP socket */
-  if( (*sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+  if( (*sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		err("client: cannot open stream socket");
-
+    return -1;
+  }
 	/* connect to server */
   if(connect(*sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
   {
     return -1;
   }
+
+  return 0;
 }
 
-accept_new_client()
+void accept_new_client()
 {
   int alen;
   int i,player_id;
@@ -190,9 +188,7 @@ accept_new_client()
 */
 }
 
-int read_msg(fd,msg)
-int fd;
-char *msg;
+int read_msg(int fd, char *msg)
 {
   do
   {
@@ -218,7 +214,7 @@ char *msg;
   return 1;
 }
       
-write_msg(int fd,char *msg)
+int write_msg(int fd,char *msg)
 {
   int n;
   n=strlen(msg);
@@ -230,10 +226,11 @@ write_msg(int fd,char *msg)
   {
     return -1;
   }
+  return 0;
 }
 
 /* Command for server */
-broadcast_msg(int id,char *msg)
+void broadcast_msg(int id,char *msg)
 {
   int i;
   for(i=2;i<MAX_PLAYER;i++){
@@ -243,7 +240,7 @@ broadcast_msg(int id,char *msg)
 }
 
 
-close_client(int player_id)
+void close_client(int player_id)
 {
   char msg_buf[255];
 
@@ -263,7 +260,7 @@ close_client(int player_id)
   table[player[player_id].sit]=0;
 }
 
-close_join()
+void close_join()
 {
   in_join=0;
   write_msg(table_sockfd,"200");
@@ -274,7 +271,7 @@ close_join()
 */
 }
 
-close_serv()
+void close_serv()
 {
   int i;
   in_serv=0;
@@ -292,7 +289,7 @@ close_serv()
   FD_CLR(serv_sockfd,&afds);
 }
 
-leave()    /* the ^C trap. */
+void leave()    /* the ^C trap. */
 {
   int i;
 

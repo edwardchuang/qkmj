@@ -6,24 +6,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include  <ncurses.h>
 
 #define THREE_CARD 1
 #define STRAIGHT_CARD 2
 #define PAIR_CARD 3
 
-#include "mjdef.h"
-
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
-#endif
-
 #include "qkmj.h"
 
-
-clear_check_flag(sit)
-char sit;
+void clear_check_flag(char sit)
 {
   int i,j;
 
@@ -31,9 +22,7 @@ char sit;
     check_flag[sit][j]=0;
 }
 
-int search_card(sit,card)
-char sit;
-char card;
+int search_card(char sit, char card)
 {
   int i;
  
@@ -147,9 +136,7 @@ char card;
   return(eat);
 }
 
-check_card(sit,card)
-char sit;
-char card;
+void check_card(char sit, char card)
 {
   char msg_buf[80];
 
@@ -160,10 +147,7 @@ char card;
   check_flag[sit][4]=check_make(sit,card,0);
 }
 
-check_begin_flower(sit,card,position)  /* command for server */
-char sit;
-char card;
-char position;
+int check_begin_flower(char sit,char card,char position)  /* command for server */
 {
   int i;
   char msg_buf[80];
@@ -188,9 +172,7 @@ char position;
     return(0);
 }
 
-check_flower(sit,card)
-char sit;
-char card;
+int check_flower(char sit,char card)
 {
   int i;
   char msg_buf[80];
@@ -225,8 +207,7 @@ char card;
     return(0);  
 }
 
-write_check(check)  /* Finished checking! */
-char check;
+void write_check(char check)  /* Finished checking! */
 {
   char msg_buf[80];
 
@@ -242,7 +223,7 @@ char check;
   }
 }
 
-send_pool_card()
+void send_pool_card()
 {
   int j;
   char msg_buf[80];
@@ -268,7 +249,7 @@ send_pool_card()
   broadcast_msg(1,msg_buf);
 }
 
-compare_check()
+void compare_check()
 {
   int i,j;
   char msg_buf[80];

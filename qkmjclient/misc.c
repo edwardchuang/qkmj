@@ -8,8 +8,8 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 
-#include "mjdef.h"
 #include "qkmj.h"
+
 #define NO_SUN_HP 1
 
 float thinktime()
@@ -29,19 +29,19 @@ float thinktime()
   return(t);
 }
 
-beep1()
+void beep1()
 {
   if(set_beep)
-    beep();
+    beepbeep();
 }
 
-beep()
+void beepbeep()
 {
   putchar('\007');
   fflush(stdout);
 }
 
-mvwgetstring(win,y,x,max_len,str_buf,mode)
+void mvwgetstring(win,y,x,max_len,str_buf,mode)
 WINDOW *win;
 int y;
 int x;

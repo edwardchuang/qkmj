@@ -8,17 +8,9 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <sys/errno.h>
-#include "mjdef.h"
+#include <unistd.h>
 
-
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
-#endif
-
-#include "socket.h"
-#include "input.h" 
+#include "qkmj.h"
 
 /*gloable variables*/
 fd_set rfds,afds;
@@ -37,7 +29,7 @@ char menu_item[25][5]
 char number_item[30][3]
 ={"０","１","２","３","４","５","６","７","８","９","10","11","12","13",
   "14","15","16","17","18","19","20"};
-char mj_item[100][5]
+char mj_item[100][6]
 ={"＊＊","一萬","二萬","三萬","四萬","五萬","六萬","七萬","八萬","九萬",
   "摸牌","一索","二索","三索","四索","五索","六索","七索","八索","九索",
   "    ","一筒","二筒","三筒","四筒","五筒","六筒","七筒","八筒","九筒",
@@ -45,11 +37,7 @@ char mj_item[100][5]
   "▇▇","紅中","白板","青發","    ","    ","    ","    ","    ","    ",
   "    ","春１","夏２","秋３","冬４","梅１","蘭２","菊３","竹４"
  };
-struct tai_type {
-  char name[20];
-  int score;
-  char flag;
-} tai[100]={
+struct tai_type tai[100]={
   {"莊家",1,0},
   {"門清",1,0},
   {"自摸",1,0},
@@ -104,12 +92,7 @@ struct tai_type {
   {"人胡",16,0},
   {"連  拉  ",2,0}
   };
-struct card_comb_type {
-  char info[10][20];
-  int set_count;
-  int tai_sum;
-  int tai_score[100];
-} card_comb[20];
+struct card_comb_type card_comb[30];
 int comb_num;
 char mj[150];
 char sit_name[5][3]
@@ -159,44 +142,13 @@ int my_id;
 int my_sit;
 long my_money;
 unsigned int my_gps_id;
-unsigned char my_name[11];
-unsigned char my_pass[9];
+unsigned char my_name[50];
+unsigned char my_pass[10];
 unsigned char my_note[255];
-struct ask_mode_info {
-  int question;
-  int answer_ok;
-  char *answer;
-} ask;
-struct player_info {
-  int sockfd;
-  int in_table;
-  int sit;
-  unsigned int id;
-  char name[30];
-  long money;
-  char pool[20];
-  struct sockaddr_in addr;
-} player[MAX_PLAYER];
-struct pool_info {
-  char name[30];
-  int num;
-  char card[20];
-  char out_card_index;
-  char out_card[10][6];
-  char flower[10];
-  char door_wind;
-  int first_round;
-  long money;
-  float time;
-} pool[5];
-struct table_info {
-  int cardnum;
-  int wind;
-  int dealer;
-  int cont_dealer;
-  int base_value;
-  int tai_value;
-} info;
+struct ask_mode_info ask;
+struct player_info player[MAX_PLAYER];
+struct pool_info pool[5];
+struct table_info info;
 struct timeval before,after;
 int table[5];
 int new_client;
@@ -225,7 +177,7 @@ int cheat_mode=0;
 char table_card[6][17];
 
 /* Request a card */
-request_card()
+int request_card()
 {
   if(in_join)
   {
@@ -239,9 +191,7 @@ request_card()
 }
   
 /* Change a card */
-change_card(position,card)
-char position;
-char card;
+void change_card(char position, char card)
 {
   int i;
 
@@ -256,8 +206,7 @@ char card;
 }
 
 /* Get a card */
-get_card(card)
-char card;
+void get_card(char card)
 {
   pool[my_sit].card[pool[my_sit].num]=card;
   show_card(20,INDEX_X+16*2+1,INDEX_Y+1,1);
@@ -266,9 +215,7 @@ char card;
   wrefresh(stdscr);
 }
 
-process_new_card(sit,card)
-char sit;
-char card;
+void process_new_card(char sit, char card)
 {
   char msg_buf[255];
 
@@ -282,8 +229,7 @@ char card;
 }
 
 /* Throw cards to the table */
-throw_card(card)
-char card;
+void throw_card(char card)
 {
   int x,y;
   if(card==20)   
@@ -309,8 +255,7 @@ char card;
   }
 }
 
-send_one_card(id)
-int id;
+void send_one_card(int id)
 {
   char msg_buf[255];
   char card;
@@ -352,7 +297,7 @@ int id;
   gettimeofday(&before, (struct timezone *) 0);
 }
 
-next_player()
+void next_player()
 {
   char msg_buf[255];
   turn=next_turn(turn);
@@ -381,8 +326,7 @@ next_player()
   broadcast_msg(table[turn],msg_buf);
 }  
 
-next_turn(current_turn)
-int current_turn;
+int next_turn(int current_turn)
 {
   current_turn++;
   if(current_turn==5)
@@ -392,8 +336,7 @@ int current_turn;
   return(current_turn);
 }
 
-display_pool(sit)
-int sit;
+void display_pool(int sit)
 {
   int i;
   char buf[5],msg_buf[255];
@@ -406,8 +349,8 @@ int sit;
   }
   display_comment(msg_buf);  
 }
-sort_pool(sit)
-int sit;
+
+void sort_pool(int sit)
 {
   int i,j,max;
   char tmp;
@@ -423,8 +366,7 @@ int sit;
       }
 }
 
-sort_card(mode)
-int mode;
+void sort_card(int mode)
 {
   int i,j,max;
   char tmp;
@@ -460,7 +402,7 @@ int mode;
   return_cursor();
 }
 
-new_game()
+void new_game()
 {
   clear_screen_area(0,2,18,54);
   show_cardmsg(my_sit,0);
@@ -468,7 +410,7 @@ new_game()
   wrefresh(stdscr);
 }
 
-opening()
+void opening()
 {
   char msg_buf[255];
   int i,j;
@@ -504,7 +446,7 @@ opening()
   }
 }
 
-open_deal()
+void open_deal()
 {
    char msg_buf[255];
    int i,j,sit;
@@ -602,7 +544,7 @@ open_deal()
    broadcast_msg(1,msg_buf);
    clear_check_flag(turn);
    check_flag[turn][3]=check_kang(turn,current_card);
-   check_flag[turn][4]=check_make(turn,current_card);
+   check_flag[turn][4]=check_make(turn,current_card,0);
    in_check[turn]=0;
    for(i=1;i<check_number;i++)
    {
@@ -643,13 +585,12 @@ open_deal()
    gettimeofday(&before, (struct timezone *) 0);
 }
 
-err(errmsg)
-char 	*errmsg;
+void err(char *errmsg)
 {
   display_comment(errmsg);
 }
 
-init_variable()
+void init_variable()
 {
   int i,j;
 
@@ -691,7 +632,7 @@ init_variable()
   meta(stdscr,TRUE);
 }
 
-clear_variable()
+void clear_variable()
 {
   int i;
 
@@ -705,7 +646,7 @@ clear_variable()
   player_in_table=0;
 }
 
-gps()
+void gps()
 {
   int status;
   int i;
@@ -919,7 +860,7 @@ gps()
   }
 }
 
-read_qkmjrc()
+void read_qkmjrc()
 {
   FILE *qkmjrc_fp;
   char msg_buf[256];
@@ -975,11 +916,11 @@ read_qkmjrc()
       {
         if(narg>1)
         {
-          if(strcmp(my_strupr(msg_buf1,cmd_argv[2]),"OFF")==0)
+          my_strupr(msg_buf1, (char *)cmd_argv[2]);
+          if(strncmp(msg_buf1,"OFF",3)==0)
           {
             set_beep=0;
-          }
-        }
+          }        }
       }  
     }
     fclose(qkmjrc_fp);
@@ -987,9 +928,7 @@ read_qkmjrc()
 }
 
 
-main(argc, argv)
-int	argc;
-char	*argv[];
+int main(int argc, char *argv[])
 {
   setenv("TERM", "xterm", 1);
   

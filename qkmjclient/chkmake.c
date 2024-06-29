@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,44 +9,15 @@
 #define THREE_CARD 1
 #define STRAIGHT_CARD 2
 #define PAIR_CARD 3
-#include "mjdef.h"
 
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
+#if defined(HAVE_LIBNCURSES)
+  #include  <ncurses.h>
 #endif
 
 #include "qkmj.h"
 
-/*******************  Denifition of variables  **********************/
-
-struct nodetype {
-  char info[5];
-  int end;
-  int type;
-  struct nodetype *three;       /* 刻子 */
-  struct nodetype *straight;    /* 順子 */
-  struct nodetype *pair;        /* 對子 */
-  struct nodetype *father;
-};
-typedef struct nodetype *NODEPTR;
-
-struct card_info_type{
-  int info;
-  int flag;   /*  0 if is chosen, 1 if not */
-};
 struct card_info_type card_info[20];
-
-NODEPTR make_three();
-NODEPTR make_straight();
-NODEPTR make_pair();
 char pool_buf[20];
-struct component_type{
-  int type;
-  /* 0:invalid   1:no card   2:normal   3:one pair  4:more than one pair */
-  char info[10][5];
-};
 struct component_type card_component[6][50];
 int comb_count[6];
 int count2;
@@ -78,7 +48,7 @@ NODEPTR node;
   return(p);
 }
 
-build_tree(node)
+void build_tree(node)
 NODEPTR node;
 {
   node->three=make_three(node);  /* It will check if it's end */
@@ -92,7 +62,7 @@ NODEPTR node;
     node->pair=NULL;
 }
 
-mark_card(node)
+void mark_card(node)
 NODEPTR node;
 {
   int i,j;
@@ -263,7 +233,7 @@ NODEPTR node;
 }
 
 /* Find a valid tree and copy it to the array */
-list_path(p)
+void list_path(p)
 NODEPTR p;
 {
   int i;
@@ -287,7 +257,7 @@ NODEPTR p;
     list_path(p->father);
 }
 
-pretrav(p)
+void pretrav(p)
 NODEPTR p;
 {
   if(p!=NULL)
@@ -312,7 +282,7 @@ NODEPTR p;
   }
 }
 
-free_tree(p)
+void free_tree(p)
 NODEPTR p;
 {
   if(p->three)
@@ -324,6 +294,1092 @@ NODEPTR p;
   free(p);
 }
 
+int valid_type(type)
+int type;
+{
+  if(type==1 || type==2 || type==3)
+    return(1);
+  else
+    return(0);
+}
+
+/* return the number of the card found */
+int exist_card(sit,card)
+char sit;
+char card;
+{
+  int i,j,exist=0;
+
+  for(i=0;i<=pool[sit].num;i++)
+  {
+    if(pool_buf[i]==card)
+    {
+      exist++;
+    }
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    j=1;
+    while(pool[sit].out_card[i][j])
+    {
+      if(pool[sit].out_card[i][j]==card)
+        exist++;
+      j++;
+    }
+  }
+  return(exist);
+}
+
+int exist_3(sit,card,comb)
+char sit;
+char card;
+int comb;
+{
+  int i,set,exist=0;
+
+  set=0;
+  while(card_comb[comb].info[set][0])
+  {
+    if(card_comb[comb].info[set][0]==2 && card_comb[comb].info[set][1]==card)
+      exist++;
+    set++;
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][1]==card && pool[sit].out_card[i][2]==card &&
+       pool[sit].out_card[i][3]==card)
+      exist++;
+  }
+  return(exist);
+}
+
+int exist_straight(sit,card,comb)
+char sit;
+char card;
+int comb;
+{
+  int i,set,exist=0;
+
+  set=0;
+  while(card_comb[comb].info[set][0])
+  {
+    if(card_comb[comb].info[set][0]==1 && card_comb[comb].info[set][1]==card)
+      exist++;
+    set++;
+  }
+  set=0;
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][0]==7 && pool[sit].out_card[i][2]==card)
+      exist++;
+    if(pool[sit].out_card[i][0]==8 && pool[sit].out_card[i][1]==card)
+      exist++;
+    if(pool[sit].out_card[i][0]==9 && pool[sit].out_card[i][1]==card)
+      exist++;
+  }
+  return(exist);
+}
+
+/* 莊家 */
+void check_tai0(sit,comb)
+char sit;
+char comb;
+{
+  if(info.dealer==sit)
+    card_comb[comb].tai_score[0]=tai[0].score;
+}
+
+/* 門清 */
+void check_tai1(sit,comb)
+char sit;
+char comb;
+{
+  if(pool[sit].num==16)
+    card_comb[comb].tai_score[1]=tai[1].score;
+}
+
+/* 自摸 */
+void check_tai2(sit,comb)
+char sit;
+char comb;
+{
+  if(sit==card_owner)
+    card_comb[comb].tai_score[2]=tai[2].score;
+  
+}
+
+/* 斷么九 */
+void check_tai3(sit,comb)
+char sit;
+char comb;
+{
+  if(!exist_card(sit,1) && !exist_card(sit,9) && !exist_card(sit,11) &&
+     !exist_card(sit,19) && !exist_card(sit,21) && !exist_card(sit,29) &&
+     !exist_card(sit,31) && !exist_card(sit,32) && !exist_card(sit,33) &&
+     !exist_card(sit,34) && !exist_card(sit,41) && !exist_card(sit,42) &&
+     !exist_card(sit,43))
+    card_comb[comb].tai_score[3]=tai[3].score;
+}
+
+/* 雙龍抱 */
+void check_tai4(sit,comb)
+char sit;
+char comb;
+{
+  int i;
+  int straight[30],double_straight_num=0;
+
+  if(pool[sit].num!=16)   /* 必須門清 */
+    return;
+  for(i=0;i<30;i++)
+    straight[i]=0;
+  for(i=0;i<card_comb[comb].set_count;i++)
+  {
+    if(card_comb[comb].info[i][0]==1)
+      straight[card_comb[comb].info[i][1]]++;
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][0]==7)
+      straight[pool[sit].out_card[i][2]]++;
+    if(pool[sit].out_card[i][0]==8)
+      straight[pool[sit].out_card[i][1]]++;
+    if(pool[sit].out_card[i][0]==9)
+      straight[pool[sit].out_card[i][1]]++;
+  }
+  for(i=0;i<30;i++)
+  {
+    if(straight[i]>=2)
+      double_straight_num++;
+  }
+  if(double_straight_num==1)
+    card_comb[comb].tai_score[4]=tai[4].score;
+  if(double_straight_num>=2)
+    card_comb[comb].tai_score[28]=tai[28].score;
+}
+
+/* 槓上開花 */
+void check_tai5(sit,comb)
+char sit;
+char comb;
+{
+  if(in_kang)
+    card_comb[comb].tai_score[5]=tai[5].score;
+}
+
+/* 海底摸月 */
+void check_tai6(sit,comb)
+char sit;
+char comb;
+{
+  if((144-card_point)==16 && sit==card_owner)
+    card_comb[comb].tai_score[6]=tai[6].score;
+}
+
+/* 河底撈魚 */
+void check_tai7(sit,comb)
+char sit;
+char comb;
+{
+  if((144-card_point)==16 && sit!=card_owner)
+    card_comb[comb].tai_score[7]=tai[7].score;
+}
+
+/* 搶槓 */
+void check_tai8(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 東風 */
+void check_tai9(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,31)>=3)
+  {
+    if(info.wind==1)
+      card_comb[comb].tai_score[9]+=tai[9].score;
+    if(pool[sit].door_wind==1)
+      card_comb[comb].tai_score[9]+=tai[9].score;
+  }
+  if(card_comb[comb].tai_score[9]==tai[9].score*2)
+  {
+    card_comb[comb].tai_score[17]=tai[17].score;
+    card_comb[comb].tai_score[9]=0;
+  }
+}
+
+/* 南風 */
+void check_tai10(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,32)>=3)
+  {
+    if(info.wind==2)
+      card_comb[comb].tai_score[10]+=tai[10].score;
+    if(pool[sit].door_wind==2)
+      card_comb[comb].tai_score[10]+=tai[10].score;
+  }
+  if(card_comb[comb].tai_score[10]==tai[10].score*2)
+  {
+    card_comb[comb].tai_score[18]=tai[18].score;
+    card_comb[comb].tai_score[10]=0;
+  }
+}
+
+/* 西風 */
+void check_tai11(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,33)>=3)
+  {
+    if(info.wind==3)
+      card_comb[comb].tai_score[11]+=tai[11].score;
+    if(pool[sit].door_wind==3)
+      card_comb[comb].tai_score[11]+=tai[11].score;
+  }
+  if(card_comb[comb].tai_score[11]==tai[11].score*2)
+  {
+    card_comb[comb].tai_score[19]=tai[19].score;
+    card_comb[comb].tai_score[11]=0;
+  }
+}
+
+/* 北風 */
+void check_tai12(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,34)>=3)
+  {
+    if(info.wind==4)
+      card_comb[comb].tai_score[12]+=tai[12].score;
+    if(pool[sit].door_wind==4)
+      card_comb[comb].tai_score[12]+=tai[12].score;
+  }
+  if(card_comb[comb].tai_score[12]==tai[12].score*2)
+  {
+    card_comb[20].tai_score[20]=tai[20].score;
+    card_comb[comb].tai_score[12]=0;
+  }
+}
+
+/* 紅中 */
+void check_tai13(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,41)>=3)
+    card_comb[comb].tai_score[13]=tai[13].score;
+}
+
+/* 白板 */
+void check_tai14(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,42)>=3)
+    card_comb[comb].tai_score[14]=tai[14].score;
+}
+
+/* 青發 */
+void check_tai15(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,43)>=3)
+    card_comb[comb].tai_score[15]=tai[15].score;
+}
+
+/* 花牌 */
+void check_tai16(sit,comb)
+char sit;
+char comb;
+{
+  if(pool[sit].flower[pool[sit].door_wind-1])
+    card_comb[comb].tai_score[16]+=tai[16].score;
+  if(pool[sit].flower[pool[sit].door_wind+3])
+    card_comb[comb].tai_score[16]+=tai[16].score;
+}
+
+/* 東風東 */
+void check_tai17(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 西風西 */
+void check_tai18(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 南風南 */
+void check_tai19(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 北風北 */
+void check_tai20(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 春夏秋冬 */
+void check_tai21(sit,comb)
+char sit;
+char comb;
+{
+  if(pool[sit].flower[0] && pool[sit].flower[1] && pool[sit].flower[2] &&
+     pool[sit].flower[3])
+  {
+    card_comb[comb].tai_score[21]=tai[21].score;
+    card_comb[comb].tai_score[16]-=tai[16].score;
+  }
+}
+
+/* 梅蘭菊竹 */
+void check_tai22(sit,comb)
+char sit;
+char comb;
+{
+  if(pool[sit].flower[4] && pool[sit].flower[5] && pool[sit].flower[6] &&
+     pool[sit].flower[7])
+  {
+    card_comb[comb].tai_score[22]=tai[22].score;
+    card_comb[comb].tai_score[16]-=tai[16].score;
+  }
+}
+
+/* 全求人 */
+void check_tai23(sit,comb)
+char sit;
+char comb;
+{
+  if(pool[sit].num==1 && sit!=card_owner)
+    card_comb[comb].tai_score[23]=tai[23].score;
+}
+
+/* 平胡 */
+void check_tai24(sit,comb,make_card)
+char sit;
+char comb;
+char make_card;
+{
+  int i,j;
+
+  /* 花牌 */
+  for(i=0;i<8;i++)
+    if(pool[sit].flower[i])
+      goto fail24;
+  /* 順子 */
+  for(i=0;i<card_comb[comb].set_count;i++)
+  {
+    if(card_comb[comb].info[i][0]==2)
+      goto fail24;
+    if(card_comb[comb].info[i][0]==10)
+    {
+      if(card_comb[comb].info[i][1]==make_card)
+        goto fail24;
+      if(card_comb[comb].info[i][1]>30)
+        goto fail24;
+    }
+  }
+  /* 門清 */
+/*
+  if(pool[sit].out_card_index==0)
+    goto fail24;
+*/
+  /* 自摸 */
+  if(turn==card_owner)
+    goto fail24;
+  /* 順子 */
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][1]==pool[sit].out_card[i][2])
+      goto fail24;
+  }
+  /* 兩面聽牌 */
+  if(make_card%10<=6)
+    if(check_make(sit,make_card+3,0))
+      goto finish24;
+  if(make_card%10>=4)
+    if(check_make(sit,make_card-3,0))
+      goto finish24;
+  goto fail24;
+  finish24:;
+  check_make(sit,make_card,0);   /* Reset pool_buf[] */
+  card_comb[comb].tai_score[24]=tai[24].score;
+  fail24:;
+}
+
+/* 混帶么 */
+void check_tai25(sit,comb)
+char sit;
+char comb;
+{
+  int i,exist19=0;
+
+  for(i=0;i<card_comb[comb].set_count;i++)
+  {
+    if(card_comb[comb].info[i][1]<30)
+    {
+      exist19=1;
+      if(card_comb[comb].info[i][1]%10==1 || card_comb[comb].info[i][1]%10==9 ||
+         card_comb[comb].info[i][2]%10==1 || card_comb[comb].info[i][2]%10==9 ||
+         card_comb[comb].info[i][3]%10==1 || card_comb[comb].info[i][3]%10==9)
+        continue;
+      else
+        goto fail25;
+    }
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][1]<30)
+    {
+      if(pool[sit].out_card[i][1]%10==1 || pool[sit].out_card[i][1]%10==9 ||
+         pool[sit].out_card[i][2]%10==1 || pool[sit].out_card[i][2]%10==9 ||
+         pool[sit].out_card[i][3]%10==1 || pool[sit].out_card[i][3]%10==9)
+        continue;
+      else
+        goto fail25;
+    }
+  }
+  if(exist19)
+  {
+    card_comb[comb].tai_score[25]=tai[25].score;
+    if(pool[sit].num!=16)
+      card_comb[comb].tai_score[25]-=1;
+  }
+  fail25:;
+}
+
+/* 三色同順 */
+void check_tai26(sit,comb)
+char sit;
+char comb;
+{
+  int i,num;
+
+  for(i=0;i<card_comb[comb].set_count;i++)
+  {
+    if(card_comb[comb].info[i][0]==1)
+    {
+      num=card_comb[comb].info[i][1]%10;
+      if(exist_straight(sit,num,comb) && exist_straight(sit,num+10,comb) &&
+         exist_straight(sit,num+20,comb))
+      {
+        card_comb[comb].tai_score[26]=tai[26].score;
+        goto finish26;
+      }
+    }
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][0]>=7 && pool[sit].out_card[i][0]<=9)
+    {
+      if(pool[sit].out_card[i][0]==7)
+        num=pool[sit].out_card[i][2]%10;
+      else
+        num=pool[sit].out_card[i][1]%10;
+      if(exist_straight(sit,num,comb) && exist_straight(sit,num+10,comb) &&
+         exist_straight(sit,num+20,comb))
+      {
+        card_comb[comb].tai_score[26]=tai[26].score;
+        goto finish26;
+      }
+    }
+  }
+  return;
+  finish26:;
+  if(pool[sit].num!=16)
+    card_comb[comb].tai_score[26]-=1;
+}
+
+/* 一條龍 */
+void check_tai27(sit,comb)
+char sit;
+char comb;
+{
+  int i;
+
+  if(exist_straight(sit,1,comb) && exist_straight(sit,4,comb) &&
+     exist_straight(sit,7,comb))
+    card_comb[comb].tai_score[27]=tai[27].score;
+  if(exist_straight(sit,11,comb) && exist_straight(sit,14,comb) &&
+     exist_straight(sit,17,comb))
+    card_comb[comb].tai_score[27]=tai[27].score;
+  if(exist_straight(sit,21,comb) && exist_straight(sit,24,comb) &&
+     exist_straight(sit,27,comb))
+    card_comb[comb].tai_score[27]=tai[27].score;
+  if(card_comb[comb].tai_score[27] && pool[sit].num!=16)
+    card_comb[comb].tai_score[27]-=1;
+}
+
+/* 雙龍抱 */
+void check_tai28(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 三暗刻 */
+void check_tai29(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 三槓子 */
+void check_tai30(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 三色同刻 */
+void check_tai31(sit,comb)
+char sit,comb;
+{
+  int i,num;
+
+  for(i=0;i<card_comb[comb].set_count;i++)
+  {
+    if(card_comb[comb].info[i][0]==2)
+    {
+      num=card_comb[comb].info[i][1]%10;
+      if(exist_3(sit,num,comb) && exist_3(sit,num+10,comb) &&
+         exist_3(sit,num+20,comb))
+      {
+        card_comb[comb].tai_score[31]=tai[31].score;
+        goto finish31;
+      }
+    }
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][1]==pool[sit].out_card[i][2] &&
+       pool[sit].out_card[i][1]==pool[sit].out_card[i][3])
+    {
+      num=pool[sit].out_card[i][1]%10;
+      if(exist_3(sit,num,comb) && exist_3(sit,num+10,comb) &&
+         exist_3(sit,num+20,comb))
+      {
+        card_comb[comb].tai_score[31]=tai[31].score;
+        goto finish31;
+      }
+    }
+  }
+  finish31:;
+}
+
+/* 門清自摸 */
+void check_tai32(sit,comb)
+char sit;
+char comb;
+{
+  if(pool[sit].num==16 && sit==card_owner)
+  {
+    card_comb[comb].tai_score[32]=tai[32].score;
+    card_comb[comb].tai_score[1]=0;
+    card_comb[comb].tai_score[2]=0;
+  }
+}
+
+/* 碰碰胡 */
+void check_tai33(sit,comb)
+char sit;
+char comb;
+{
+  int i;
+
+  for(i=0;i<card_comb[comb].set_count;i++)
+  {
+    if(card_comb[comb].info[i][0]==1)
+      goto fail33;
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][1]!=pool[sit].out_card[i][2])
+    {
+      goto fail33;
+    }
+  }
+  card_comb[comb].tai_score[33]=tai[33].score;
+  fail33:;
+}
+
+/* 混一色 */
+void check_tai34(sit,comb)
+char sit;
+char comb;
+{
+  int i,j,kind;
+
+  card_comb[comb].tai_score[34]=tai[34].score;
+  for(i=0;i<=pool[sit].num;i++)
+  {
+    kind=pool_buf[i]/10;
+    if(kind<=2)
+      goto found34;
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    kind=pool[sit].out_card[i][1]/10;
+    if(kind<=2)
+      goto found34;
+  }
+  card_comb[comb].tai_score[34]=0;
+  goto fail34;
+  found34:;
+  for(i=1;i<=pool[sit].num;i++)
+    if(kind!=pool_buf[i]/10 && pool_buf[i]/10<=2)
+    {
+      card_comb[comb].tai_score[34]=0;
+      goto fail34;
+    }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(kind!=pool[sit].out_card[i][1]/10 && pool[sit].out_card[i][1]/10<=2)
+      {
+        card_comb[comb].tai_score[34]=0;
+        goto fail34;
+      }
+  }
+  fail34:;
+}
+
+/* 純帶么 */
+void check_tai35(sit,comb)
+char sit;
+char comb;
+{
+  int i;
+
+  for(i=0;i<card_comb[comb].set_count;i++)
+  {
+    if(card_comb[comb].info[i][1]>30)
+      goto fail35;
+    if(card_comb[comb].info[i][1]%10==1 || card_comb[comb].info[i][1]%10==9 ||
+       card_comb[comb].info[i][2]%10==1 || card_comb[comb].info[i][2]%10==9 ||
+       card_comb[comb].info[i][3]%10==1 || card_comb[comb].info[i][3]%10==9)
+      continue;
+    else
+      goto fail35;
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][1]>30)
+      goto fail35;
+    if(pool[sit].out_card[i][1]%10==1 || pool[sit].out_card[i][1]%10==9 ||
+       pool[sit].out_card[i][2]%10==1 || pool[sit].out_card[i][2]%10==9 ||
+       pool[sit].out_card[i][3]%10==1 || pool[sit].out_card[i][3]%10==9)
+      continue;
+    else
+      goto fail35;
+  }
+  card_comb[comb].tai_score[35]=tai[35].score;
+  card_comb[comb].tai_score[25]=0;
+  fail35:;
+}
+
+/* 混老頭 */
+void check_tai36(sit,comb)
+char sit;
+char comb;
+{
+  int i,j,exist19=0;
+
+  for(i=0;i<=pool[sit].num;i++)
+  {
+    if(pool_buf[i]<30)
+    {
+      exist19=1;
+      if(pool_buf[i]%10!=1 && pool_buf[i]%10!=9)
+      {
+        goto fail36;
+      }
+    }
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][1]/10<30)   /* if 字牌 --> 檢查下一組 */
+    {
+      exist19=1;
+      if(pool[sit].out_card[i][1]%10!=1 && pool[sit].out_card[i][1]%10!=9)
+        goto fail36;
+      if(pool[sit].out_card[i][2]%10!=1 && pool[sit].out_card[i][2]%10!=9)
+        goto fail36;
+      if(pool[sit].out_card[i][3]%10!=1 && pool[sit].out_card[i][3]%10!=9)
+        goto fail36;
+    }
+  }
+  if(exist19)
+  {
+    card_comb[comb].tai_score[36]=tai[36].score;
+    card_comb[comb].tai_score[25]=0;
+    card_comb[comb].tai_score[33]=0;
+  }
+  fail36:;
+}
+
+/* 小三元 */
+void check_tai37(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,41)>=2 && exist_card(sit,42)>=2 && exist_card(sit,43)>=2)
+  {
+    card_comb[comb].tai_score[37]=tai[37].score;
+    card_comb[comb].tai_score[13]=0;
+    card_comb[comb].tai_score[14]=0;
+    card_comb[comb].tai_score[15]=0;
+  }
+}
+
+/* 四暗刻 */
+void check_tai38(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 四槓子 */
+void check_tai39(sit,comb)
+char sit;
+char comb;
+{
+  int i,kang_count=0;
+ 
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][0]==3 || pool[sit].out_card[i][0]==11 ||
+       pool[sit].out_card[i][0]==12)
+      kang_count++;
+  }
+  if(kang_count==3)
+    card_comb[comb].tai_score[30]=tai[30].score;
+  if(kang_count==4)
+    card_comb[comb].tai_score[39]=tai[39].score;
+}
+
+/* 大三元 */
+void check_tai40(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,41)>=3 && exist_card(sit,42)>=3 && exist_card(sit,43)>=3)
+  {
+    card_comb[comb].tai_score[40]=tai[40].score;
+    card_comb[comb].tai_score[13]=0;
+    card_comb[comb].tai_score[14]=0;
+    card_comb[comb].tai_score[15]=0;
+    card_comb[comb].tai_score[37]=0;
+  }
+}
+
+/* 小四喜 */
+void check_tai41(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,31)>=2 && exist_card(sit,32)>=2 && exist_card(sit,33)>=2 &&
+     exist_card(sit,34)>=2)
+  {
+    card_comb[comb].tai_score[41]=tai[41].score;
+    card_comb[comb].tai_score[9]=0;
+    card_comb[comb].tai_score[10]=0;
+    card_comb[comb].tai_score[11]=0;
+    card_comb[comb].tai_score[12]=0;
+    card_comb[comb].tai_score[17]=0;
+    card_comb[comb].tai_score[18]=0;
+    card_comb[comb].tai_score[19]=0;
+    card_comb[comb].tai_score[20]=0;
+  }
+}
+
+/* 清一色 */
+void check_tai42(sit,comb)
+char sit;
+char comb;
+{
+  int i,j,kind;
+
+  card_comb[comb].tai_score[42]=tai[42].score;
+  kind=pool_buf[0]/10;
+  if(kind>=3)
+  {
+    card_comb[comb].tai_score[42]=0;
+    goto fail42;
+  }
+  for(i=1;i<=pool[sit].num;i++)
+    if(kind!=pool_buf[i]/10)
+    {
+      card_comb[comb].tai_score[42]=0;
+      goto fail42;
+    }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+      if(kind!=pool[sit].out_card[i][1]/10)
+      {
+        card_comb[comb].tai_score[42]=0;
+        goto fail42;
+      }
+  }
+  card_comb[comb].tai_score[34]=0;
+  fail42:;
+}
+
+/* 字一色 */
+void check_tai43(sit,comb)
+char sit;
+char comb;
+{
+  int i,j;
+
+  for(i=0;i<=pool[sit].num;i++)
+  {
+    if(!(pool_buf[i]<=34 && pool_buf[i]>=31) &&
+       !(pool_buf[i]<=43 && pool_buf[i]>=41))
+    {
+      goto fail43;
+    }
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    j=1;
+    while(pool[sit].out_card[j][1])
+    {
+      if(!(pool[sit].out_card[j][1]<=34 && pool[sit].out_card[j][1]>=31) &&
+         !(pool[sit].out_card[j][1]<=43 && pool[sit].out_card[j][1]>=41))
+      {
+        goto fail43;
+      }
+    }
+  }
+  card_comb[comb].tai_score[43]=tai[43].score;
+  card_comb[comb].tai_score[33]=0;
+  fail43:;
+}
+
+/* 七搶一 */
+void check_tai44(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 五暗刻 */
+void check_tai45(sit,comb,make_card)
+char sit;
+char comb;
+char make_card;
+{
+  int i,three_card=0;
+char msg_buf[80];
+
+  for(i=0;i<card_comb[comb].set_count;i++)
+  {
+    if(card_comb[comb].info[i][0]==2)
+      if(card_comb[comb].info[i][1]!=make_card || sit==card_owner)
+        three_card++;       /* 自摸可算暗刻 */
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+    if(pool[sit].out_card[i][0]==11)
+      three_card++;
+  if(three_card==3)
+    card_comb[comb].tai_score[29]=tai[29].score;
+  if(three_card==4)
+    card_comb[comb].tai_score[38]=tai[38].score;
+  if(three_card==5)
+  {
+    card_comb[comb].tai_score[45]=tai[45].score;
+    card_comb[comb].tai_score[33]=0;
+  }
+}
+
+/* 清老頭 */
+void check_tai46(sit,comb)
+char sit;
+char comb;
+{
+  int i,j;
+
+  for(i=0;i<=pool[sit].num;i++)
+  {
+    if(pool_buf[i]%10!=1 && pool_buf[i]%10!=9 || pool_buf[i]>30)
+    {
+      goto fail46;
+    }
+  }
+  for(i=0;i<pool[sit].out_card_index;i++)
+  {
+    if(pool[sit].out_card[i][1]>30)
+      goto fail46;
+    if(pool[sit].out_card[i][1]%10!=1 && pool[sit].out_card[i][1]%10!=9)
+      goto fail46;
+    if(pool[sit].out_card[i][2]%10!=1 && pool[sit].out_card[i][2]%10!=9)
+      goto fail46;
+    if(pool[sit].out_card[i][3]%10!=1 && pool[sit].out_card[i][3]%10!=9)
+      goto fail46;
+  }
+  card_comb[comb].tai_score[46]=tai[46].score;
+  card_comb[comb].tai_score[33]=0;
+  card_comb[comb].tai_score[35]=0;
+  card_comb[comb].tai_score[36]=0;
+  fail46:;
+}
+
+/* 大四喜 */
+void check_tai47(sit,comb)
+char sit;
+char comb;
+{
+  if(exist_card(sit,31)>=3 && exist_card(sit,32)>=3 && exist_card(sit,33)>=3 &&
+     exist_card(sit,34)>=3)
+  {
+    card_comb[comb].tai_score[47]=tai[47].score;
+    card_comb[comb].tai_score[9]=0;
+    card_comb[comb].tai_score[10]=0;
+    card_comb[comb].tai_score[11]=0;
+    card_comb[comb].tai_score[12]=0;
+    card_comb[comb].tai_score[17]=0;
+    card_comb[comb].tai_score[18]=0;
+    card_comb[comb].tai_score[19]=0;
+    card_comb[comb].tai_score[20]=0;
+    card_comb[comb].tai_score[41]=0;
+  }
+}
+
+/* 八仙過海 */
+void check_tai48(sit,comb)
+char sit;
+char comb;
+{
+}
+
+/* 天胡 */
+void check_tai49(sit,comb)
+char sit;
+char comb;
+{
+  char msg_buf[80];
+  if(pool[sit].first_round && sit==info.dealer)
+    card_comb[comb].tai_score[49]=tai[49].score;
+}
+
+/* 地胡 */
+void check_tai50(sit,comb)
+char sit;
+char comb;
+{
+  if(pool[sit].first_round && sit==card_owner && sit!=info.dealer)
+    card_comb[comb].tai_score[50]=tai[50].score;
+}
+
+/* 人胡 */
+void check_tai51(sit,comb)
+char sit;
+char comb;
+{
+  if(pool[sit].first_round && sit!=card_owner && sit!=info.dealer)
+    card_comb[comb].tai_score[51]=tai[51].score;
+}
+
+/* 連莊 */
+void check_tai52(sit,comb)
+char sit;
+char comb;
+{
+  if(info.cont_dealer && info.dealer==sit)
+    card_comb[comb].tai_score[52]=tai[52].score*info.cont_dealer;
+}  
+
+/* Find the combination of the card with the highest score */
+void full_check(sit,make_card)
+char sit;
+char make_card;
+{
+  int i,j;
+  int suit_count[6],set1,set2,card,count,score;
+  char msg_buf[80];
+
+  count=0;
+  for(i=0;i<5;i++)
+  {
+    card_comb[i].set_count=0;
+    suit_count[i]=0;
+  }
+  /* Find all valid combinations */
+  for(suit_count[0]=0;suit_count[0]<comb_count[0];suit_count[0]++)
+  {
+    if(valid_type(card_component[0][suit_count[0]].type))
+      for(suit_count[1]=0;suit_count[1]<comb_count[1];suit_count[1]++)
+      {
+        if(valid_type(card_component[1][suit_count[1]].type))
+          for(suit_count[2]=0;suit_count[2]<comb_count[2];suit_count[2]++)
+          {
+            if(valid_type(card_component[2][suit_count[2]].type))
+            {
+              set2=0;
+              for(i=0;i<5;i++)
+              {
+                set1=0;
+                while(card_component[i][suit_count[i]].info[set1][0])
+                {
+                  card=0;
+                  while(card_component[i][suit_count[i]].info[set1][card])
+                  {
+                    card_comb[count].info[set2][card+1]=
+                      card_component[i][suit_count[i]].info[set1][card];
+                    card++;
+                  }
+                  if(card_comb[count].info[set2][1]==
+                     card_comb[count].info[set2][2])
+                    card_comb[count].info[set2][0]=2;
+                  else
+                    card_comb[count].info[set2][0]=1;
+                  if(card==2)
+                    card_comb[count].info[set2][0]=10;
+                  card_comb[count].info[set2][card+1]=0;
+                  set1++;
+                  set2++;
+                }
+                card_comb[count].info[set2][0]=0;
+                card_comb[count].set_count=set2;
+              }
+              count++;
+            }
+          }
+      }
+  }
+  for(i=0;i<count;i++)
+  {
+    check_tai(sit,i,make_card);
+    card_comb[i].tai_sum=0;
+    for(j=0;j<=52;j++)
+    {
+        card_comb[i].tai_sum+=card_comb[i].tai_score[j];
+    }
+  }
+/*
+  for(i=0;i<card_comb[0].set_count;i++)
+  {
+    sprintf(msg_buf,"([%d] %d %d %d %d)",i,card_comb[0].info[i][0],card_comb[0].info[i][1],card_comb[0].info[i][2],card_comb[0].info[i][3]);
+display_comment(msg_buf);
+  }
+*/
+  comb_num=count;
+}
 
 int check_make(sit,card,method)
 char sit;
@@ -408,186 +1464,13 @@ char method;  /* 0 for general check, 1 for complete check */
   finish:;
   if(pair!=1)
     make=0;
-  if(make && method)
-{
+  if(make && method) {
     full_check(sit,card);
-/*
-sprintf(msg_buf,"%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
-pool[sit].num,pool[sit].card[0],pool[sit].card[1],pool[sit].card[2],
-pool[sit].card[3],pool[sit].card[4],pool[sit].card[5],pool[sit].card[6],
-pool[sit].card[7],pool[sit].card[8],pool[sit].card[9],pool[sit].card[10],
-pool[sit].card[11],pool[sit].card[12],pool[sit].card[13],pool[sit].card[14],
-pool[sit].card[15]);
-display_comment(msg_buf);
-*/
-}
+  }
   return(make);
 }
 
-valid_type(type)
-int type;
-{
-  if(type==1 || type==2 || type==3)
-    return(1);
-  else
-    return(0);
-}
-
-/* Find the combination of the card with the highest score */
-full_check(sit,make_card)
-char sit;
-char make_card;
-{
-  int i,j;
-  int suit_count[6],set1,set2,card,count,score;
-  char msg_buf[80];
-
-  count=0;
-  for(i=0;i<5;i++)
-  {
-    card_comb[i].set_count=0;
-    suit_count[i]=0;
-  }
-  /* Find all valid combinations */
-  for(suit_count[0]=0;suit_count[0]<comb_count[0];suit_count[0]++)
-  {
-    if(valid_type(card_component[0][suit_count[0]].type))
-      for(suit_count[1]=0;suit_count[1]<comb_count[1];suit_count[1]++)
-      {
-        if(valid_type(card_component[1][suit_count[1]].type))
-          for(suit_count[2]=0;suit_count[2]<comb_count[2];suit_count[2]++)
-          {
-            if(valid_type(card_component[2][suit_count[2]].type))
-            {
-              set2=0;
-              for(i=0;i<5;i++)
-              {
-                set1=0;
-                while(card_component[i][suit_count[i]].info[set1][0])
-                {
-                  card=0;
-                  while(card_component[i][suit_count[i]].info[set1][card])
-                  {
-                    card_comb[count].info[set2][card+1]=
-                      card_component[i][suit_count[i]].info[set1][card];
-                    card++;
-                  }
-                  if(card_comb[count].info[set2][1]==
-                     card_comb[count].info[set2][2])
-                    card_comb[count].info[set2][0]=2;
-                  else
-                    card_comb[count].info[set2][0]=1;
-                  if(card==2)
-                    card_comb[count].info[set2][0]=10;
-                  card_comb[count].info[set2][card+1]=0;
-                  set1++;
-                  set2++;
-                }
-                card_comb[count].info[set2][0]=0;
-                card_comb[count].set_count=set2;
-              }
-              count++;
-            }
-          }
-      }
-  }
-  for(i=0;i<count;i++)
-  {
-    check_tai(sit,i,make_card);
-    card_comb[i].tai_sum=0;
-    for(j=0;j<=52;j++)
-    {
-        card_comb[i].tai_sum+=card_comb[i].tai_score[j];
-    }
-  }
-/*
-  for(i=0;i<card_comb[0].set_count;i++)
-  {
-    sprintf(msg_buf,"([%d] %d %d %d %d)",i,card_comb[0].info[i][0],card_comb[0].info[i][1],card_comb[0].info[i][2],card_comb[0].info[i][3]);
-display_comment(msg_buf);
-  }
-*/
-  comb_num=count;
-}
-
-/* return the number of the card found */
-int exist_card(sit,card)
-char sit;
-char card;
-{
-  int i,j,exist=0;
-
-  for(i=0;i<=pool[sit].num;i++)
-  {
-    if(pool_buf[i]==card)
-    {
-      exist++;
-    }
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    j=1;
-    while(pool[sit].out_card[i][j])
-    {
-      if(pool[sit].out_card[i][j]==card)
-        exist++;
-      j++;
-    }
-  }
-  return(exist);
-}
-
-exist_3(sit,card,comb)
-char sit;
-char card;
-int comb;
-{
-  int i,set,exist=0;
-
-  set=0;
-  while(card_comb[comb].info[set][0])
-  {
-    if(card_comb[comb].info[set][0]==2 && card_comb[comb].info[set][1]==card)
-      exist++;
-    set++;
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][1]==card && pool[sit].out_card[i][2]==card &&
-       pool[sit].out_card[i][3]==card)
-      exist++;
-  }
-  return(exist);
-}
-
-exist_straight(sit,card,comb)
-char sit;
-char card;
-int comb;
-{
-  int i,set,exist=0;
-
-  set=0;
-  while(card_comb[comb].info[set][0])
-  {
-    if(card_comb[comb].info[set][0]==1 && card_comb[comb].info[set][1]==card)
-      exist++;
-    set++;
-  }
-  set=0;
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][0]==7 && pool[sit].out_card[i][2]==card)
-      exist++;
-    if(pool[sit].out_card[i][0]==8 && pool[sit].out_card[i][1]==card)
-      exist++;
-    if(pool[sit].out_card[i][0]==9 && pool[sit].out_card[i][1]==card)
-      exist++;
-  }
-  return(exist);
-}
-
-check_tai(sit,comb,make_card)
+int check_tai(sit,comb,make_card)
 char sit;
 char comb;
 char make_card;
@@ -642,928 +1525,6 @@ char make_card;
   check_tai50(sit,comb);
   check_tai51(sit,comb);
   check_tai52(sit,comb);
+
+  return 0;
 }
-
-/* 莊家 */
-check_tai0(sit,comb)
-char sit;
-char comb;
-{
-  if(info.dealer==sit)
-    card_comb[comb].tai_score[0]=tai[0].score;
-}
-
-/* 門清 */
-check_tai1(sit,comb)
-char sit;
-char comb;
-{
-  if(pool[sit].num==16)
-    card_comb[comb].tai_score[1]=tai[1].score;
-}
-
-/* 自摸 */
-check_tai2(sit,comb)
-char sit;
-char comb;
-{
-  if(sit==card_owner)
-    card_comb[comb].tai_score[2]=tai[2].score;
-  
-}
-
-/* 斷么九 */
-check_tai3(sit,comb)
-char sit;
-char comb;
-{
-  if(!exist_card(sit,1) && !exist_card(sit,9) && !exist_card(sit,11) &&
-     !exist_card(sit,19) && !exist_card(sit,21) && !exist_card(sit,29) &&
-     !exist_card(sit,31) && !exist_card(sit,32) && !exist_card(sit,33) &&
-     !exist_card(sit,34) && !exist_card(sit,41) && !exist_card(sit,42) &&
-     !exist_card(sit,43))
-    card_comb[comb].tai_score[3]=tai[3].score;
-}
-
-/* 雙龍抱 */
-check_tai4(sit,comb)
-char sit;
-int comb;
-{
-  int i;
-  int straight[30],double_straight_num=0;
-
-  if(pool[sit].num!=16)   /* 必須門清 */
-    return;
-  for(i=0;i<30;i++)
-    straight[i]=0;
-  for(i=0;i<card_comb[comb].set_count;i++)
-  {
-    if(card_comb[comb].info[i][0]==1)
-      straight[card_comb[comb].info[i][1]]++;
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][0]==7)
-      straight[pool[sit].out_card[i][2]]++;
-    if(pool[sit].out_card[i][0]==8)
-      straight[pool[sit].out_card[i][1]]++;
-    if(pool[sit].out_card[i][0]==9)
-      straight[pool[sit].out_card[i][1]]++;
-  }
-  for(i=0;i<30;i++)
-  {
-    if(straight[i]>=2)
-      double_straight_num++;
-  }
-  if(double_straight_num==1)
-    card_comb[comb].tai_score[4]=tai[4].score;
-  if(double_straight_num>=2)
-    card_comb[comb].tai_score[28]=tai[28].score;
-}
-
-/* 槓上開花 */
-check_tai5(sit,comb)
-char sit;
-char comb;
-{
-  if(in_kang)
-    card_comb[comb].tai_score[5]=tai[5].score;
-}
-
-/* 海底摸月 */
-check_tai6(sit,comb)
-char sit;
-char comb;
-{
-  if((144-card_point)==16 && sit==card_owner)
-    card_comb[comb].tai_score[6]=tai[6].score;
-}
-
-/* 河底撈魚 */
-check_tai7(sit,comb)
-char sit;
-char comb;
-{
-  if((144-card_point)==16 && sit!=card_owner)
-    card_comb[comb].tai_score[7]=tai[7].score;
-}
-
-/* 搶槓 */
-check_tai8(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 東風 */
-check_tai9(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,31)>=3)
-  {
-    if(info.wind==1)
-      card_comb[comb].tai_score[9]+=tai[9].score;
-    if(pool[sit].door_wind==1)
-      card_comb[comb].tai_score[9]+=tai[9].score;
-  }
-  if(card_comb[comb].tai_score[9]==tai[9].score*2)
-  {
-    card_comb[comb].tai_score[17]=tai[17].score;
-    card_comb[comb].tai_score[9]=0;
-  }
-}
-
-/* 南風 */
-check_tai10(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,32)>=3)
-  {
-    if(info.wind==2)
-      card_comb[comb].tai_score[10]+=tai[10].score;
-    if(pool[sit].door_wind==2)
-      card_comb[comb].tai_score[10]+=tai[10].score;
-  }
-  if(card_comb[comb].tai_score[10]==tai[10].score*2)
-  {
-    card_comb[comb].tai_score[18]=tai[18].score;
-    card_comb[comb].tai_score[10]=0;
-  }
-}
-
-/* 西風 */
-check_tai11(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,33)>=3)
-  {
-    if(info.wind==3)
-      card_comb[comb].tai_score[11]+=tai[11].score;
-    if(pool[sit].door_wind==3)
-      card_comb[comb].tai_score[11]+=tai[11].score;
-  }
-  if(card_comb[comb].tai_score[11]==tai[11].score*2)
-  {
-    card_comb[comb].tai_score[19]=tai[19].score;
-    card_comb[comb].tai_score[11]=0;
-  }
-}
-
-/* 北風 */
-check_tai12(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,34)>=3)
-  {
-    if(info.wind==4)
-      card_comb[comb].tai_score[12]+=tai[12].score;
-    if(pool[sit].door_wind==4)
-      card_comb[comb].tai_score[12]+=tai[12].score;
-  }
-  if(card_comb[comb].tai_score[12]==tai[12].score*2)
-  {
-    card_comb[20].tai_score[20]=tai[20].score;
-    card_comb[comb].tai_score[12]=0;
-  }
-}
-
-/* 紅中 */
-check_tai13(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,41)>=3)
-    card_comb[comb].tai_score[13]=tai[13].score;
-}
-
-/* 白板 */
-check_tai14(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,42)>=3)
-    card_comb[comb].tai_score[14]=tai[14].score;
-}
-
-/* 青發 */
-check_tai15(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,43)>=3)
-    card_comb[comb].tai_score[15]=tai[15].score;
-}
-
-/* 花牌 */
-check_tai16(sit,comb)
-char sit;
-char comb;
-{
-  if(pool[sit].flower[pool[sit].door_wind-1])
-    card_comb[comb].tai_score[16]+=tai[16].score;
-  if(pool[sit].flower[pool[sit].door_wind+3])
-    card_comb[comb].tai_score[16]+=tai[16].score;
-}
-
-/* 東風東 */
-check_tai17(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 西風西 */
-check_tai18(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 南風南 */
-check_tai19(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 北風北 */
-check_tai20(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 春夏秋冬 */
-check_tai21(sit,comb)
-char sit;
-char comb;
-{
-  if(pool[sit].flower[0] && pool[sit].flower[1] && pool[sit].flower[2] &&
-     pool[sit].flower[3])
-  {
-    card_comb[comb].tai_score[21]=tai[21].score;
-    card_comb[comb].tai_score[16]-=tai[16].score;
-  }
-}
-
-/* 梅蘭菊竹 */
-check_tai22(sit,comb)
-char sit;
-char comb;
-{
-  if(pool[sit].flower[4] && pool[sit].flower[5] && pool[sit].flower[6] &&
-     pool[sit].flower[7])
-  {
-    card_comb[comb].tai_score[22]=tai[22].score;
-    card_comb[comb].tai_score[16]-=tai[16].score;
-  }
-}
-
-/* 全求人 */
-check_tai23(sit,comb)
-char sit;
-char comb;
-{
-  if(pool[sit].num==1 && sit!=card_owner)
-    card_comb[comb].tai_score[23]=tai[23].score;
-}
-
-/* 平胡 */
-check_tai24(sit,comb,make_card)
-char sit;
-char comb;
-char make_card;
-{
-  int i,j;
-
-  /* 花牌 */
-  for(i=0;i<8;i++)
-    if(pool[sit].flower[i])
-      goto fail24;
-  /* 順子 */
-  for(i=0;i<card_comb[comb].set_count;i++)
-  {
-    if(card_comb[comb].info[i][0]==2)
-      goto fail24;
-    if(card_comb[comb].info[i][0]==10)
-    {
-      if(card_comb[comb].info[i][1]==make_card)
-        goto fail24;
-      if(card_comb[comb].info[i][1]>30)
-        goto fail24;
-    }
-  }
-  /* 門清 */
-/*
-  if(pool[sit].out_card_index==0)
-    goto fail24;
-*/
-  /* 自摸 */
-  if(turn==card_owner)
-    goto fail24;
-  /* 順子 */
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][1]==pool[sit].out_card[i][2])
-      goto fail24;
-  }
-  /* 兩面聽牌 */
-  if(make_card%10<=6)
-    if(check_make(sit,make_card+3,0))
-      goto finish24;
-  if(make_card%10>=4)
-    if(check_make(sit,make_card-3,0))
-      goto finish24;
-  goto fail24;
-  finish24:;
-  check_make(sit,make_card,0);   /* Reset pool_buf[] */
-  card_comb[comb].tai_score[24]=tai[24].score;
-  fail24:;
-}
-
-/* 混帶么 */
-check_tai25(sit,comb)
-char sit;
-char comb;
-{
-  int i,exist19=0;
-
-  for(i=0;i<card_comb[comb].set_count;i++)
-  {
-    if(card_comb[comb].info[i][1]<30)
-    {
-      exist19=1;
-      if(card_comb[comb].info[i][1]%10==1 || card_comb[comb].info[i][1]%10==9 ||
-         card_comb[comb].info[i][2]%10==1 || card_comb[comb].info[i][2]%10==9 ||
-         card_comb[comb].info[i][3]%10==1 || card_comb[comb].info[i][3]%10==9)
-        continue;
-      else
-        goto fail25;
-    }
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][1]<30)
-    {
-      if(pool[sit].out_card[i][1]%10==1 || pool[sit].out_card[i][1]%10==9 ||
-         pool[sit].out_card[i][2]%10==1 || pool[sit].out_card[i][2]%10==9 ||
-         pool[sit].out_card[i][3]%10==1 || pool[sit].out_card[i][3]%10==9)
-        continue;
-      else
-        goto fail25;
-    }
-  }
-  if(exist19)
-  {
-    card_comb[comb].tai_score[25]=tai[25].score;
-    if(pool[sit].num!=16)
-      card_comb[comb].tai_score[25]-=1;
-  }
-  fail25:;
-}
-
-/* 三色同順 */
-check_tai26(sit,comb)
-char sit;
-char comb;
-{
-  int i,num;
-
-  for(i=0;i<card_comb[comb].set_count;i++)
-  {
-    if(card_comb[comb].info[i][0]==1)
-    {
-      num=card_comb[comb].info[i][1]%10;
-      if(exist_straight(sit,num,comb) && exist_straight(sit,num+10,comb) &&
-         exist_straight(sit,num+20,comb))
-      {
-        card_comb[comb].tai_score[26]=tai[26].score;
-        goto finish26;
-      }
-    }
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][0]>=7 && pool[sit].out_card[i][0]<=9)
-    {
-      if(pool[sit].out_card[i][0]==7)
-        num=pool[sit].out_card[i][2]%10;
-      else
-        num=pool[sit].out_card[i][1]%10;
-      if(exist_straight(sit,num,comb) && exist_straight(sit,num+10,comb) &&
-         exist_straight(sit,num+20,comb))
-      {
-        card_comb[comb].tai_score[26]=tai[26].score;
-        goto finish26;
-      }
-    }
-  }
-  return;
-  finish26:;
-  if(pool[sit].num!=16)
-    card_comb[comb].tai_score[26]-=1;
-}
-
-/* 一條龍 */
-check_tai27(sit,comb)
-char sit;
-char comb;
-{
-  int i;
-
-  if(exist_straight(sit,1,comb) && exist_straight(sit,4,comb) &&
-     exist_straight(sit,7,comb))
-    card_comb[comb].tai_score[27]=tai[27].score;
-  if(exist_straight(sit,11,comb) && exist_straight(sit,14,comb) &&
-     exist_straight(sit,17,comb))
-    card_comb[comb].tai_score[27]=tai[27].score;
-  if(exist_straight(sit,21,comb) && exist_straight(sit,24,comb) &&
-     exist_straight(sit,27,comb))
-    card_comb[comb].tai_score[27]=tai[27].score;
-  if(card_comb[comb].tai_score[27] && pool[sit].num!=16)
-    card_comb[comb].tai_score[27]-=1;
-}
-
-/* 雙龍抱 */
-check_tai28(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 三暗刻 */
-check_tai29(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 三槓子 */
-check_tai30(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 三色同刻 */
-check_tai31(sit,comb)
-char sit,comb;
-{
-  int i,num;
-
-  for(i=0;i<card_comb[comb].set_count;i++)
-  {
-    if(card_comb[comb].info[i][0]==2)
-    {
-      num=card_comb[comb].info[i][1]%10;
-      if(exist_3(sit,num,comb) && exist_3(sit,num+10,comb) &&
-         exist_3(sit,num+20,comb))
-      {
-        card_comb[comb].tai_score[31]=tai[31].score;
-        goto finish31;
-      }
-    }
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][1]==pool[sit].out_card[i][2] &&
-       pool[sit].out_card[i][1]==pool[sit].out_card[i][3])
-    {
-      num=pool[sit].out_card[i][1]%10;
-      if(exist_3(sit,num,comb) && exist_3(sit,num+10,comb) &&
-         exist_3(sit,num+20,comb))
-      {
-        card_comb[comb].tai_score[31]=tai[31].score;
-        goto finish31;
-      }
-    }
-  }
-  finish31:;
-}
-
-/* 門清自摸 */
-check_tai32(sit,comb)
-char sit;
-char comb;
-{
-  if(pool[sit].num==16 && sit==card_owner)
-  {
-    card_comb[comb].tai_score[32]=tai[32].score;
-    card_comb[comb].tai_score[1]=0;
-    card_comb[comb].tai_score[2]=0;
-  }
-}
-
-/* 碰碰胡 */
-check_tai33(sit,comb)
-char sit;
-char comb;
-{
-  int i;
-
-  for(i=0;i<card_comb[comb].set_count;i++)
-  {
-    if(card_comb[comb].info[i][0]==1)
-      goto fail33;
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][1]!=pool[sit].out_card[i][2])
-    {
-      goto fail33;
-    }
-  }
-  card_comb[comb].tai_score[33]=tai[33].score;
-  fail33:;
-}
-
-/* 混一色 */
-check_tai34(sit,comb)
-char sit;
-char comb;
-{
-  int i,j,kind;
-
-  card_comb[comb].tai_score[34]=tai[34].score;
-  for(i=0;i<=pool[sit].num;i++)
-  {
-    kind=pool_buf[i]/10;
-    if(kind<=2)
-      goto found34;
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    kind=pool[sit].out_card[i][1]/10;
-    if(kind<=2)
-      goto found34;
-  }
-  card_comb[comb].tai_score[34]=0;
-  goto fail34;
-  found34:;
-  for(i=1;i<=pool[sit].num;i++)
-    if(kind!=pool_buf[i]/10 && pool_buf[i]/10<=2)
-    {
-      card_comb[comb].tai_score[34]=0;
-      goto fail34;
-    }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(kind!=pool[sit].out_card[i][1]/10 && pool[sit].out_card[i][1]/10<=2)
-      {
-        card_comb[comb].tai_score[34]=0;
-        goto fail34;
-      }
-  }
-  fail34:;
-}
-
-/* 純帶么 */
-check_tai35(sit,comb)
-char sit;
-char comb;
-{
-  int i;
-
-  for(i=0;i<card_comb[comb].set_count;i++)
-  {
-    if(card_comb[comb].info[i][1]>30)
-      goto fail35;
-    if(card_comb[comb].info[i][1]%10==1 || card_comb[comb].info[i][1]%10==9 ||
-       card_comb[comb].info[i][2]%10==1 || card_comb[comb].info[i][2]%10==9 ||
-       card_comb[comb].info[i][3]%10==1 || card_comb[comb].info[i][3]%10==9)
-      continue;
-    else
-      goto fail35;
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][1]>30)
-      goto fail35;
-    if(pool[sit].out_card[i][1]%10==1 || pool[sit].out_card[i][1]%10==9 ||
-       pool[sit].out_card[i][2]%10==1 || pool[sit].out_card[i][2]%10==9 ||
-       pool[sit].out_card[i][3]%10==1 || pool[sit].out_card[i][3]%10==9)
-      continue;
-    else
-      goto fail35;
-  }
-  card_comb[comb].tai_score[35]=tai[35].score;
-  card_comb[comb].tai_score[25]=0;
-  fail35:;
-}
-
-/* 混老頭 */
-check_tai36(sit,comb)
-char sit;
-char comb;
-{
-  int i,j,exist19=0;
-
-  for(i=0;i<=pool[sit].num;i++)
-  {
-    if(pool_buf[i]<30)
-    {
-      exist19=1;
-      if(pool_buf[i]%10!=1 && pool_buf[i]%10!=9)
-      {
-        goto fail36;
-      }
-    }
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][1]/10<30)   /* if 字牌 --> 檢查下一組 */
-    {
-      exist19=1;
-      if(pool[sit].out_card[i][1]%10!=1 && pool[sit].out_card[i][1]%10!=9)
-        goto fail36;
-      if(pool[sit].out_card[i][2]%10!=1 && pool[sit].out_card[i][2]%10!=9)
-        goto fail36;
-      if(pool[sit].out_card[i][3]%10!=1 && pool[sit].out_card[i][3]%10!=9)
-        goto fail36;
-    }
-  }
-  if(exist19)
-  {
-    card_comb[comb].tai_score[36]=tai[36].score;
-    card_comb[comb].tai_score[25]=0;
-    card_comb[comb].tai_score[33]=0;
-  }
-  fail36:;
-}
-
-/* 小三元 */
-check_tai37(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,41)>=2 && exist_card(sit,42)>=2 && exist_card(sit,43)>=2)
-  {
-    card_comb[comb].tai_score[37]=tai[37].score;
-    card_comb[comb].tai_score[13]=0;
-    card_comb[comb].tai_score[14]=0;
-    card_comb[comb].tai_score[15]=0;
-  }
-}
-
-/* 四暗刻 */
-check_tai38(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 四槓子 */
-check_tai39(sit,comb)
-char sit;
-char comb;
-{
-  int i,kang_count=0;
- 
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][0]==3 || pool[sit].out_card[i][0]==11 ||
-       pool[sit].out_card[i][0]==12)
-      kang_count++;
-  }
-  if(kang_count==3)
-    card_comb[comb].tai_score[30]=tai[30].score;
-  if(kang_count==4)
-    card_comb[comb].tai_score[39]=tai[39].score;
-}
-
-/* 大三元 */
-check_tai40(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,41)>=3 && exist_card(sit,42)>=3 && exist_card(sit,43)>=3)
-  {
-    card_comb[comb].tai_score[40]=tai[40].score;
-    card_comb[comb].tai_score[13]=0;
-    card_comb[comb].tai_score[14]=0;
-    card_comb[comb].tai_score[15]=0;
-    card_comb[comb].tai_score[37]=0;
-  }
-}
-
-/* 小四喜 */
-check_tai41(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,31)>=2 && exist_card(sit,32)>=2 && exist_card(sit,33)>=2 &&
-     exist_card(sit,34)>=2)
-  {
-    card_comb[comb].tai_score[41]=tai[41].score;
-    card_comb[comb].tai_score[9]=0;
-    card_comb[comb].tai_score[10]=0;
-    card_comb[comb].tai_score[11]=0;
-    card_comb[comb].tai_score[12]=0;
-    card_comb[comb].tai_score[17]=0;
-    card_comb[comb].tai_score[18]=0;
-    card_comb[comb].tai_score[19]=0;
-    card_comb[comb].tai_score[20]=0;
-  }
-}
-
-/* 清一色 */
-check_tai42(sit,comb)
-char sit;
-char comb;
-{
-  int i,j,kind;
-
-  card_comb[comb].tai_score[42]=tai[42].score;
-  kind=pool_buf[0]/10;
-  if(kind>=3)
-  {
-    card_comb[comb].tai_score[42]=0;
-    goto fail42;
-  }
-  for(i=1;i<=pool[sit].num;i++)
-    if(kind!=pool_buf[i]/10)
-    {
-      card_comb[comb].tai_score[42]=0;
-      goto fail42;
-    }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-      if(kind!=pool[sit].out_card[i][1]/10)
-      {
-        card_comb[comb].tai_score[42]=0;
-        goto fail42;
-      }
-  }
-  card_comb[comb].tai_score[34]=0;
-  fail42:;
-}
-
-/* 字一色 */
-check_tai43(sit,comb)
-char sit;
-char comb;
-{
-  int i,j;
-
-  for(i=0;i<=pool[sit].num;i++)
-  {
-    if(!(pool_buf[i]<=34 && pool_buf[i]>=31) &&
-       !(pool_buf[i]<=43 && pool_buf[i]>=41))
-    {
-      goto fail43;
-    }
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    j=1;
-    while(pool[sit].out_card[j][1])
-    {
-      if(!(pool[sit].out_card[j][1]<=34 && pool[sit].out_card[j][1]>=31) &&
-         !(pool[sit].out_card[j][1]<=43 && pool[sit].out_card[j][1]>=41))
-      {
-        goto fail43;
-      }
-    }
-  }
-  card_comb[comb].tai_score[43]=tai[43].score;
-  card_comb[comb].tai_score[33]=0;
-  fail43:;
-}
-
-/* 七搶一 */
-check_tai44(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 五暗刻 */
-check_tai45(sit,comb,make_card)
-char sit;
-char comb;
-char make_card;
-{
-  int i,three_card=0;
-char msg_buf[80];
-
-  for(i=0;i<card_comb[comb].set_count;i++)
-  {
-    if(card_comb[comb].info[i][0]==2)
-      if(card_comb[comb].info[i][1]!=make_card || sit==card_owner)
-        three_card++;       /* 自摸可算暗刻 */
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-    if(pool[sit].out_card[i][0]==11)
-      three_card++;
-  if(three_card==3)
-    card_comb[comb].tai_score[29]=tai[29].score;
-  if(three_card==4)
-    card_comb[comb].tai_score[38]=tai[38].score;
-  if(three_card==5)
-  {
-    card_comb[comb].tai_score[45]=tai[45].score;
-    card_comb[comb].tai_score[33]=0;
-  }
-}
-
-/* 清老頭 */
-check_tai46(sit,comb)
-char sit;
-char comb;
-{
-  int i,j;
-
-  for(i=0;i<=pool[sit].num;i++)
-  {
-    if(pool_buf[i]%10!=1 && pool_buf[i]%10!=9 || pool_buf[i]>30)
-    {
-      goto fail46;
-    }
-  }
-  for(i=0;i<pool[sit].out_card_index;i++)
-  {
-    if(pool[sit].out_card[i][1]>30)
-      goto fail46;
-    if(pool[sit].out_card[i][1]%10!=1 && pool[sit].out_card[i][1]%10!=9)
-      goto fail46;
-    if(pool[sit].out_card[i][2]%10!=1 && pool[sit].out_card[i][2]%10!=9)
-      goto fail46;
-    if(pool[sit].out_card[i][3]%10!=1 && pool[sit].out_card[i][3]%10!=9)
-      goto fail46;
-  }
-  card_comb[comb].tai_score[46]=tai[46].score;
-  card_comb[comb].tai_score[33]=0;
-  card_comb[comb].tai_score[35]=0;
-  card_comb[comb].tai_score[36]=0;
-  fail46:;
-}
-
-/* 大四喜 */
-check_tai47(sit,comb)
-char sit;
-char comb;
-{
-  if(exist_card(sit,31)>=3 && exist_card(sit,32)>=3 && exist_card(sit,33)>=3 &&
-     exist_card(sit,34)>=3)
-  {
-    card_comb[comb].tai_score[47]=tai[47].score;
-    card_comb[comb].tai_score[9]=0;
-    card_comb[comb].tai_score[10]=0;
-    card_comb[comb].tai_score[11]=0;
-    card_comb[comb].tai_score[12]=0;
-    card_comb[comb].tai_score[17]=0;
-    card_comb[comb].tai_score[18]=0;
-    card_comb[comb].tai_score[19]=0;
-    card_comb[comb].tai_score[20]=0;
-    card_comb[comb].tai_score[41]=0;
-  }
-}
-
-/* 八仙過海 */
-check_tai48(sit,comb)
-char sit;
-char comb;
-{
-}
-
-/* 天胡 */
-check_tai49(sit,comb)
-char sit;
-char comb;
-{
-  char msg_buf[80];
-  if(pool[sit].first_round && sit==info.dealer)
-    card_comb[comb].tai_score[49]=tai[49].score;
-}
-
-/* 地胡 */
-check_tai50(sit,comb)
-char sit;
-char comb;
-{
-  if(pool[sit].first_round && sit==card_owner && sit!=info.dealer)
-    card_comb[comb].tai_score[50]=tai[50].score;
-}
-
-/* 人胡 */
-check_tai51(sit,comb)
-char sit;
-char comb;
-{
-  if(pool[sit].first_round && sit!=card_owner && sit!=info.dealer)
-    card_comb[comb].tai_score[51]=tai[51].score;
-}
-
-/* 連莊 */
-check_tai52(sit,comb)
-char sit;
-char comb;
-{
-  if(info.cont_dealer && info.dealer==sit)
-    card_comb[comb].tai_score[52]=tai[52].score*info.cont_dealer;
-}  

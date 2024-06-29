@@ -8,17 +8,11 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/time.h>
-
-#include "mjdef.h"
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
-#endif
+#include <unistd.h>
 
 #include "qkmj.h"
   
-set_color(int fore,int back)
+int set_color(int fore,int back)
 {
   char msg_buf[80];
   wrefresh(stdscr);
@@ -33,7 +27,7 @@ set_color(int fore,int back)
   }
 }
 
-set_mode(mode)
+void set_mode(mode)
 int mode;
 {
   char msg_buf[80];
@@ -49,7 +43,7 @@ int mode;
   }
 }
 
-mvprintstr(win,y,x,msg)
+void mvprintstr(win,y,x,msg)
 WINDOW *win;
 int y;
 int x;
@@ -59,7 +53,7 @@ char *msg;
   printstr(win,msg); 
 }
 
-printstr(win,str)
+void printstr(win,str)
 WINDOW *win;
 char *str;
 {
@@ -69,7 +63,7 @@ char *str;
     printch(win,str[i]);
 }
 
-printch(win,ch)
+void printch(win,ch)
 WINDOW *win;
 char ch;
 {
@@ -79,7 +73,7 @@ char ch;
     waddstr(win,msg);
 } 
  
-mvprintch(win,y,x,ch)
+void mvprintch(win,y,x,ch)
 WINDOW *win;
 int y,x;
 char ch;
@@ -88,7 +82,7 @@ char ch;
   printch(win,ch);
 }
 
-clear_screen_area (ymin, xmin, height, width)
+void clear_screen_area (ymin, xmin, height, width)
 int ymin, xmin, height, width;
 {
 	int i;
@@ -101,7 +95,7 @@ int ymin, xmin, height, width;
   wrefresh(stdscr);
 }
 
-clear_input_line()
+void clear_input_line()
 {
   werase(inputwin);
   talk_x=0;
@@ -111,7 +105,7 @@ clear_input_line()
   wrefresh(inputwin);
 }
 
-wait_a_key(msg)
+void wait_a_key(msg)
 char *msg;
 {
   int ch;
@@ -126,7 +120,7 @@ char *msg;
   wrefresh(inputwin);
 }
 
-ask_question(question,answer,ans_len,type)
+void ask_question(question,answer,ans_len,type)
 char *question;
 char *answer;
 int ans_len;
@@ -141,7 +135,7 @@ int type;
   wrefresh(inputwin);
 }
 
-draw_index(max_item)
+void draw_index(max_item)
 int max_item;
 {
   int i;
@@ -154,14 +148,14 @@ int max_item;
   return_cursor();
 }
 
-current_index(current)
+void current_index(current)
 int current;
 {
   wmove(stdscr,INDEX_Y, INDEX_X+current*2);
   wrefresh(stdscr);
 }
 
-show_cardback(sit)
+void show_cardback(sit)
 char sit;
 {
   int i;
@@ -192,7 +186,7 @@ char sit;
   return_cursor();
 }
 
-show_allcard(sit)
+void show_allcard(sit)
 char sit;
 {
   int i;
@@ -223,7 +217,7 @@ char sit;
   return_cursor();
 }
 
-show_kang(sit)
+void show_kang(sit)
 char sit;
 {
   int i;
@@ -256,7 +250,7 @@ char sit;
   }
 }
        
-show_newcard(sit,type)
+void show_newcard(sit,type)
 char sit;
 char type;
 /*  type 1 : 摸牌  */
@@ -406,7 +400,7 @@ set_color(37,40);
 set_mode(0);
 }
 
-draw_title()
+void draw_title()
 {
   int x,y;
 
@@ -425,7 +419,7 @@ draw_title()
   wrefresh(stdscr);
 }
 
-init_playing_screen()
+void init_playing_screen()
 {
   info.wind=1;
   info.dealer=1;
@@ -449,7 +443,7 @@ init_playing_screen()
   wrefresh(inputwin);
 }
 
-init_global_screen()
+void init_global_screen()
 {
   char msg_buf[255];
   char ans_buf[255];
@@ -486,7 +480,7 @@ char *str;
   waddstr(win,str);
 }
 
-draw_table()
+void draw_table()
 {
   int x,y;
 
@@ -509,13 +503,13 @@ draw_table()
   waddstr(stdscr,"□");
 }
 
-draw_global_screen()
+void draw_global_screen()
 {
   clear();
   draw_title(); 
 }
 
-draw_playing_screen()
+void draw_playing_screen()
 {
   int x,y;
   clear();
@@ -574,7 +568,7 @@ draw_playing_screen()
   wrefresh(inputwin);
 }
 
-find_point(pos)
+void find_point(pos)
 int pos;
 {
   switch(pos)
@@ -594,7 +588,7 @@ int pos;
   }
 }
 
-display_point(current_turn)
+void display_point(current_turn)
 int current_turn;
 {
   static int last_turn=0;
@@ -618,7 +612,7 @@ int current_turn;
   last_turn=current_turn;
 }
 
-display_time(sit)
+void display_time(sit)
 char sit;
 {
   char msg_buf[255];
@@ -653,7 +647,7 @@ char sit;
   return_cursor();
 }
 
-display_info()
+void display_info()
 {
   int i;
 
@@ -749,7 +743,7 @@ int *end_flag;
     return bytes;
 }
 
-display_news(fd)
+void display_news(fd)
 int fd;
 {
   char buf[256];
@@ -784,7 +778,7 @@ wrefresh(news_win);
   redraw_screen();
 }
 
-display_comment(char *comment)
+void display_comment(char *comment)
 {
   waddstr(commentwin,"\n");
   wattrset(commentwin,COLOR_PAIR(1));
@@ -794,7 +788,7 @@ display_comment(char *comment)
   return_cursor();
 }
 
-send_talk_line(char *talk)  //User Talks
+void send_talk_line(char *talk)  //User Talks
 {
   char comment[255];
   char msg_buf[255];
@@ -814,7 +808,7 @@ send_talk_line(char *talk)  //User Talks
   }
 }
 
-send_gps_line(msg)
+void send_gps_line(msg)
 char *msg;
 {
   char comment[255];
@@ -826,7 +820,7 @@ strcpy(comment,msg);
   display_comment(comment);
 }
 
-intlog10(num)
+int intlog10(num)
 int num;
 {
   int i;
@@ -841,7 +835,7 @@ int num;
   return(i);
 }
 
-convert_num(str,number,digit)
+void convert_num(str,number,digit)
 char *str;
 int number;
 int digit;
@@ -857,7 +851,7 @@ int digit;
     strcpy(str+i*2,number_item[tmp[i]]);
 }
     
-show_num(y,x,number,digit) 
+void show_num(y,x,number,digit) 
 int y;
 int x;
 int number;
@@ -874,10 +868,9 @@ int digit;
   wrefresh(stdscr);
 }
 
-show_cardmsg(sit,card,type)
+void show_cardmsg(sit,card)
 int sit;
 char card;
-int type;
 {
   int pos;
 
@@ -910,7 +903,7 @@ int type;
   return_cursor();
 }
 
-redraw_screen()
+void redraw_screen()
 {
   int i,j;
 
@@ -945,13 +938,13 @@ redraw_screen()
 */
 }
 
-reset_cursor()
+void reset_cursor()
 {
   mvwaddstr(stdscr,23,75," ");
   wrefresh(stdscr);
 }
 
-return_cursor()
+void return_cursor()
 {
   switch(input_mode)
   {

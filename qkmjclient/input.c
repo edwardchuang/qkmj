@@ -9,22 +9,17 @@
 #include <signal.h>
 #include <sys/time.h>
 
-#include "mjdef.h"
-
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
+#if defined(HAVE_LIBNCURSES)
+  #include  <ncurses.h>
 #endif
 
 #include "qkmj.h"
-#include "misc.h"
 
-process_key()
+void process_key()
 {
   int i,j,key;
-  static m,n,current_eat;
-  static eat_pool[5];
+  static int m,n,current_eat;
+  static int eat_pool[5];
   char msg_buf[255];
   char card,card1;
 
@@ -539,7 +534,7 @@ process_key()
   }
 }
 
-my_getch()
+int my_getch()
 {
 	int i;
 	static int l=0;

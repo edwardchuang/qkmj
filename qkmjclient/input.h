@@ -1,2 +1,7 @@
+#ifndef _INPUT_H_
+#define _INPUT_H_
 
-extern int process_key();
+void process_key();
+int my_getch();
+
+#endif
