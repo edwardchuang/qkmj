@@ -13,4 +13,7 @@ Makefile.in
 **/*.Plo
 **/*.pc
 **/*.dSYM/
-
+*~
+config.log
+config.status
+.dirstamp

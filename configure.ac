@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.71])
-AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS])
+AC_INIT([qkmj], [0.1])
 AC_CONFIG_SRCDIR([qkmjclient/socket.c])
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 
