@@ -14,7 +14,11 @@
 #include <string.h>
 #include <netdb.h>
 #include <sys/errno.h>
-#include <termio.h>
+#if defined(HAVE_TERMIOS_H)
+  #include <termios.h>
+#else
+  #include <termio.h>
+#endif
 #include <fcntl.h>
 #include <sys/param.h>
 #include <sys/file.h>
