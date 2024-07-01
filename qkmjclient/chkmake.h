@@ -19,9 +19,9 @@ struct card_info_type{
   int flag;   /*  0 if is chosen, 1 if not */
 };
 
-NODEPTR make_three();
-NODEPTR make_straight();
-NODEPTR make_pair();
+NODEPTR make_three(NODEPTR node);
+NODEPTR make_straight(NODEPTR node);
+NODEPTR make_pair(NODEPTR node);
 
 struct component_type{
   int type;
@@ -29,7 +29,7 @@ struct component_type{
   char info[10][5];
 };
 
-NODEPTR getnode();
+NODEPTR getnode(void);
 NODEPTR maketree(NODEPTR node);
 void build_tree(NODEPTR node);
 void mark_card(NODEPTR node);
