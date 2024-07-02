@@ -359,7 +359,6 @@ void find_user(int fd, char *name) {
   int i;
   char msg_buf[1000];
   int id;
-  char *ctime();
   char last_login_time[80];
 
   id = find_user_name(name);
@@ -571,7 +570,6 @@ int read_user_id(unsigned int id) {
 
 // Add a new user to the record file
 int add_user(int player_id, char *name, char *passwd) {
-  long time();
   struct stat status;
 
   stat(RECORD_FILE, &status);
@@ -1282,7 +1280,6 @@ char *genpasswd(char *pw) {
   long salt;
   int i, c;
   static char pwbuf[14];
-  long time();
 
   // Return an empty string if the password is empty
   if (strlen(pw) == 0) {
