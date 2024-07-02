@@ -1272,8 +1272,6 @@ void time_out() {
   err("timeout!");
   timeup = 1;
 }
-// Generate a password hash using crypt()
-extern char *crypt();
 
 char *genpasswd(char *pw) {
   char saltc[2];
