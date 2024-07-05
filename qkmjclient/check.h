@@ -1,8 +1,6 @@
 #ifndef _CHECK_H_
 #define _CHECK_H_
 
-#include "mjdef.h"
-
 void clear_check_flag(char sit);
 int search_card(char sit, char card);
 int check_kang(char sit,char card);
