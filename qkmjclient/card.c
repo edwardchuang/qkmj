@@ -1,12 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "curses.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <math.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "qkmj.h"
 
@@ -23,42 +24,25 @@ char all_card[150]={1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,
 
 void generate_card()
 {
-  double drand48();
-  long time(),seed;
-  double rand_num;
-  int i,j,index,rand_int,range;
-  int matrix[150];
-  int tmp;
+  // 使用時間和 process ID 來初始化亂數產生器，以獲得更隨機的結果
+  srand(time(NULL) * getpid()); 
 
-  range=144;
-  seed=time((long int *) 0);
-  srand48(seed);
-  for(i=0;i<150;i++)
-    mj[i]=0;
-  for(i=0;i<card_num;i++)
-  {
-    index=0;
-    rand_int=generate_random(card_num-i);
-    for(j=0;j<card_num;j++)
-    {
-      if(!mj[j])   /* The room is empty */
-      {
-        if(index==rand_int)
-          break;
-        index++;
-      }
-    }
-    mj[j]=all_card[i];
+  // 初始化牌組
+  memset(mj, 0, sizeof(mj));
+
+  // 隨機分配牌
+  int next_available = 0; // Track the next empty slot
+  for (int i = 0; i < card_num; i++) {
+    // 產生一個隨機索引
+    int rand_int = generate_random(card_num - i);
+
+    // 將牌分配到空位
+    mj[next_available] = all_card[i];
+    next_available++; // Move to the next empty slot
   }
 }
 
 int generate_random(int range)
 {
-  double rand_num;
-  double drand48();
-  int rand_int;
-
-  rand_num=drand48();
-  rand_int=(int) (range*rand_num);
-  return(rand_int);
+  return rand() % range;
 }
