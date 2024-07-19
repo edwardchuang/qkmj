@@ -465,7 +465,7 @@ void command_parser(char *msg) {
             display_comment("要把誰踢出去呢?");
           } else {
             // 檢查是否踢自己
-            if (strncmp(my_name, cmd_argv[2], sizeof(my_name)) == 0) {
+            if (strncmp((char *)my_name, (char *)cmd_argv[2], sizeof(my_name)) == 0) {
               display_comment("抱歉, 自己不能踢自己");
               break;
             }
@@ -473,7 +473,7 @@ void command_parser(char *msg) {
             for (i = 2; i < MAX_PLAYER; i++) {
               // 檢查玩家是否在桌子上且名稱匹配
               if (player[i].in_table &&
-                  strncmp(player[i].name, cmd_argv[2], sizeof(player[i].name)) == 0) {
+                  strncmp(player[i].name, (char *)cmd_argv[2], sizeof(player[i].name)) == 0) {
                 // 構建踢出訊息
                 snprintf(msg_buf, sizeof(msg_buf), "101%s 被踢出此桌",
                          cmd_argv[2]);
