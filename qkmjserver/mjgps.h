@@ -9,14 +9,15 @@
 #define ASK_MODE 1
 #define CMD_MODE 2
 
-#define RECORD_FILE "/var/qkrecord/qkmj.rec"
-#define INDEX_FILE "/var/qkrecord/qkmj.inx"
-#define NEWS_FILE "/var/qkrecord/news.txt"
-#define BADUSER_FILE "/var/qkrecord/baduser.txt"
-#define LOG_FILE "/var/qkrecord/qkmj.log"
-#define GAME_FILE "/var/qkrecord/qkmj_game.log"
+#define HOMEDIR "/tmp"
+#define RECORD_FILE HOMEDIR"/qkmj.rec"
+#define INDEX_FILE HOMEDIR"/qkmj.inx"
+#define NEWS_FILE HOMEDIR"/news.txt"
+#define BADUSER_FILE HOMEDIR"/baduser.txt"
+#define LOG_FILE HOMEDIR"/qkmj.log"
+#define GAME_FILE HOMEDIR"/qkmj_game.log"
 
-#define DEFAULT_RECORD_FILE "/var/qkrecord/qkmj.rec"
+#define DEFAULT_RECORD_FILE HOMEDIR"/qkmj.rec"
 #define DEFAULT_MONEY 40000
 
 
