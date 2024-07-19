@@ -17,7 +17,7 @@ fd_set rfds,afds;
 int nfds;
 extern int errno;
 //extern char *sys_errlist[];
-char GPS_IP[50];
+char GPS_IP[255];
 int GPS_PORT;
 char my_username[20];
 char my_address[70];
@@ -177,330 +177,512 @@ int cheat_mode=0;
 char table_card[6][17];
 
 /* Request a card */
-int request_card()
-{
-  if(in_join)
-  {
-    write_msg(table_sockfd,"313");
-    return(0);
-  }
-  else
-  {
-    return(mj[card_point++]);
+int request_card() {
+  // 檢查是否已加入遊戲
+  if (in_join) {
+    // 向伺服器發送請求牌訊息
+    write_msg(table_sockfd, "313");
+    return 0;
+  } else {
+    // 從牌堆中取得下一張牌
+    return mj[card_point++];
   }
 }
-  
-/* Change a card */
-void change_card(char position, char card)
-{
-  int i;
 
-  i=(16-pool[my_sit].num+position)*2;
-  if(position==pool[my_sit].num)
+/* Change a card */
+void change_card(char position, char card) {
+  // 計算牌池中牌的位置
+  int i = (16 - pool[my_sit].num + position) * 2;
+  if (position == pool[my_sit].num) {
     i++;
-  pool[my_sit].card[position]=card;
-  show_card(20,INDEX_X+i,INDEX_Y+1,1);
+  }
+  // 更換牌池中的牌
+  pool[my_sit].card[position] = card;
+  // 顯示更換前的牌
+  show_card(20, INDEX_X + i, INDEX_Y + 1, 1);
   wrefresh(stdscr);
-  show_card(card,INDEX_X+i,INDEX_Y+1,1);
+  // 顯示更換後的牌
+  show_card(card, INDEX_X + i, INDEX_Y + 1, 1);
   wrefresh(stdscr);
 }
 
 /* Get a card */
-void get_card(char card)
-{
-  pool[my_sit].card[pool[my_sit].num]=card;
-  show_card(20,INDEX_X+16*2+1,INDEX_Y+1,1);
+void get_card(char card) {
+  // 將新取得的牌放入牌池
+  pool[my_sit].card[pool[my_sit].num] = card;
+  // 顯示取得前的牌
+  show_card(20, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
   wrefresh(stdscr);
-  show_card(card,INDEX_X+16*2+1,INDEX_Y+1,1);
+  // 顯示取得後的牌
+  show_card(card, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
   wrefresh(stdscr);
 }
 
-void process_new_card(char sit, char card)
-{
+void process_new_card(char sit, char card) {
   char msg_buf[255];
 
-  current_card=card;
-  show_cardmsg(sit,0);
-  pool[sit].card[pool[sit].num]=card;
+  // 更新當前牌
+  current_card = card;
+  // 顯示新牌訊息
+  show_cardmsg(sit, 0);
+  // 將新牌放入牌池
+  pool[sit].card[pool[sit].num] = card;
+  // 顯示新牌
   get_card(card);
+  // 回復游標位置
   return_cursor();
-  if(!check_flower(sit,card))
-    play_mode=THROW_CARD;
+  // 檢查是否為花牌
+  if (!check_flower(sit, card)) {
+    // 設定遊戲模式為出牌
+    play_mode = THROW_CARD;
+  }
 }
 
 /* Throw cards to the table */
-void throw_card(char card)
-{
-  int x,y;
-  if(card==20)   
-  {
+void throw_card(char card) {
+  int x, y;
+  // 處理特殊牌 (20)
+  if (card == 20) {
     card_count--;
   }
-  table_card[card_count/17][card_count%17]=card;
-  x=THROW_X+(card_count%17)*2;
-  y=THROW_Y+card_count/17*2;
-  if(y%4==3)
-  {
-    if(!color)
-      attron(A_BOLD); 
-    show_card(card,x,y,1);
-    if(!color)
+  // 將牌放入桌面牌陣列
+  table_card[card_count / 17][card_count % 17] = card;
+  // 計算牌在桌面上的位置
+  x = THROW_X + (card_count % 17) * 2;
+  y = THROW_Y + card_count / 17 * 2;
+  // 顯示牌
+  if (y % 4 == 3) {
+    if (!color) {
+      attron(A_BOLD);
+    }
+    show_card(card, x, y, 1);
+    if (!color) {
       attroff(A_BOLD);
+    }
+  } else {
+    show_card(card, x, y, 1);
   }
-  else
-    show_card(card,x,y,1);
-  if(card!=20)
-  {
+  // 更新牌計數
+  if (card != 20) {
     card_count++;
   }
 }
 
-void send_one_card(int id)
-{
+void send_one_card(int id) {
   char msg_buf[255];
   char card;
   char sit;
   int i;
 
-  sit=player[id].sit;
-  card=mj[card_point++];
-  current_card=card;
-  pool[sit].card[pool[sit].num]=card;
-  show_num(2,70,144-card_point-16,2);
-  sprintf(msg_buf,"314%c%c",sit,2);
-  broadcast_msg(id,msg_buf);
-  show_newcard(sit,2);
+  // 取得玩家座位號
+  sit = player[id].sit;
+  // 取得下一張牌
+  card = mj[card_point++];
+  // 更新當前牌
+  current_card = card;
+  // 將牌放入牌池
+  pool[sit].card[pool[sit].num] = card;
+  // 顯示牌堆剩餘牌數
+  show_num(2, 70, 144 - card_point - 16, 2);
+  // 通知所有玩家發牌訊息
+  snprintf(msg_buf, sizeof(msg_buf), "314%c%c", sit, 2);
+  broadcast_msg(id, msg_buf);
+  // 顯示新牌
+  show_newcard(sit, 2);
+  // 回復游標位置
   return_cursor();
-  sprintf(msg_buf,"306%c",card_point);
-  broadcast_msg(1,msg_buf);
-  show_cardmsg(sit,0);
-  card_owner=sit;
-  sprintf(msg_buf,"305%c",(char) sit);
-  broadcast_msg(1,msg_buf);
+  // 通知所有玩家牌堆剩餘牌數
+  snprintf(msg_buf, sizeof(msg_buf), "306%c", card_point);
+  broadcast_msg(1, msg_buf);
+  // 顯示發牌訊息
+  show_cardmsg(sit, 0);
+  // 更新當前出牌者
+  card_owner = sit;
+  // 通知所有玩家當前出牌者
+  snprintf(msg_buf, sizeof(msg_buf), "305%c", (char)sit);
+  broadcast_msg(1, msg_buf);
+  // 清除檢查標記
   clear_check_flag(sit);
-  check_flag[sit][3]=check_kang(sit,card);
-  check_flag[sit][4]=check_make(sit,card,0);
-  in_check[sit]=0;
-  for(i=1;i<check_number;i++)
-    if(check_flag[sit][i])
-    {
-      getting_card=1;   
-      in_check[sit]=1;
-      check_on=1;
-      sprintf(msg_buf,"501%c%c%c%c",check_flag[sit][1]+'0',
-        check_flag[sit][2]+'0',check_flag[sit][3]+'0',check_flag[sit][4]+'0');
-      write_msg(player[table[sit]].sockfd,msg_buf);
+  // 檢查是否可以槓
+  check_flag[sit][3] = check_kang(sit, card);
+  // 檢查是否可以胡
+  check_flag[sit][4] = check_make(sit, card, 0);
+  // 重置檢查狀態
+  in_check[sit] = 0;
+  // 檢查是否有可執行的動作
+  for (i = 1; i < check_number; i++) {
+    if (check_flag[sit][i]) {
+      // 設定取得牌狀態
+      getting_card = 1;
+      // 設定檢查狀態
+      in_check[sit] = 1;
+      // 設定檢查模式
+      check_on = 1;
+      // 通知玩家可執行的動作
+      snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c", check_flag[sit][1] + '0',
+               check_flag[sit][2] + '0', check_flag[sit][3] + '0',
+               check_flag[sit][4] + '0');
+      write_msg(player[table[sit]].sockfd, msg_buf);
       break;
     }
-  sprintf(msg_buf,"304%c",card);
-  write_msg(player[id].sockfd,msg_buf);
-  gettimeofday(&before, (struct timezone *) 0);
+  }
+  // 通知玩家發牌
+  snprintf(msg_buf, sizeof(msg_buf), "304%c", card);
+  write_msg(player[id].sockfd, msg_buf);
+  // 記錄發牌時間
+  gettimeofday(&before, (struct timezone *)0);
 }
 
-void next_player()
-{
+// 下一位玩家
+void next_player() {
   char msg_buf[255];
-  turn=next_turn(turn);
-  sprintf(msg_buf,"310%c",turn);
-  broadcast_msg(1,msg_buf);
+  // 取得下一輪的玩家
+  turn = next_turn(turn);
+  // 通知所有玩家輪到下一位玩家
+  snprintf(msg_buf, sizeof(msg_buf), "310%c", turn);
+  broadcast_msg(1, msg_buf);
+  // 顯示當前玩家的計分
   display_point(turn);
+  // 回復游標位置
   return_cursor();
-  if(table[turn]!=1)
-  {
-    strcpy(msg_buf,"303");
-    write_msg(player[table[turn]].sockfd,msg_buf);
-    show_newcard(turn,1);
+  // 檢查是否為伺服器
+  if (table[turn] != 1) {
+    // 通知玩家可以出牌
+    strncpy(msg_buf, "303", sizeof(msg_buf));
+    write_msg(player[table[turn]].sockfd, msg_buf);
+    // 顯示新牌
+    show_newcard(turn, 1);
+    // 回復游標位置
     return_cursor();
-  }
-  else 
-  {
+  } else {
+    // 顯示伺服器取得牌的提示
     attron(A_REVERSE);
-    show_card(10,INDEX_X+16*2+1,INDEX_Y+1,1);
+    show_card(10, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
     attroff(A_REVERSE);
     wrefresh(stdscr);
+    // 回復游標位置
     return_cursor();
-    play_mode=GET_CARD;
+    // 設定遊戲模式為取得牌
+    play_mode = GET_CARD;
+    // 播放提示音
     beep1();
   }
-  sprintf(msg_buf,"314%c%c",turn,1);
-  broadcast_msg(table[turn],msg_buf);
-}  
+  // 通知玩家發牌
+  snprintf(msg_buf, sizeof(msg_buf), "314%c%c", turn, 1);
+  broadcast_msg(table[turn], msg_buf);
+}
 
-int next_turn(int current_turn)
-{
+// 取得下一輪的玩家
+int next_turn(int current_turn) {
+  // 計算下一輪的玩家
   current_turn++;
-  if(current_turn==5)
-    current_turn=1;
-  if(!table[current_turn])
-    current_turn=next_turn(current_turn);
-  return(current_turn);
-}
-
-void display_pool(int sit)
-{
-  int i;
-  char buf[5],msg_buf[255];
-  
-  msg_buf[0]=0;
-  for(i=0;i<pool[sit].num;i++)
-  {
-    sprintf(buf,"%2d",pool[sit].card[i]);
-    strcat(msg_buf,buf);
+  if (current_turn == 5) {
+    current_turn = 1;
   }
-  display_comment(msg_buf);  
+  // 檢查下一輪的玩家是否在遊戲中
+  if (!table[current_turn]) {
+    current_turn = next_turn(current_turn);
+  }
+  return current_turn;
 }
 
-void sort_pool(int sit)
-{
-  int i,j,max;
-  char tmp;
+// 顯示牌池
+void display_pool(int sit) {
+  char msg_buf[255];
+  // 初始化訊息緩衝區
+  msg_buf[0] = 0;
+  // 遍歷牌池中的所有牌
+  for (int i = 0; i < pool[sit].num; i++) {
+    char buf[5];
+    // 將牌的數字轉換為字串
+    snprintf(buf, sizeof(buf), "%2d", pool[sit].card[i]);
+    // 將牌的數字字串附加到訊息緩衝區
+    memmove(msg_buf + strlen(msg_buf), buf, strlen(buf));
+  }
+  // 顯示牌池的內容
+  display_comment(msg_buf);
+}
 
-  max=pool[sit].num;
-  for(i=0;i<max;i++)
-    for(j=0;j<max-i-1;j++)
-      if(pool[sit].card[j]>pool[sit].card[j+1])
-      {
-        tmp=pool[sit].card[j];
-        pool[sit].card[j]=pool[sit].card[j+1];
-        pool[sit].card[j+1]=tmp;
+// 排序牌池
+void sort_pool(int sit) {
+  // 遍歷牌池中的所有牌
+  for (int i = 0; i < pool[sit].num; i++) {
+    // 遍歷牌池中尚未排序的牌
+    for (int j = 0; j < pool[sit].num - i - 1; j++) {
+      // 檢查是否需要交換牌
+      if (pool[sit].card[j] > pool[sit].card[j + 1]) {
+        // 交換牌
+        char tmp = pool[sit].card[j];
+        pool[sit].card[j] = pool[sit].card[j + 1];
+        pool[sit].card[j + 1] = tmp;
       }
+    }
+  }
 }
 
-void sort_card(int mode)
-{
-  int i,j,max;
-  char tmp;
-
-  if(mode)
-    max=pool[my_sit].num+1;
-  else  
-    max=pool[my_sit].num;
-  for(i=0;i<max;i++)
-    for(j=0;j<max-i-1;j++)
-      if(pool[my_sit].card[j]>pool[my_sit].card[j+1])
-      {
-        tmp=pool[my_sit].card[j];
-        pool[my_sit].card[j]=pool[my_sit].card[j+1];
-        pool[my_sit].card[j+1]=tmp;
+// 排序牌
+void sort_card(int mode) {
+  int i, j;
+  // 計算排序的牌數
+  int max = mode ? pool[my_sit].num + 1 : pool[my_sit].num;
+  // 遍歷牌池中的所有牌
+  for (i = 0; i < max; i++) {
+    // 遍歷牌池中尚未排序的牌
+    for (j = 0; j < max - i - 1; j++) {
+      // 檢查是否需要交換牌
+      if (pool[my_sit].card[j] > pool[my_sit].card[j + 1]) {
+        // 交換牌
+        char tmp = pool[my_sit].card[j];
+        pool[my_sit].card[j] = pool[my_sit].card[j + 1];
+        pool[my_sit].card[j + 1] = tmp;
       }
-  for(i=0;i<pool[my_sit].num;i++)
-  {
-    show_card(20,INDEX_X+(16-pool[my_sit].num+i)*2,INDEX_Y+1,1);
+    }
+  }
+  // 顯示排序後的牌
+  for (int i = 0; i < pool[my_sit].num; i++) {
+    show_card(20, INDEX_X + (16 - pool[my_sit].num + i) * 2, INDEX_Y + 1, 1);
     wrefresh(stdscr);
-    show_card(pool[my_sit].card[i],INDEX_X+(16-pool[my_sit].num+i)*2
-              ,INDEX_Y+1,1);
+    show_card(pool[my_sit].card[i], INDEX_X + (16 - pool[my_sit].num + i) * 2,
+              INDEX_Y + 1, 1);
     wrefresh(stdscr);
   }
-  if(mode)
-  {
-    show_card(20,INDEX_X+(16-pool[my_sit].num+i)*2+1,INDEX_Y+1,1);
+  // 顯示最後一張牌
+  if (mode) {
+    show_card(20, INDEX_X + (16 - pool[my_sit].num + i) * 2 + 1,
+              INDEX_Y + 1, 1);
     wrefresh(stdscr);
-    show_card(pool[my_sit].card[pool[my_sit].num]
-              ,INDEX_X+(16-pool[my_sit].num+i)*2+1,INDEX_Y+1,1);
+    show_card(pool[my_sit].card[pool[my_sit].num],
+              INDEX_X + (16 - pool[my_sit].num + i) * 2 + 1, INDEX_Y + 1, 1);
     wrefresh(stdscr);
   }
+  // 回復游標位置
   return_cursor();
 }
 
-void new_game()
-{
-  clear_screen_area(0,2,18,54);
-  show_cardmsg(my_sit,0);
+// 開始新遊戲
+void new_game() {
+  // 清除螢幕區域
+  clear_screen_area(0, 2, 18, 54);
+  // 顯示發牌訊息
+  show_cardmsg(my_sit, 0);
+  // 繪製桌子
   draw_table();
+  // 更新螢幕
   wrefresh(stdscr);
 }
 
-void opening()
-{
+// 開局
+void opening() {
   char msg_buf[255];
-  int i,j;
-
+  // 開始新遊戲
   new_game();
-  input_mode=PLAY_MODE;
-  for(i=1;i<=4;i++)
-  {
-    in_check[i]=0;
-    pool[i].first_round=1;
-    wait_hit[i]=0;
-    pool[i].num=16;
-    check_for[i]=0;
-    pool[i].out_card_index=0;
-    for(j=0;j<8;j++)
-      pool[i].flower[j]=0;
-    pool[i].time=0;
+  // 設定輸入模式為遊戲模式
+  input_mode = PLAY_MODE;
+  // 初始化玩家資訊
+  for (int i = 1; i <= 4; i++) {
+    // 重置檢查狀態
+    in_check[i] = 0;
+    // 設定為第一輪
+    pool[i].first_round = 1;
+    // 重置等待狀態
+    wait_hit[i] = 0;
+    // 設定牌池數量
+    pool[i].num = 16;
+    // 重置檢查標記
+    check_for[i] = 0;
+    // 重置出牌索引
+    pool[i].out_card_index = 0;
+    // 重置花牌
+    for (int j = 0; j < 8; j++) {
+      pool[i].flower[j] = 0;
+    }
+    // 重置時間
+    pool[i].time = 0;
   }
+  // 顯示遊戲資訊
   display_info();
-  current_item=pool[my_sit].num;
-  draw_index(pool[my_sit].num+1);
-  for(i=0;i<16;i++)
-    pool[my_sit].card[i]=0;
-  pos_x=INDEX_X+current_item*2+1;
-  pos_y=INDEX_Y;
-  play_mode=0;
-  card_count=0;
-  check_on=0;
-  for(i=1;i<=4;i++)
-  {
-    if(i!=my_sit && table[i])
+  // 設定當前項目
+  current_item = pool[my_sit].num;
+  // 繪製索引
+  draw_index(pool[my_sit].num + 1);
+  // 清除牌池
+  for (int i = 0; i < 16; i++) {
+    pool[my_sit].card[i] = 0;
+  }
+  // 設定游標位置
+  pos_x = INDEX_X + current_item * 2 + 1;
+  pos_y = INDEX_Y;
+  // 設定遊戲模式為 0
+  play_mode = 0;
+  // 重置牌計數
+  card_count = 0;
+  // 重置檢查狀態
+  check_on = 0;
+  // 顯示其他玩家的牌背
+  for (int i = 1; i <= 4; i++) {
+    if (i != my_sit && table[i]) {
       show_cardback(i);
+    }
   }
 }
 
-void open_deal()
-{
-   char msg_buf[255];
-   int i,j,sit;
-   char card;
-   
-   turn=info.dealer;
-   i=generate_random(4);
-   pool[i%4+1].door_wind=1;
-   pool[(i+1)%4+1].door_wind=2;
-   pool[(i+2)%4+1].door_wind=3;
-   pool[(i+3)%4+1].door_wind=4;
-   sprintf(msg_buf,"518%c%c%c%c",pool[1].door_wind,pool[2].door_wind,
-           pool[3].door_wind,pool[4].door_wind);
-   broadcast_msg(1,msg_buf);
-   wmvaddstr(stdscr,2,64,sit_name[pool[my_sit].door_wind]);
-   if(!table[turn])
-     turn=next_turn(turn);
-   card_owner=turn;
-   sprintf(msg_buf,"310%c",turn);
-   broadcast_msg(1,msg_buf);
-   sprintf(msg_buf,"305%c",card_owner);
-   broadcast_msg(1,msg_buf);
-   display_point(turn);
-   card_point=0;
-   card_index=143;
-   strcpy(msg_buf,"302");
-   generate_card();
-   /* send 16 cards to 4 people */
-   for(j=1;j<=4;j++)
-   {
-     if(table[j])
-     {
-       pool[j].first_round=1;
-       for(i=0;i<16;i++)
-       {
-         card=mj[card_point++];
-         pool[j].card[i]=card;
-         msg_buf[3+i]=card;
-       }
-       sort_pool(j);
-       msg_buf[3+16]='\0';
-       if(table[j]!=1)  /* not server */
-       {
-         write_msg(player[table[j]].sockfd,msg_buf);
-       }
-       else
-       {
-         sort_card(0);
-       }
-     }
-   }
-   /* send an additional card to dealer */
-   card=mj[card_point++];
-   current_card=card;
+// 開局發牌
+void open_deal() {
+  char msg_buf[255];
+  int i, j, sit;
+  char card;
+
+  // 設定莊家
+  turn = info.dealer;
+  // 隨機決定門風
+  i = generate_random(4);
+  pool[i % 4 + 1].door_wind = 1;
+  pool[(i + 1) % 4 + 1].door_wind = 2;
+  pool[(i + 2) % 4 + 1].door_wind = 3;
+  pool[(i + 3) % 4 + 1].door_wind = 4;
+  // 通知所有玩家門風
+  snprintf(msg_buf, sizeof(msg_buf), "518%c%c%c%c", pool[1].door_wind,
+           pool[2].door_wind, pool[3].door_wind, pool[4].door_wind);
+  broadcast_msg(1, msg_buf);
+  // 顯示自己的門風
+  wmvaddstr(stdscr, 2, 64, sit_name[pool[my_sit].door_wind]);
+  // 檢查莊家是否在遊戲中
+  if (!table[turn]) {
+    // 取得下一輪的莊家
+    turn = next_turn(turn);
+  }
+  // 設定當前出牌者
+  card_owner = turn;
+  // 通知所有玩家當前出牌者
+  snprintf(msg_buf, sizeof(msg_buf), "310%c", turn);
+  broadcast_msg(1, msg_buf);
+  snprintf(msg_buf, sizeof(msg_buf), "305%c", card_owner);
+  broadcast_msg(1, msg_buf);
+  // 顯示當前玩家的計分
+  display_point(turn);
+  // 重置牌堆索引
+  card_point = 0;
+  card_index = 143;
+  // 設定發牌訊息
+  strncpy(msg_buf, "302", sizeof(msg_buf));
+  // 生成牌堆
+  generate_card();
+  // 發 16 張牌給 4 個玩家
+  for (j = 1; j <= 4; j++) {
+    if (table[j]) {
+      // 設定為第一輪
+      pool[j].first_round = 1;
+      // 發牌
+      for (i = 0; i < 16; i++) {
+        card = mj[card_point++];
+        pool[j].card[i] = card;
+        msg_buf[3 + i] = card;
+      }
+      // 排序牌池
+      sort_pool(j);
+      // 結束訊息
+      msg_buf[3 + 16] = '\0';
+      // 檢查是否為伺服器
+      if (table[j] != 1) {
+        // 發送牌給玩家
+        write_msg(player[table[j]].sockfd, msg_buf);
+      } else {
+        // 排序自己的牌
+        sort_card(0);
+      }
+    }
+  }
+  // 發一張牌給莊家
+  card = mj[card_point++];
+  current_card = card;
+  snprintf(msg_buf, sizeof(msg_buf), "304%c", card);
+  // 檢查是否為伺服器
+  if (table[turn] != 1) {
+    // 顯示新牌
+    show_newcard(turn, 2);
+    // 回復游標位置
+    return_cursor();
+    // 發送牌給玩家
+    write_msg(player[table[turn]].sockfd, msg_buf);
+    // 將牌放入牌池
+    pool[turn].card[pool[turn].num] = card;
+  }
+  // 檢查是否為伺服器
+  if (table[turn] == 1) {
+    // 將牌放入牌池
+    pool[1].card[pool[1].num] = card;
+    // 顯示新牌
+    show_card(pool[1].card[pool[my_sit].num], INDEX_X + 16 * 2 + 1,
+              pos_y + 1, 1);
+    wrefresh(stdscr);
+    // 回復游標位置
+    return_cursor();
+    // 設定遊戲模式為出牌
+    play_mode = THROW_CARD;
+  }
+  // 通知玩家發牌
+  snprintf(msg_buf, sizeof(msg_buf), "314%c%c", turn, 2);
+  broadcast_msg(table[turn], msg_buf);
+  // 設定遊戲狀態為進行中
+  in_play = 1;
+  // 檢查所有玩家的花牌
+  sit = turn;  // 檢查莊家
+  // 檢查莊家的花牌
+  do {
+  } while (check_begin_flower(sit, pool[sit].card[16], 16));
+  // 檢查其他玩家的花牌
+  for (i = 0; i < 4; i++) {
+    for (j = 0; j < 16; j++) {
+      if (table[sit]) {
+        do {
+        } while (check_begin_flower(sit, pool[sit].card[j], j));
+      }
+    }
+    // 排序牌池
+    sort_pool(sit);
+    // 取得下一輪的玩家
+    sit = next_turn(sit);
+  }
+  // 更新當前牌
+  current_card = pool[turn].card[16];
+  // 顯示牌堆剩餘牌數
+  show_num(2, 70, 144 - card_point - 16, 2);
+  // 回復游標位置
+  return_cursor();
+  // 通知所有玩家牌堆剩餘牌數
+  snprintf(msg_buf, sizeof(msg_buf), "306%c", card_point);
+  broadcast_msg(1, msg_buf);
+  // 清除檢查標記
+  clear_check_flag(turn);
+  // 檢查是否可以槓
+  check_flag[turn][3] = check_kang(turn, current_card);
+  // 檢查是否可以胡
+  check_flag[turn][4] = check_make(turn, current_card, 0);
+  // 重置檢查狀態
+  in_check[turn] = 0;
+  // 檢查是否有可執行的動作
+  for (i = 1; i < check_number; i++) {
+    if (check_flag[turn][i]) {
+      // 設定取得牌狀態
+      getting_card = 1;
+      // 設定檢查狀態
+      in_check[turn] = 1;
+      // 設定檢查模式
+      check_on = 1;
+      // 檢查是否為伺服器
+      if (in_serv) {
+        // 初始化檢查模式
+        init_check_mode();
+      } else {
+        // 通知玩家可執行的動作
+        snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c",
+                 check_flag[turn][1] + '0', check_flag[turn][2] + '0',
+                 check_flag[turn][3] + '0', check_flag[turn][4] + '0');
+        write_msg(player[table[turn]].sockfd, msg_buf);
+      }
+    }
+  }
+  /*
    sprintf(msg_buf,"304%c",card);
    if(table[turn]!=1)
    {
@@ -509,357 +691,382 @@ void open_deal()
      write_msg(player[table[turn]].sockfd,msg_buf);
      pool[turn].card[pool[turn].num]=card;
    }
-   if(table[turn]==1)  /* turn==server */
-   {
-     pool[1].card[pool[1].num]=card;
-     show_card(pool[1].card[pool[my_sit].num],INDEX_X+16*2+1,pos_y+1,1);
-     wrefresh(stdscr);
-     return_cursor();
-     play_mode=THROW_CARD;
-   }
-   sprintf(msg_buf,"314%c%c",turn,2);
-   broadcast_msg(table[turn],msg_buf);
-   in_play=1;
-   /* check for flowers for 4 players */
-   sit=turn;   /* check dealer first */
-   do
-   {
-   } while(check_begin_flower(sit,pool[sit].card[16],16));
-   for(i=0;i<4;i++)
-   {
-     for(j=0;j<16;j++)
-     {
-       if(table[sit]) 
-       do
-       {
-       } while(check_begin_flower(sit,pool[sit].card[j],j));
-     }
-     sort_pool(sit);
-     sit=next_turn(sit);
-   }
-   current_card=pool[turn].card[16];
-   show_num(2,70,144-card_point-16,2);
-   return_cursor();
-   sprintf(msg_buf,"306%c",card_point);
-   broadcast_msg(1,msg_buf);
-   clear_check_flag(turn);
-   check_flag[turn][3]=check_kang(turn,current_card);
-   check_flag[turn][4]=check_make(turn,current_card,0);
-   in_check[turn]=0;
-   for(i=1;i<check_number;i++)
-   {
-     if(check_flag[turn][i])
-     {
-       getting_card=1;
-       in_check[turn]=1;
-       check_on=1;
-       if(in_serv)
-       {
-         init_check_mode();
-       }
-       else
-       {
-         sprintf(msg_buf,"501%c%c%c%c",'0','0',check_flag[turn][3]+'0',
-                          check_flag[turn][4]+'0');
-         write_msg(player[table[turn]].sockfd,msg_buf);
-       }
-     }
-   }
-/*
-   sprintf(msg_buf,"304%c",card);
-   if(table[turn]!=1)
-   {
-     show_newcard(turn,2);
-     return_cursor();
-     write_msg(player[table[turn]].sockfd,msg_buf);
-     pool[turn].card[pool[turn].num]=card;
-   }
-*/
-   broadcast_msg(table[turn],"3080");
-   if(turn!=my_sit)
-     write_msg(player[table[turn]].sockfd,"3081");
-   if(turn==my_sit)
-     sort_card(1);
-   else
-     sort_card(0);
-   gettimeofday(&before, (struct timezone *) 0);
+  */
+  // 通知玩家發牌
+  broadcast_msg(table[turn], "3080");
+  // 檢查是否為自己
+  if (turn != my_sit) {
+    // 通知玩家發牌
+    write_msg(player[table[turn]].sockfd, "3081");
+  }
+  // 檢查是否為自己
+  if (turn == my_sit) {
+    // 排序自己的牌
+    sort_card(1);
+  } else {
+    // 排序其他玩家的牌
+    sort_card(0);
+  }
+  // 記錄發牌時間
+  gettimeofday(&before, (struct timezone *)0);
 }
 
-void err(char *errmsg)
-{
+// 錯誤處理函數
+void err(char *errmsg) {
+  // 顯示錯誤訊息
   display_comment(errmsg);
 }
 
-void init_variable()
-{
-  int i,j;
+// 初始化變數
+void init_variable() {
+  int i, j;
 
-  my_name[0]=0;
-  my_pass[0]=0;
-  pass_login=0;
-  set_beep=1;
-  in_play=0;
-  in_serv=0;
-  in_join=0;
-  in_kang=0;
-  new_client=0;
-  player_num=0;
-  check_x=org_check_x;
-  check_y=org_check_y;
-  check_number=5;
-  input_mode=ASK_MODE;
-  info.wind=1;
-  info.dealer=1;
-  info.cont_dealer=0;
-  info.base_value=DEFAULT_BASE;
-  info.tai_value=DEFAULT_TAI;
-  for(i=0;i<5;i++)
-  {
-    table[i]=0;
+  // 初始化玩家名稱
+  my_name[0] = 0;
+  // 初始化玩家密碼
+  my_pass[0] = 0;
+  // 重置登入狀態
+  pass_login = 0;
+  // 設定提示音
+  set_beep = 1;
+  // 重置遊戲狀態
+  in_play = 0;
+  // 重置伺服器狀態
+  in_serv = 0;
+  // 重置加入遊戲狀態
+  in_join = 0;
+  // 重置槓牌狀態
+  in_kang = 0;
+  // 重置新客戶端狀態
+  new_client = 0;
+  // 重置玩家數量
+  player_num = 0;
+  // 初始化檢查區域座標
+  check_x = org_check_x;
+  check_y = org_check_y;
+  // 設定檢查選項數量
+  check_number = 5;
+  // 設定輸入模式為詢問模式
+  input_mode = ASK_MODE;
+  // 初始化遊戲資訊
+  info.wind = 1;
+  info.dealer = 1;
+  info.cont_dealer = 0;
+  info.base_value = DEFAULT_BASE;
+  info.tai_value = DEFAULT_TAI;
+  // 初始化玩家座位
+  for (i = 0; i < 5; i++) {
+    table[i] = 0;
   }
-  player[0].money=0;
-  on_seat=0;
-  check_on=0;
-  send_card_on=0;
-  send_card_request=0;
-  next_player_on=0;
-  global_win=newwin(1,63,org_talk_y,11);
-  playing_win=newwin(1,43,org_talk_y,11);
-  ask.question=1;
-  h_head=0;
-  h_tail=h_point=1;
-  keypad(stdscr,TRUE);
-  meta(stdscr,TRUE);
+  // 初始化玩家金錢
+  player[0].money = 0;
+  // 重置座位狀態
+  on_seat = 0;
+  // 重置檢查狀態
+  check_on = 0;
+  // 重置發牌狀態
+  send_card_on = 0;
+  send_card_request = 0;
+  next_player_on = 0;
+  // 初始化全局視窗
+  global_win = newwin(1, 63, org_talk_y, 11);
+  // 初始化遊戲視窗
+  playing_win = newwin(1, 43, org_talk_y, 11);
+  // 初始化詢問模式資訊
+  ask.question = 1;
+  // 初始化歷史訊息索引
+  h_head = 0;
+  h_tail = h_point = 1;
+  // 設定鍵盤模式
+  keypad(stdscr, TRUE);
+  // 設定元字符模式
+  meta(stdscr, TRUE);
 }
 
-void clear_variable()
-{
+// 清除變數
+void clear_variable() {
   int i;
 
-  for(i=2;i<MAX_PLAYER;i++)
-  {
-    if(player[i].in_table)
-      player[i].in_table=0;
+  // 清除玩家在桌子上的狀態
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table) {
+      player[i].in_table = 0;
+    }
   }
-  for(i=1;i<=4;i++)
-    table[i]=0;
-  player_in_table=0;
+  // 清除玩家座位
+  for (i = 1; i <= 4; i++) {
+    table[i] = 0;
+  }
+  // 重置桌子上的玩家數量
+  player_in_table = 0;
 }
 
-void gps()
-{
+// GPS 連線函數
+void gps() {
   int status;
   int i;
   int key;
   int msg_id;
-  int userfd ;
-  char msg_buf[255];
+  int userfd;
+  char msg_buf[1024];
   char buf[128];
   char ans_buf[255];
-  
 
-
+  // 初始化全局螢幕
   init_global_screen();
-  input_mode=0;
-  sprintf(msg_buf,"連往 QKMJ Server %s %d",GPS_IP,GPS_PORT);
-  //sprintf(msg_buf,"連往 QKMJ Server 中 ");
-  display_comment(msg_buf); 
-  status=init_socket(GPS_IP,GPS_PORT,&gps_sockfd);
-  if(status<0)
-  {
+  // 設定輸入模式為 0
+  input_mode = 0;
+  // 顯示連線訊息
+  snprintf(msg_buf, sizeof(msg_buf), "連往 QKMJ Server %s %d", GPS_IP,
+           GPS_PORT);
+  //snprintf(msg_buf,"連往 QKMJ Server 中 ");
+  display_comment(msg_buf);
+  // 初始化 GPS 連線
+  status = init_socket(GPS_IP, GPS_PORT, &gps_sockfd);
+  if (status < 0) {
+    // 顯示連線錯誤訊息
     err("無法連往 QKMJ Server");
     endwin();
     exit(0);
-  } 
+  }
   //send_gps_line("已連上");
-  sprintf(msg_buf,"歡迎來到 QKMJ 休閑麻將 Ver %c.%2s 特別板 ",QKMJ_VERSION[0],QKMJ_VERSION+1);
+  // 顯示歡迎訊息
+  snprintf(msg_buf, sizeof(msg_buf),
+           "歡迎來到 QKMJ 休閑麻將 Ver %c.%2s 特別板 ", QKMJ_VERSION[0],
+           QKMJ_VERSION + 1);
   display_comment(msg_buf);
+  // 顯示作者資訊
   display_comment("原作者 sywu (吳先祐 Shian-Yow Wu) ");
   //display_comment("本版本由  TonyQ (tonylovejava@gmail.com / TonyQ@ptt.cc ) 維護 ");
+  // 顯示原始碼位置
   display_comment("Forked Source: https://github.com/gjchentw/qkmj");
   //display_comment("可以用^C退出");
+  // 取得玩家資訊
   get_my_info();
-  sprintf(msg_buf,"100%s",QKMJ_VERSION);
-  write_msg(gps_sockfd,msg_buf);
-  sprintf(msg_buf,"099%s",my_username);
-  write_msg(gps_sockfd,msg_buf);
-  pass_count=0;
-  if(my_name[0]!=0 && my_pass[0]!=0)
-    strcpy(ans_buf,my_name);
-  else
-  {
-    strcpy(ans_buf,my_name);
-    do
-    {
-      ask_question("請輸入你的名字：",ans_buf,10,1);
-    } while(ans_buf[0]==0);
-    ans_buf[10]=0;
+  // 發送版本訊息
+  snprintf(msg_buf, sizeof(msg_buf), "100%s", QKMJ_VERSION);
+  write_msg(gps_sockfd, msg_buf);
+  // 發送玩家名稱訊息
+  snprintf(msg_buf, sizeof(msg_buf), "099%s", my_username);
+  write_msg(gps_sockfd, msg_buf);
+  // 重置密碼輸入次數
+  pass_count = 0;
+  // 檢查是否已儲存玩家名稱和密碼
+  if (my_name[0] != 0 && my_pass[0] != 0) {
+    // 使用儲存的玩家名稱
+    strncpy(ans_buf, (char *)my_name, sizeof(ans_buf));
+  } else {
+    // 輸入玩家名稱
+    strncpy(ans_buf, (char *)my_name, sizeof(ans_buf));
+    do {
+      ask_question("請輸入你的名字：", ans_buf, 10, 1);
+    } while (ans_buf[0] == 0);
+    ans_buf[10] = 0;
   }
-  sprintf(msg_buf,"101%s",ans_buf);
-  write_msg(gps_sockfd,msg_buf);
-  strcpy(my_name,ans_buf);
-  nfds=getdtablesize();
-  
+  // 發送玩家名稱訊息
+  snprintf(msg_buf, sizeof(msg_buf), "101%s", ans_buf);
+  write_msg(gps_sockfd, msg_buf);
+  // 更新玩家名稱
+  strncpy((char *)my_name, ans_buf, sizeof(my_name));
+  // 取得檔案描述符數量
+  nfds = getdtablesize();
+
+  // 初始化檔案描述符集合
   FD_ZERO(&afds);
-  FD_SET(gps_sockfd,&afds);
-  FD_SET(0,&afds);
- // nfds = gps_sockfd + 1; 
-	  
-  for(;;)
-  {
-	bcopy((char *) &afds,(char *) &rfds,sizeof(rfds));
-    
-    if( table_sockfd >= nfds) {
-    	nfds = table_sockfd +1 ; 
+  FD_SET(gps_sockfd, &afds);
+  FD_SET(0, &afds);
+  // nfds = gps_sockfd + 1;
+
+  // 主迴圈
+  for (;;) {
+    // 複製檔案描述符集合
+    bcopy((char *)&afds, (char *)&rfds, sizeof(rfds));
+
+    // 更新檔案描述符數量
+    if (table_sockfd >= nfds) {
+      nfds = table_sockfd + 1;
     }
-    if(serv_sockfd >= nfds){
-    	nfds = serv_sockfd +1 ;
+    if (serv_sockfd >= nfds) {
+      nfds = serv_sockfd + 1;
     }
-    
-    if(select(nfds ,&rfds,(fd_set *)0, (fd_set *)0, 0)<0)
-    {
-      if(errno!=EINTR){
+
+    // 檢查是否有資料可讀取
+    if (select(nfds, &rfds, (fd_set *)0, (fd_set *)0, 0) < 0) {
+      // 檢查錯誤是否為中斷訊號
+      if (errno != EINTR) {
+        // 顯示錯誤訊息
         display_comment("Select Error!");
         exit(0);
       }
       continue;
     }
-    if(FD_ISSET(0,&rfds))
-    {
-      if(input_mode)
+    // 檢查標準輸入是否有資料
+    if (FD_ISSET(0, &rfds)) {
+      // 處理鍵盤輸入
+      if (input_mode) {
         process_key();
+      }
     }
-    /* Check for data from GPS */
-    if(FD_ISSET(gps_sockfd,&rfds))
-    {
-      if(!read_msg_id(gps_sockfd,buf))
-      {
+    // 檢查 GPS 連線是否有資料
+    if (FD_ISSET(gps_sockfd, &rfds)) {
+      // 讀取 GPS 訊息
+      if (!read_msg_id(gps_sockfd, buf)) {
+        // 顯示連線中斷訊息
         display_comment("Closed by QKMJ Server.");
-        shutdown(gps_sockfd,2);
-        if(in_join)
+        shutdown(gps_sockfd, 2);
+        // 檢查是否已加入遊戲
+        if (in_join) {
           close_join();
-        if(in_serv)
+        }
+        // 檢查是否為伺服器
+        if (in_serv) {
           close_serv();
+        }
         endwin();
         exit(0);
-      }
-      else
-      {
-        process_msg(0,buf,FROM_GPS);
-        buf[0]='\0';
+      } else {
+        // 處理 GPS 訊息
+        process_msg(0, (unsigned char *)buf, FROM_GPS);
+        buf[0] = '\0';
       }
     }
-    if(in_serv)
-    {
-      /* Check for new connections */
-      if(FD_ISSET(serv_sockfd,&rfds))
-      {
-        if(new_client)
-        {
+    // 檢查是否為伺服器
+    if (in_serv) {
+      // 檢查是否有新的連線
+      if (FD_ISSET(serv_sockfd, &rfds)) {
+        // 檢查是否有新的客戶端
+        if (new_client) {
           accept_new_client();
         }
-/*
+        /*
           else
             display_comment("Error from new client!");
-*/
+        */
       }
-      /* Check for data from client */
-      for(i=2;i<MAX_PLAYER;i++)
-      {
-        if(player[i].in_table)
-        {
-          if(FD_ISSET(player[i].sockfd,&rfds))
-          {
-            if(read_msg_id(player[i].sockfd,buf)==0)
+      // 檢查客戶端是否有資料
+      for (i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table) {
+          // 檢查客戶端是否有資料
+          if (FD_ISSET(player[i].sockfd, &rfds)) {
+            // 讀取客戶端訊息
+            if (read_msg_id(player[i].sockfd, buf) == 0) {
+              // 關閉客戶端連線
               close_client(i);
-            else
-              process_msg(i,buf,FROM_CLIENT);
+            } else {
+              // 處理客戶端訊息
+              process_msg(i, (unsigned char *)buf, FROM_CLIENT);
+            }
           }
         }
       }
-      /* Waiting for signals from each sit */
-      if(waiting)
-      {
-        for(i=1;i<=4;i++)
-        {
-          if(table[i] && !wait_hit[i])
+      // 等待所有玩家的訊號
+      if (waiting) {
+        // 檢查所有玩家是否都已發送訊號
+        for (i = 1; i <= 4; i++) {
+          if (table[i] && !wait_hit[i]) {
             goto continue_waiting;
+          }
         }
-        waiting=0;
-        broadcast_msg(1,"290");
+        // 重置等待狀態
+        waiting = 0;
+        // 通知所有玩家開始新遊戲
+        broadcast_msg(1, "290");
+        // 開局
         opening();
+        // 發牌
         open_deal();
       }
-      continue_waiting:;
-      /* Process the cards */
-      if(check_on)
-      {
-        /* find if there are still player in check */
-        for(i=1;i<=4;i++)
-        {
-          if(table[i] && in_check[i])
+    continue_waiting:;
+      // 處理牌
+      if (check_on) {
+        // 檢查是否有玩家正在檢查
+        for (i = 1; i <= 4; i++) {
+          if (table[i] && in_check[i]) {
             goto still_in_check;
+          }
         }
-        check_on=0;
-        next_player_on=1;
-        send_card_on=1;
+        // 重置檢查狀態
+        check_on = 0;
+        // 設定下一位玩家狀態
+        next_player_on = 1;
+        // 設定發牌狀態
+        send_card_on = 1;
+        // 比較檢查結果
         compare_check();
-        still_in_check:;
+      still_in_check:;
       }
-      if(next_player_request && next_player_on)
-      {
-        if(144-card_point<=16)
-        {
-          for(i=1;i<=4;i++)
-          {
-            if(table[i] && i!=my_sit)
-            {
+      // 檢查是否需要發牌
+      if (next_player_request && next_player_on) {
+        // 檢查牌堆是否還有牌
+        if (144 - card_point <= 16) {
+          // 顯示所有玩家的牌
+          for (i = 1; i <= 4; i++) {
+            if (table[i] && i != my_sit) {
               show_allcard(i);
               show_kang(i);
             }
           }
+          // 更新連續莊家次數
           info.cont_dealer++;
+          // 發送牌池中的牌
           send_pool_card();
-          broadcast_msg(1,"330");
-          clear_screen_area(THROW_Y,THROW_X,8,34);
-          wmvaddstr(stdscr,THROW_Y+3,THROW_X+12,"海 底 流 局");
+          // 通知所有玩家流局
+          broadcast_msg(1, "330");
+          // 清除桌面區域
+          clear_screen_area(THROW_Y, THROW_X, 8, 34);
+          // 顯示流局訊息
+          wmvaddstr(stdscr, THROW_Y + 3, THROW_X + 12, "海 底 流 局");
+          // 回復游標位置
           return_cursor();
+          // 等待玩家按下任意鍵
           wait_a_key(PRESS_ANY_KEY_TO_CONTINUE);
-          broadcast_msg(1,"290");
+          // 通知所有玩家開始新遊戲
+          broadcast_msg(1, "290");
+          // 開局
           opening();
-          open_deal(); 
-        }
-        else
-        {  
+          // 發牌
+          open_deal();
+        } else {
+          // 切換到下一位玩家
           next_player();
-          next_player_request=0;
+          // 重置發牌請求狀態
+          next_player_request = 0;
         }
       }
-      if(send_card_request && send_card_on)
-      {
+      // 檢查是否需要發牌
+      if (send_card_request && send_card_on) {
+        // 發牌給當前玩家
         send_one_card(table[turn]);
-        send_card_request=0;
+        // 重置發牌請求狀態
+        send_card_request = 0;
       }
     }
-    if(in_join)
-    {
-      if(FD_ISSET(table_sockfd,&rfds))
-      {
-        if(!read_msg_id(table_sockfd,buf))
-        {
+    // 檢查是否已加入遊戲
+    if (in_join) {
+      // 檢查伺服器是否有資料
+      if (FD_ISSET(table_sockfd, &rfds)) {
+        // 讀取伺服器訊息
+        if (!read_msg_id(table_sockfd, buf)) {
+          // 關閉伺服器連線
           close(table_sockfd);
-          FD_CLR(table_sockfd,&afds);
-          in_join=0;
-          input_mode=TALK_MODE;
+          // 從檔案描述符集合中移除伺服器連線
+          FD_CLR(table_sockfd, &afds);
+          // 重置加入遊戲狀態
+          in_join = 0;
+          // 設定輸入模式為聊天模式
+          input_mode = TALK_MODE;
+          // 初始化全局螢幕
           init_global_screen();
+        } else {
+          // 處理伺服器訊息
+          process_msg(1, (unsigned char *)buf, FROM_SERV);
         }
-        else
-          process_msg(1,buf,FROM_SERV);
       }
     }
   }
 }
 
+#if 0
 void read_qkmjrc()
 {
   FILE *qkmjrc_fp;
@@ -926,43 +1133,54 @@ void read_qkmjrc()
     fclose(qkmjrc_fp);
   }
 }
+#endif
 
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+  // 設定終端機類型為 xterm
   setenv("TERM", "xterm", 1);
-  
-  /* init curses */
+
+  // 初始化 curses 函式庫
   initscr();
   start_color();
   init_pair(1, COLOR_WHITE, COLOR_BLACK);
-  /* init curses end */
+
+  // 設定 curses 函式庫的行為
   cbreak();
   noecho();
   nonl();
-  /*
-  attrset(A_NORMAL);
-  */
+
+  // 清除螢幕
   clear();
+
+  // 處理中斷訊號
 #ifdef SIGIOT
-  signal(SIGINT,leave);
-  signal(SIGIOT,leave);
-  signal(SIGPIPE,leave);
+  signal(SIGINT, leave);
+  signal(SIGIOT, leave);
+  signal(SIGPIPE, leave);
 #endif
+
+  // 初始化變數
   init_variable();
-  strcpy(GPS_IP,DEFAULT_GPS_IP);
-  GPS_PORT=DEFAULT_GPS_PORT;
-  read_qkmjrc();
-  if(argc>=3)
-  {
-    strcpy(GPS_IP,argv[1]);
-    GPS_PORT=atoi(argv[2]);
+
+  // 設定預設 GPS 伺服器 IP 位址和端口
+  strncpy(GPS_IP, DEFAULT_GPS_IP, sizeof(GPS_IP));
+  GPS_PORT = DEFAULT_GPS_PORT;
+
+  // 讀取 qkmjrc 檔案
+  //read_qkmjrc();
+
+  // 處理命令列參數
+  if (argc >= 3) {
+    strncpy(GPS_IP, argv[1], sizeof(GPS_IP));
+    GPS_PORT = atoi(argv[2]);
+  } else if (argc == 2) {
+    strncpy(GPS_IP, argv[1], sizeof(GPS_IP));
+    GPS_PORT = DEFAULT_GPS_PORT;
   }
-  else if(argc==2)
-  {
-    strcpy(GPS_IP,argv[1]);
-    GPS_PORT=DEFAULT_GPS_PORT;
-  }
+
+  // 連線到 GPS 伺服器
   gps();
-  exit(0); 
+
+  // 結束程式
+  exit(0);
 }
