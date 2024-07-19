@@ -9,6 +9,7 @@
 #include <sys/time.h>
 #include <sys/errno.h>
 #include <unistd.h>
+#include <locale.h>
 
 #include "qkmj.h"
 
@@ -1137,6 +1138,7 @@ void read_qkmjrc()
 
 int main(int argc, char *argv[]) {
   // 設定終端機類型為 xterm
+  setlocale(LC_ALL, "");
   setenv("TERM", "xterm", 1);
 
   // 初始化 curses 函式庫
