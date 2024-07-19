@@ -10,19 +10,23 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "command.h"
 #include "qkmj.h"
 
 int convert_msg_id(unsigned char *msg, int player_id) {
+  // 檢查訊息 ID 是否為有效的 3 位數
   if (msg[0] < '0' || msg[0] > '9' ||
       msg[1] < '0' || msg[1] > '9' ||
       msg[2] < '0' || msg[2] > '9') {
     char msg_buf[1024];
-    display_comment("Invalid message id");
-    snprintf(msg_buf, sizeof(msg_buf), "From %d (%d) len=%lu %s",
-      player_id, gps_sockfd, strlen((char *) msg), msg);
+    display_comment("無效的訊息 ID");
+    // 使用 snprintf 避免緩衝區溢出
+    snprintf(msg_buf, sizeof(msg_buf), "來自玩家 %d (%d) 長度=%lu 訊息內容: %s",
+             player_id, gps_sockfd, strlen((char *)msg), msg);
     display_comment(msg_buf);
-    return -1; // Indicate an error
+    return -1; // 錯誤
   }
+  // 將訊息 ID 轉換為整數
   return (msg[0] - '0') * 100 + (msg[1] - '0') * 10 + (msg[2] - '0');
 }
 
@@ -44,25 +48,32 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
 
   switch (msg_type) {
     case FROM_GPS:
+      // 處理來自 GPS Server 的訊息
       if (msg_id != 102) {
+        // 讀取訊息內容
         read_msg(gps_sockfd, (char *)buf + 3);
       }
       switch (msg_id) {
         case 2:
+          // 處理密碼驗證
           if (my_pass[0] != 0) {
+            // 使用 strncpy 避免緩衝區溢出
             strncpy(ans_buf, (char *)my_pass, sizeof(ans_buf) - 1);
             ans_buf[sizeof(ans_buf) - 1] = '\0';
           } else {
+            // 詢問密碼
             ans_buf[0] = 0;
-            ask_question("請輸入你的密碼：", ans_buf, 8, 0);
-            ans_buf[8] = 0;
+            ask_question("請輸入你的密碼：", ans_buf, sizeof(ans_buf) - 1, 0);
           }
+          // 組成訊息並發送至 GPS Server
           snprintf(msg_buf, sizeof(msg_buf), "102%s", ans_buf);
           write_msg(gps_sockfd, msg_buf);
+          // 更新本地密碼
           strncpy((char *)my_pass, ans_buf, sizeof(my_pass) - 1);
           my_pass[sizeof(my_pass) - 1] = '\0';
           break;
         case 3:
+          // 處理登入成功
           pass_login = 1;
           input_mode = TALK_MODE;
           display_comment("請打 /HELP 查看簡單指令說明，/Exit 離開");
@@ -70,38 +81,40 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
           write_msg(gps_sockfd, msg_buf);
           break;
         case 4:
+          // 處理密碼錯誤
           pass_count++;
           my_pass[0] = 0;
           if (pass_count == 3) {
             leave();
           }
+          // 重新輸入名稱
           do {
             ans_buf[0] = 0;
-            ask_question("密碼錯誤! 請重新輸入你的名稱：", ans_buf, 10, 1);
+            ask_question("密碼錯誤! 請重新輸入你的名稱：", ans_buf, sizeof(ans_buf) - 1, 1);
           } while (ans_buf[0] == 0);
-          ans_buf[10] = 0;
           snprintf(msg_buf, sizeof(msg_buf), "101%s", ans_buf);
           write_msg(gps_sockfd, msg_buf);
           strncpy((char *)my_name, ans_buf, sizeof(my_name) - 1);
           my_name[sizeof(my_name) - 1] = '\0';
           break;
-        case 5:  // creat a new account
+        case 5:
+          // 處理建立新帳戶
           ans_buf[0] = 0;
           ask_question("看來你是個新朋友, 你要使用這個名稱嗎？(y/N)：",
-                       ans_buf, 1, 1);
+                        ans_buf, sizeof(ans_buf) - 1, 1);
           if (ans_buf[0] == 'y' || ans_buf[0] == 'Y') {
             ans_buf[0] = 0;
             ask_question("看來你是個新朋友, 你要使用這個名稱嗎？(y/N)：",
-                        ans_buf, 1, 1);
+                        ans_buf, sizeof(ans_buf) - 1, 1);
             if (ans_buf[0] == 'y' || ans_buf[0] == 'Y') {
-              char password[9]; // Limit password length to 8 characters
+              char password[9]; // 密碼長度限制為 8 個字元
               do {
                 ans_buf[0] = 0;
-                ask_question("請輸入你的密碼：", password, 8, 0);
-                password[8] = 0; // Ensure null termination
+                ask_question("請輸入你的密碼：", password, sizeof(password) - 1, 0);
+                password[sizeof(password) - 1] = 0; // 確保結尾為空字元
                 ans_buf1[0] = 0;
-                ask_question("請再輸入一次確認：", ans_buf1, 8, 0);
-                ans_buf1[8] = 0; // Ensure null termination
+                ask_question("請再輸入一次確認：", ans_buf1, sizeof(ans_buf1) - 1, 0);
+                ans_buf1[sizeof(ans_buf1) - 1] = 0; // 確保結尾為空字元
               } while (strncmp(password, ans_buf1, sizeof(password)) != 0);
               snprintf(msg_buf, sizeof(msg_buf), "103%s", password);
               write_msg(gps_sockfd, msg_buf);
@@ -110,9 +123,8 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
             } else {
               do {
                 ans_buf[0] = 0;
-                ask_question("請重新輸入你的名稱：", ans_buf, 10, 1);
+                ask_question("請重新輸入你的名稱：", ans_buf, sizeof(ans_buf) - 1, 1);
               } while (ans_buf[0] == 0);
-              ans_buf[10] = 0;
               snprintf(msg_buf, sizeof(msg_buf), "101%s", ans_buf);
               write_msg(gps_sockfd, msg_buf);
               strncpy((char *)my_name, ans_buf, sizeof(my_name) - 1);
@@ -122,9 +134,8 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
           } else {
             do {
               ans_buf[0] = 0;
-              ask_question("請重新輸入你的名稱：", ans_buf, 10, 1);
+              ask_question("請重新輸入你的名稱：", ans_buf, sizeof(ans_buf) - 1, 1);
             } while (ans_buf[0] == 0);
-            ans_buf[10] = 0;
             snprintf(msg_buf, sizeof(msg_buf), "101%s", ans_buf);
             write_msg(gps_sockfd, msg_buf);
             strncpy((char *)my_name, ans_buf, sizeof(my_name) - 1);
@@ -132,41 +143,45 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
           }
           break;
         case 6:
+          // 處理重複登入
           ans_buf[0] = 0;
-          ask_question("重覆進入! 你要殺掉另一個帳號嗎? (y/N)：", ans_buf, 1,
-                       1);
+          ask_question("重覆進入! 你要殺掉另一個帳號嗎? (y/N)：", ans_buf, sizeof(ans_buf) - 1, 1);
           if (ans_buf[0] == 'y' || ans_buf[0] == 'Y') {
             write_msg(gps_sockfd, "105");
           } else {
             leave();
           }
           break;
-        case 10:  // 離線
+        case 10:
+          // 處理離線
           leave();
           break;
-        case 11:  // JOIN Sever
+        case 11:
+          // 處理加入牌桌
           switch (buf[3]) {
             case '0':
+              // 處理加入牌桌成功
               Tokenize((char *)buf + 4);
               send_gps_line("與該桌連線中...");
-
-              // Assuming cmd_argv is validated and doesn't cause buffer
-              // overflow
+              // 使用 init_socket 函式初始化牌桌連線
               int ret = init_socket((char *)cmd_argv[1], atoi((char *)cmd_argv[2]),
-                                     &table_sockfd);
-
+                                      &table_sockfd);
+              // 將牌桌連線加入監聽集合
               FD_SET(table_sockfd, &afds);
               in_join = 1;
               break;
             case '1':
+              // 處理找不到牌桌
               send_gps_line("查無此桌，請重新再試。（可用 /FREE 查詢空桌）");
               break;
             case '2':
+              // 處理連線失敗
               send_gps_line("無法連線");
               break;
           }
           break;
-        case 12:  // 開桌
+        case 12:
+          // 處理建立新牌桌
           init_serv_socket();
           snprintf(msg_buf, sizeof(msg_buf), "012%d", SERV_PORT - 1);
           write_msg(gps_sockfd, msg_buf);
@@ -180,11 +195,13 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
           strncpy(player[1].name, (char *)my_name, sizeof(player[1].name) - 1);
           player[1].name[sizeof(player[1].name) - 1] = '\0';
           my_sit = 1;
+          // 初始化牌桌狀態
           for (i = 0; i <= 4; i++) {
             table[i] = 0;
           }
           table[1] = 1;
           if (player_in_table == PLAYER_NUM) {
+            // 處理牌桌人數已滿
             init_playing_screen();
             opening();
             open_deal();
@@ -198,17 +215,21 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
               "請用 /Note <附註> 設定附註，其他人查詢空桌時將可參考。");
           break;
         case 101:
+          // 處理來自 GPS Server 的訊息
           send_gps_line((char *)buf + 3);
           break;
         case 102:
+          // 處理來自 GPS Server 的訊息
           display_news(gps_sockfd);
           break;
-        case 120: {
-          // Check if buf has enough space for the null terminator
+        case 120:
+          // 處理來自 GPS Server 的訊息
+          // 檢查 buf 是否有足夠空間存放空字元
           if (sizeof(buf) < 9) {
-            // Handle buffer overflow
+            // 處理緩衝區溢出
             break;
           }
+          // 使用 strncpy 避免緩衝區溢出
           strncpy(msg_buf, (char *)buf + 3, 5);
           msg_buf[5] = '\0';
           new_client_id = atoi(msg_buf);
@@ -218,50 +239,58 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
             my_money = new_client_money;
           }
           break;
-        }
         case 200:
+          // 處理來自 GPS Server 的訊息
           close(gps_sockfd);
           endwin();
           break;
         case 211:
+          // 處理來自 GPS Server 的訊息
           strncpy(new_client_name, (char *)buf + 3,
                   sizeof(new_client_name) - 1);
           new_client_name[sizeof(new_client_name) - 1] = '\0';
           new_client = 1;
           break;
         default:
+          // 處理未知的訊息 ID
           snprintf(msg_buf, sizeof(msg_buf), "msg_id=%d", msg_id);
           display_comment(msg_buf);
       }
       break;
     case FROM_CLIENT:
+      // 處理來自客戶端的訊息
       read_msg(player[player_id].sockfd, (char *)buf + 3);
       switch (msg_id) {
         case 101:
+          // 處理來自客戶端的訊息
           send_gps_line((char *)buf + 3);
           broadcast_msg(player_id, (char *)buf);
           break;
         case 102:
+          // 處理來自客戶端的訊息
           display_comment((char *)buf + 3);
           broadcast_msg(player_id, (char *)buf);
           break;
-        case 200:  // Other User Leave
+        case 200:
+          // 處理其他玩家離開
           close_client(player_id);
           break;
         case 290:
+          // 處理其他玩家離開
           broadcast_msg(player_id, (char *)buf);
           opening();
           open_deal();
           break;
         case 313:
-          // Send a card to client
+          // 處理發送牌給客戶端
           send_card_request = 1;
           break;
         case 315:
-          // Client finished
+          // 處理客戶端完成動作
           // next_player_request=1;
           break;
-        case 401:  // Others throw a card
+        case 401:
+          // 處理其他玩家丟棄牌
           pool[player[player_id].sit].time += thinktime();
           display_time(player[player_id].sit);
           snprintf(msg_buf, sizeof(msg_buf), "312%c%f",
@@ -282,6 +311,7 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
           throw_card(buf[3]);
           return_cursor();
           sit = player[player_id].sit;
+          // 移除丟棄的牌
           for (i = 0; i < pool[sit].num; i++) {
             if (pool[sit].card[i] == current_card) {
               break;
@@ -292,12 +322,13 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
           check_on = 1;
           send_card_on = 0;
           next_player_on = 0;
-          /* set in_check flag for players except the current player */
+          // 檢查其他玩家是否可以吃碰槓
           for (i = 1; i <= 4; i++) {
             if (table[i] > 0 && table[i] != player_id) {
               check_card(i, buf[3]);
             }
           }
+          // 通知其他玩家可以檢查
           for (i = 1; i <= 4; i++) {
             if (table[i] != 1 && i != turn) {
               for (j = 1; j < check_number; j++) {
@@ -308,7 +339,7 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
                   write_msg(player[table[i]].sockfd, msg_buf);
                   in_check[i] = 1;
                   check_mode_active = true;
-                  break;  // check next player
+                  break; // 檢查下一個玩家
                 } else {
                   in_check[i] = 0;
                 }
@@ -326,7 +357,8 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
           wait_hit[player[player_id].sit] = 1;
           break;
         case 501:
-          who(player[player_id].sockfd);
+          //who(player[player_id].sockfd);
+          list_players();
           break;
         case 510:
           in_check[player[player_id].sit] = 0;
@@ -345,11 +377,13 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
           draw_flower(buf[3], buf[4]);
           broadcast_msg(player_id, (char *)buf);
           break;
-        case 530:  // others epk a card
+        case 530:
+          // 其他玩家吃碰槓
           gettimeofday(&before, (struct timezone*)0);
           turn = player[buf[3]].sit;
           display_point(turn);
           if (buf[4] == 12) {
+            // 處理槓牌
             for (i = 0; i < pool[turn].out_card_index; i++) {
               if (pool[turn].out_card[i][0] == 2 &&
                   pool[turn].out_card[i][1] == buf[5]) {
@@ -360,13 +394,13 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
               }
             }
           } else {
+            // 處理吃碰
             for (i = 0; i <= 3; i++) {
               pool[turn].out_card[pool[turn].out_card_index][i] = buf[i + 4];
             }
-            if (buf[4] == 3 || buf[4] == 11) {  // 槓牌
+            if (buf[4] == 3 || buf[4] == 11) { // 槓牌
               pool[turn].out_card[pool[turn].out_card_index][4] = buf[7];
-              pool[turn]
-                  .out_card[pool[turn].out_card_index][5] = 0;
+              pool[turn].out_card[pool[turn].out_card_index][5] = 0;
             } else {
               pool[turn].out_card[pool[turn].out_card_index][4] = 0;
             }
@@ -377,6 +411,7 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
           return_cursor();
           switch (buf[4]) {
             case 2:
+              // 處理碰牌
               for (i = 0; i < pool[turn].num; i++) {
                 if (pool[turn].card[i] == buf[6]) {
                   pool[turn].card[i] = pool[turn].card[pool[turn].num - 1];
@@ -389,6 +424,7 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
               break;
             case 3:
             case 11:
+              // 處理槓牌
               for (i = 0; i < pool[turn].num; i++) {
                 if (pool[turn].card[i] == buf[6]) {
                   pool[turn].card[i] = pool[turn].card[pool[turn].num - 1];
@@ -403,6 +439,7 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
             case 7:
             case 8:
             case 9:
+              // 處理胡牌
               pool[turn].card[search_card(turn, buf[5])] =
                   pool[turn].card[pool[turn].num - 1];
               pool[turn].card[search_card(turn, buf[7])] =

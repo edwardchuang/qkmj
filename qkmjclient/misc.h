@@ -1,7 +1,9 @@
 #ifndef _MISC_H_
 #define _MISC_H_
 
-#include <ncurses.h>
+#if defined(HAVE_LIBNCURSES)
+  #include  <ncurses.h>
+#endif
 
 float thinktime();
 void beep1();

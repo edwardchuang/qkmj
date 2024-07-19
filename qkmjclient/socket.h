@@ -1,7 +1,7 @@
 #ifndef _SOCKET_H_
 #define _SOCKET_H_
 
-int Check_for_data (int fd);
+int Check_for_data(int fd);
 void init_serv_socket();
 void get_my_info();
 int init_socket(char *host,int portnum,int *sockfd);

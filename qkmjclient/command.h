@@ -46,6 +46,7 @@ void Tokenize(char *strinput);
 void my_strupr(char* upper,char* org);
 int command_mapper(char *cmd);
 void who(char *name);
+void list_players();
 void help();
 void command_parser(char *msg);
 

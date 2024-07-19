@@ -24,7 +24,7 @@ void show_card(char card,int x,int y,int type);
 void draw_title();
 void init_playing_screen();
 void init_global_screen();
-int wmvaddstr(WINDOW *win,int y,int x,char *str);
+void wmvaddstr(WINDOW *win,int y,int x,char *str);
 void draw_table();
 void draw_global_screen();
 void draw_playing_screen();
