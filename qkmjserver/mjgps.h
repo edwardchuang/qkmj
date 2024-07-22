@@ -9,7 +9,7 @@
 #define ASK_MODE 1
 #define CMD_MODE 2
 
-#define HOMEDIR "/tmp"
+#define HOMEDIR "/tmp/qkmj"
 #define RECORD_FILE HOMEDIR"/qkmj.rec"
 #define INDEX_FILE HOMEDIR"/qkmj.inx"
 #define NEWS_FILE HOMEDIR"/news.txt"
