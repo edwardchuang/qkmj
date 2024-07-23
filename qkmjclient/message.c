@@ -99,42 +99,39 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
         case 5:
           // 處理建立新帳戶
           ans_buf[0] = 0;
-          ask_question("看來你是個新朋友, 你要使用這個名稱嗎？(y/N)：",
-                        ans_buf, sizeof(ans_buf) - 1, 1);
+          ask_question("看來你是個新朋友, 你要使用這個名稱嗎？(y/N)：", ans_buf, 1, 1);
           if (ans_buf[0] == 'y' || ans_buf[0] == 'Y') {
             ans_buf[0] = 0;
-            ask_question("看來你是個新朋友, 你要使用這個名稱嗎？(y/N)：",
-                        ans_buf, sizeof(ans_buf) - 1, 1);
-            if (ans_buf[0] == 'y' || ans_buf[0] == 'Y') {
-              char password[9]; // 密碼長度限制為 8 個字元
-              do {
-                ans_buf[0] = 0;
-                ask_question("請輸入你的密碼：", password, sizeof(password) - 1, 0);
-                password[sizeof(password) - 1] = 0; // 確保結尾為空字元
-                ans_buf1[0] = 0;
-                ask_question("請再輸入一次確認：", ans_buf1, sizeof(ans_buf1) - 1, 0);
-                ans_buf1[sizeof(ans_buf1) - 1] = 0; // 確保結尾為空字元
-              } while (strncmp(password, ans_buf1, sizeof(password)) != 0);
-              snprintf(msg_buf, sizeof(msg_buf), "103%s", password);
-              write_msg(gps_sockfd, msg_buf);
-              strncpy((char *)my_pass, password, sizeof(my_pass) - 1);
-              my_pass[sizeof(my_pass) - 1] = '\0';
-            } else {
-              do {
-                ans_buf[0] = 0;
-                ask_question("請重新輸入你的名稱：", ans_buf, sizeof(ans_buf) - 1, 1);
-              } while (ans_buf[0] == 0);
-              snprintf(msg_buf, sizeof(msg_buf), "101%s", ans_buf);
-              write_msg(gps_sockfd, msg_buf);
-              strncpy((char *)my_name, ans_buf, sizeof(my_name) - 1);
-              my_name[sizeof(my_name) - 1] = '\0';
+            ask_question("請輸入你的密碼：", ans_buf, 8, 0);
+            ans_buf1[0] = 0;
+            ask_question("請再輸入一次確認：", ans_buf1, 8, 0);
+            // 使用 strncpy 避免緩衝區溢出
+            strncpy(ans_buf, ans_buf, 8);
+            ans_buf[8] = '\0';
+            strncpy(ans_buf1, ans_buf1, 8);
+            ans_buf1[8] = '\0';
+            // 使用 strncmp 避免緩衝區溢出
+            while (strncmp(ans_buf, ans_buf1, 8) != 0) {
+              ans_buf[0] = 0;
+              ask_question("兩次密碼不同! 請重新輸入你的密碼：", ans_buf, 8, 0);
+              ans_buf1[0] = 0;
+              ask_question("請再輸入一次確認：", ans_buf1, 8, 0);
+              strncpy(ans_buf, ans_buf, 8);
+              ans_buf[8] = '\0';
+              strncpy(ans_buf1, ans_buf1, 8);
+              ans_buf1[8] = '\0';
             }
-            break;
+            // 使用 snprintf 避免緩衝區溢出
+            snprintf(msg_buf, sizeof(msg_buf), "103%s", ans_buf);
+            write_msg(gps_sockfd, msg_buf);
+            strncpy((char *)my_pass, ans_buf, sizeof(my_pass) - 1);
+            my_pass[sizeof(my_pass) - 1] = '\0';
           } else {
             do {
               ans_buf[0] = 0;
-              ask_question("請重新輸入你的名稱：", ans_buf, sizeof(ans_buf) - 1, 1);
+              ask_question("請重新輸入你的名稱：", ans_buf, 10, 1);
             } while (ans_buf[0] == 0);
+            ans_buf[sizeof(ans_buf) -1] = '\0';
             snprintf(msg_buf, sizeof(msg_buf), "101%s", ans_buf);
             write_msg(gps_sockfd, msg_buf);
             strncpy((char *)my_name, ans_buf, sizeof(my_name) - 1);
