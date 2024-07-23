@@ -10,10 +10,6 @@
 #include <sys/time.h>
 #include <ctype.h>
 
-#if defined(HAVE_LIBNCURSES)
-  #include  <ncurses.h>
-#endif
-
 #include "qkmj.h"
 
 int enable_kick=1;

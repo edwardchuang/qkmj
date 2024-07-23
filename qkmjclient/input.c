@@ -9,10 +9,6 @@
 #include <signal.h>
 #include <sys/time.h>
 
-#if defined(HAVE_LIBNCURSES)
-  #include  <ncurses.h>
-#endif
-
 #include "qkmj.h"
 
 void process_key()

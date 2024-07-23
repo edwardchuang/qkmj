@@ -1,7 +1,7 @@
 #ifndef _SCREEN_H_
 #define _SCREEN_H_
 
-#include <ncurses.h>
+#include "qkmj.h"
 #include "mjdef.h"
 
 int set_color(int fore,int back);

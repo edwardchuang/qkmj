@@ -17,10 +17,6 @@
 
 #include "qkmj.h"
 
-#if defined(HAVE_LIBNCURSES)
-  #include  <ncurses.h>
-#endif
-
 struct passwd *userdata;
 
 int Check_for_data(int fd)

@@ -11,10 +11,6 @@
 
 #include "qkmj.h"
 
-#if defined(HAVE_LIBNCURSES)
-  #include  <ncurses.h>
-#endif
-
 void init_check_mode() {
   // 初始化檢查模式
   int i;

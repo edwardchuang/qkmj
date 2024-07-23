@@ -1,9 +1,7 @@
 #ifndef _MISC_H_
 #define _MISC_H_
 
-#if defined(HAVE_LIBNCURSES)
-  #include  <ncurses.h>
-#endif
+#include "qkmj.h"
 
 float thinktime();
 void beep1();

@@ -17,3 +17,4 @@ qkmj_SOURCES = qkmjclient/qkmj.c \
     qkmjclient/socket.h \
     qkmjclient/mjdef.h \
     qkmjclient/misc.h
+qkmj_LDADD = $(NCURSES_LIBS)

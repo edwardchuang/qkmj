@@ -2,7 +2,23 @@
 #ifndef _QKMJ_H_
 #define _QKMJ_H_
 
-#include <curses.h>
+#if defined(HAVE_NCURSESW_CURSES_H)
+  #include <ncursesw/curses.h>
+#elif defined(HAVE_NCURSES_NCURSES_H)
+  #include <ncurses/ncurses.h>
+#elif defined(HAVE_NCURSES_CURSES_H)
+  #include <ncurses/curses.h>
+#elif defined(HAVE_NCURSES_H)
+  #include <ncurses.h>
+#elif defined(HAVE_CURSES_H)
+  #include <curses.h>
+#endif
+
+#ifdef HAVE_LIBNCURSESW
+  #include <wchar.h>
+  #include <wctype.h>
+#endif
+
 #include <netinet/in.h>
 #include "mjdef.h"
 #include "screen.h"

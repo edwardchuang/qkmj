@@ -10,10 +10,6 @@
 #define STRAIGHT_CARD 2
 #define PAIR_CARD 3
 
-#if defined(HAVE_LIBNCURSES)
-  #include  <ncurses.h>
-#endif
-
 #include "qkmj.h"
 
 struct card_info_type card_info[20];
