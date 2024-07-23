@@ -116,7 +116,7 @@ am_qkmj_OBJECTS = qkmjclient/qkmj.$(OBJEXT) qkmjclient/input.$(OBJEXT) \
 	qkmjclient/card.$(OBJEXT) qkmjclient/chkmake.$(OBJEXT) \
 	qkmjclient/misc.$(OBJEXT)
 qkmj_OBJECTS = $(am_qkmj_OBJECTS)
-qkmj_LDADD = $(LDADD)
+qkmj_DEPENDENCIES =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -130,8 +130,16 @@ am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
 am__v_at_0 = @
 am__v_at_1 = 
 DEFAULT_INCLUDES = -I.@am__isrc@
-depcomp =
-am__maybe_remake_depfiles =
+depcomp = $(SHELL) $(top_srcdir)/depcomp
+am__maybe_remake_depfiles = depfiles
+am__depfiles_remade = qkmjclient/$(DEPDIR)/card.Po \
+	qkmjclient/$(DEPDIR)/check.Po qkmjclient/$(DEPDIR)/checkscr.Po \
+	qkmjclient/$(DEPDIR)/chkmake.Po \
+	qkmjclient/$(DEPDIR)/command.Po qkmjclient/$(DEPDIR)/input.Po \
+	qkmjclient/$(DEPDIR)/message.Po qkmjclient/$(DEPDIR)/misc.Po \
+	qkmjclient/$(DEPDIR)/qkmj.Po qkmjclient/$(DEPDIR)/screen.Po \
+	qkmjclient/$(DEPDIR)/socket.Po qkmjserver/$(DEPDIR)/mjgps.Po
+am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 AM_V_CC = $(am__v_CC_@AM_V@)
@@ -170,7 +178,7 @@ am__define_uniq_tagged_files = \
   done | $(am__uniquify_input)`
 AM_RECURSIVE_TARGETS = cscope
 am__DIST_COMMON = $(srcdir)/Makefile.in README.md compile config.guess \
-	config.sub install-sh missing
+	config.sub depcomp install-sh missing
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -222,6 +230,8 @@ LIBS = @LIBS@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+NCURSESW_CFLAGS = @NCURSESW_CFLAGS@
+NCURSESW_LIBS = @NCURSESW_LIBS@
 OBJEXT = @OBJEXT@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
@@ -303,6 +313,7 @@ qkmj_SOURCES = qkmjclient/qkmj.c \
     qkmjclient/mjdef.h \
     qkmjclient/misc.h
 
+qkmj_LDADD = $(NCURSES_LIBS)
 all: all-am
 
 .SUFFIXES:
@@ -313,15 +324,15 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
-	      echo ' cd $(srcdir) && $(AUTOMAKE) --foreign --ignore-deps'; \
-	      $(am__cd) $(srcdir) && $(AUTOMAKE) --foreign --ignore-deps \
+	      echo ' cd $(srcdir) && $(AUTOMAKE) --foreign'; \
+	      $(am__cd) $(srcdir) && $(AUTOMAKE) --foreign \
 		&& exit 0; \
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign --ignore-deps Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign --ignore-deps Makefile
+	  $(AUTOMAKE) --foreign Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
@@ -385,7 +396,11 @@ clean-binPROGRAMS:
 qkmjserver/$(am__dirstamp):
 	@$(MKDIR_P) qkmjserver
 	@: > qkmjserver/$(am__dirstamp)
-qkmjserver/mjgps.$(OBJEXT): qkmjserver/$(am__dirstamp)
+qkmjserver/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) qkmjserver/$(DEPDIR)
+	@: > qkmjserver/$(DEPDIR)/$(am__dirstamp)
+qkmjserver/mjgps.$(OBJEXT): qkmjserver/$(am__dirstamp) \
+	qkmjserver/$(DEPDIR)/$(am__dirstamp)
 
 mjgps$(EXEEXT): $(mjgps_OBJECTS) $(mjgps_DEPENDENCIES) $(EXTRA_mjgps_DEPENDENCIES) 
 	@rm -f mjgps$(EXEEXT)
@@ -393,17 +408,31 @@ mjgps$(EXEEXT): $(mjgps_OBJECTS) $(mjgps_DEPENDENCIES) $(EXTRA_mjgps_DEPENDENCIE
 qkmjclient/$(am__dirstamp):
 	@$(MKDIR_P) qkmjclient
 	@: > qkmjclient/$(am__dirstamp)
-qkmjclient/qkmj.$(OBJEXT): qkmjclient/$(am__dirstamp)
-qkmjclient/input.$(OBJEXT): qkmjclient/$(am__dirstamp)
-qkmjclient/screen.$(OBJEXT): qkmjclient/$(am__dirstamp)
-qkmjclient/socket.$(OBJEXT): qkmjclient/$(am__dirstamp)
-qkmjclient/command.$(OBJEXT): qkmjclient/$(am__dirstamp)
-qkmjclient/message.$(OBJEXT): qkmjclient/$(am__dirstamp)
-qkmjclient/check.$(OBJEXT): qkmjclient/$(am__dirstamp)
-qkmjclient/checkscr.$(OBJEXT): qkmjclient/$(am__dirstamp)
-qkmjclient/card.$(OBJEXT): qkmjclient/$(am__dirstamp)
-qkmjclient/chkmake.$(OBJEXT): qkmjclient/$(am__dirstamp)
-qkmjclient/misc.$(OBJEXT): qkmjclient/$(am__dirstamp)
+qkmjclient/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) qkmjclient/$(DEPDIR)
+	@: > qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/qkmj.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/input.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/screen.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/socket.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/command.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/message.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/check.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/checkscr.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/card.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/chkmake.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/misc.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
 
 qkmj$(EXEEXT): $(qkmj_OBJECTS) $(qkmj_DEPENDENCIES) $(EXTRA_qkmj_DEPENDENCIES) 
 	@rm -f qkmj$(EXEEXT)
@@ -417,11 +446,40 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/card.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/check.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/checkscr.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/chkmake.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/command.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/input.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/message.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/misc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/qkmj.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/screen.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/socket.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjserver/$(DEPDIR)/mjgps.Po@am__quote@ # am--include-marker
+
+$(am__depfiles_remade):
+	@$(MKDIR_P) $(@D)
+	@echo '# dummy' >$@-t && $(am__mv) $@-t $@
+
+am--depfiles: $(am__depfiles_remade)
+
 .c.o:
-	$(AM_V_CC)$(COMPILE) -c -o $@ $<
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ $<
 
 .c.obj:
-	$(AM_V_CC)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
@@ -686,7 +744,9 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f qkmjclient/$(DEPDIR)/$(am__dirstamp)
 	-rm -f qkmjclient/$(am__dirstamp)
+	-rm -f qkmjserver/$(DEPDIR)/$(am__dirstamp)
 	-rm -f qkmjserver/$(am__dirstamp)
 
 maintainer-clean-generic:
@@ -698,6 +758,18 @@ clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
 distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
+		-rm -f qkmjclient/$(DEPDIR)/card.Po
+	-rm -f qkmjclient/$(DEPDIR)/check.Po
+	-rm -f qkmjclient/$(DEPDIR)/checkscr.Po
+	-rm -f qkmjclient/$(DEPDIR)/chkmake.Po
+	-rm -f qkmjclient/$(DEPDIR)/command.Po
+	-rm -f qkmjclient/$(DEPDIR)/input.Po
+	-rm -f qkmjclient/$(DEPDIR)/message.Po
+	-rm -f qkmjclient/$(DEPDIR)/misc.Po
+	-rm -f qkmjclient/$(DEPDIR)/qkmj.Po
+	-rm -f qkmjclient/$(DEPDIR)/screen.Po
+	-rm -f qkmjclient/$(DEPDIR)/socket.Po
+	-rm -f qkmjserver/$(DEPDIR)/mjgps.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -745,6 +817,18 @@ installcheck-am:
 maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
+		-rm -f qkmjclient/$(DEPDIR)/card.Po
+	-rm -f qkmjclient/$(DEPDIR)/check.Po
+	-rm -f qkmjclient/$(DEPDIR)/checkscr.Po
+	-rm -f qkmjclient/$(DEPDIR)/chkmake.Po
+	-rm -f qkmjclient/$(DEPDIR)/command.Po
+	-rm -f qkmjclient/$(DEPDIR)/input.Po
+	-rm -f qkmjclient/$(DEPDIR)/message.Po
+	-rm -f qkmjclient/$(DEPDIR)/misc.Po
+	-rm -f qkmjclient/$(DEPDIR)/qkmj.Po
+	-rm -f qkmjclient/$(DEPDIR)/screen.Po
+	-rm -f qkmjclient/$(DEPDIR)/socket.Po
+	-rm -f qkmjserver/$(DEPDIR)/mjgps.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -764,9 +848,9 @@ uninstall-am: uninstall-binPROGRAMS
 
 .MAKE: install-am install-strip
 
-.PHONY: CTAGS GTAGS TAGS all all-am am--refresh check check-am clean \
-	clean-binPROGRAMS clean-cscope clean-generic cscope \
-	cscopelist-am ctags ctags-am dist dist-all dist-bzip2 \
+.PHONY: CTAGS GTAGS TAGS all all-am am--depfiles am--refresh check \
+	check-am clean clean-binPROGRAMS clean-cscope clean-generic \
+	cscope cscopelist-am ctags ctags-am dist dist-all dist-bzip2 \
 	dist-gzip dist-lzip dist-shar dist-tarZ dist-xz dist-zip \
 	dist-zstd distcheck distclean distclean-compile \
 	distclean-generic distclean-tags distcleancheck distdir \

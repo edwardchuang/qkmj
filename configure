@@ -649,14 +649,8 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
-host_os
-host_vendor
-host_cpu
-host
-build_os
-build_vendor
-build_cpu
-build
+NCURSESW_LIBS
+NCURSESW_CFLAGS
 am__fastdepCC_FALSE
 am__fastdepCC_TRUE
 CCDEPMODE
@@ -703,6 +697,14 @@ am__isrc
 INSTALL_DATA
 INSTALL_SCRIPT
 INSTALL_PROGRAM
+host_os
+host_vendor
+host_cpu
+host
+build_os
+build_vendor
+build_cpu
+build
 target_alias
 host_alias
 build_alias
@@ -2375,7 +2377,7 @@ as_fn_append ac_header_c_list " sys/types.h sys_types_h HAVE_SYS_TYPES_H"
 as_fn_append ac_header_c_list " unistd.h unistd_h HAVE_UNISTD_H"
 
 # Auxiliary files required by this configure script.
-ac_aux_files="config.guess config.sub compile missing install-sh"
+ac_aux_files="compile missing install-sh config.guess config.sub"
 
 # Locations in which to look for auxiliary files.
 ac_aux_dir_candidates="${srcdir}${PATH_SEPARATOR}${srcdir}/..${PATH_SEPARATOR}${srcdir}/../.."
@@ -2541,8 +2543,83 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-am__api_version='1.16'
 
+
+  # Make sure we can run config.sub.
+$SHELL "${ac_aux_dir}config.sub" sun4 >/dev/null 2>&1 ||
+  as_fn_error $? "cannot run $SHELL ${ac_aux_dir}config.sub" "$LINENO" 5
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build system type" >&5
+printf %s "checking build system type... " >&6; }
+if test ${ac_cv_build+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_build_alias=$build_alias
+test "x$ac_build_alias" = x &&
+  ac_build_alias=`$SHELL "${ac_aux_dir}config.guess"`
+test "x$ac_build_alias" = x &&
+  as_fn_error $? "cannot guess build type; you must specify one" "$LINENO" 5
+ac_cv_build=`$SHELL "${ac_aux_dir}config.sub" $ac_build_alias` ||
+  as_fn_error $? "$SHELL ${ac_aux_dir}config.sub $ac_build_alias failed" "$LINENO" 5
+
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_build" >&5
+printf "%s\n" "$ac_cv_build" >&6; }
+case $ac_cv_build in
+*-*-*) ;;
+*) as_fn_error $? "invalid value of canonical build" "$LINENO" 5;;
+esac
+build=$ac_cv_build
+ac_save_IFS=$IFS; IFS='-'
+set x $ac_cv_build
+shift
+build_cpu=$1
+build_vendor=$2
+shift; shift
+# Remember, the first character of IFS is used to create $*,
+# except with old shells:
+build_os=$*
+IFS=$ac_save_IFS
+case $build_os in *\ *) build_os=`echo "$build_os" | sed 's/ /-/g'`;; esac
+
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking host system type" >&5
+printf %s "checking host system type... " >&6; }
+if test ${ac_cv_host+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  if test "x$host_alias" = x; then
+  ac_cv_host=$ac_cv_build
+else
+  ac_cv_host=`$SHELL "${ac_aux_dir}config.sub" $host_alias` ||
+    as_fn_error $? "$SHELL ${ac_aux_dir}config.sub $host_alias failed" "$LINENO" 5
+fi
+
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_host" >&5
+printf "%s\n" "$ac_cv_host" >&6; }
+case $ac_cv_host in
+*-*-*) ;;
+*) as_fn_error $? "invalid value of canonical host" "$LINENO" 5;;
+esac
+host=$ac_cv_host
+ac_save_IFS=$IFS; IFS='-'
+set x $ac_cv_host
+shift
+host_cpu=$1
+host_vendor=$2
+shift; shift
+# Remember, the first character of IFS is used to create $*,
+# except with old shells:
+host_os=$*
+IFS=$ac_save_IFS
+case $host_os in *\ *) host_os=`echo "$host_os" | sed 's/ /-/g'`;; esac
+
+
+
+am__api_version='1.16'
 
 
   # Find a good install program.  We prefer a C program (faster),
@@ -4442,7 +4519,303 @@ printf "%s\n" "no" >&6; }
 fi
 
 
-# Checks for libraries.
+
+ac_header= ac_cache=
+for ac_item in $ac_header_c_list
+do
+  if test $ac_cache; then
+    ac_fn_c_check_header_compile "$LINENO" $ac_header ac_cv_header_$ac_cache "$ac_includes_default"
+    if eval test \"x\$ac_cv_header_$ac_cache\" = xyes; then
+      printf "%s\n" "#define $ac_item 1" >> confdefs.h
+    fi
+    ac_header= ac_cache=
+  elif test $ac_header; then
+    ac_cache=$ac_item
+  else
+    ac_header=$ac_item
+  fi
+done
+
+
+
+
+
+
+
+
+if test $ac_cv_header_stdlib_h = yes && test $ac_cv_header_string_h = yes
+then :
+
+printf "%s\n" "#define STDC_HEADERS 1" >>confdefs.h
+
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for killwchar in -lncursesw" >&5
+printf %s "checking for killwchar in -lncursesw... " >&6; }
+if test ${ac_cv_lib_ncursesw_killwchar+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lncursesw  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char killwchar ();
+int
+main (void)
+{
+return killwchar ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_ncursesw_killwchar=yes
+else $as_nop
+  ac_cv_lib_ncursesw_killwchar=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ncursesw_killwchar" >&5
+printf "%s\n" "$ac_cv_lib_ncursesw_killwchar" >&6; }
+if test "x$ac_cv_lib_ncursesw_killwchar" = xyes
+then :
+  printf "%s\n" "#define HAVE_LIBNCURSESW 1" >>confdefs.h
+
+  LIBS="-lncursesw $LIBS"
+
+else $as_nop
+
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for killwchar in -lncurses" >&5
+printf %s "checking for killwchar in -lncurses... " >&6; }
+if test ${ac_cv_lib_ncurses_killwchar+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lncurses  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char killwchar ();
+int
+main (void)
+{
+return killwchar ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_ncurses_killwchar=yes
+else $as_nop
+  ac_cv_lib_ncurses_killwchar=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ncurses_killwchar" >&5
+printf "%s\n" "$ac_cv_lib_ncurses_killwchar" >&6; }
+if test "x$ac_cv_lib_ncurses_killwchar" = xyes
+then :
+  printf "%s\n" "#define HAVE_LIBNCURSES 1" >>confdefs.h
+
+  LIBS="-lncurses $LIBS"
+
+else $as_nop
+
+
+
+        if pkg-config --exists ncursesw
+        then
+            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Module ncursesw found" >&5
+printf "%s\n" "$as_me: Module ncursesw found" >&6;}
+            NCURSESW_CFLAGS=`pkg-config --cflags ncursesw`
+            NCURSESW_LIBS=`pkg-config --libs ncursesw`
+        else
+            if pkg-config --exists ncurses
+            then
+                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Module ncurses found" >&5
+printf "%s\n" "$as_me: Module ncurses found" >&6;}
+                NCURSESW_CFLAGS=`pkg-config --cflags ncursesw`
+                NCURSESW_LIBS=`pkg-config --libs ncurses`
+            else
+                case $host_os in #(
+  darwin*) :
+
+                      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for killwchar in -lncurses" >&5
+printf %s "checking for killwchar in -lncurses... " >&6; }
+if test ${ac_cv_lib_ncurses_killwchar+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lncurses  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char killwchar ();
+int
+main (void)
+{
+return killwchar ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_ncurses_killwchar=yes
+else $as_nop
+  ac_cv_lib_ncurses_killwchar=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ncurses_killwchar" >&5
+printf "%s\n" "$ac_cv_lib_ncurses_killwchar" >&6; }
+if test "x$ac_cv_lib_ncurses_killwchar" = xyes
+then :
+  printf "%s\n" "#define HAVE_LIBNCURSES 1" >>confdefs.h
+
+  LIBS="-lncurses $LIBS"
+
+else $as_nop
+  as_fn_error $? "Could not find ncurses library" "$LINENO" 5
+fi
+
+                      ac_fn_c_check_header_compile "$LINENO" "curses.h" "ac_cv_header_curses_h" "$ac_includes_default"
+if test "x$ac_cv_header_curses_h" = xyes
+then :
+
+fi
+
+                     ;; #(
+  *) :
+
+                    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for killwchar in -lncursesw" >&5
+printf %s "checking for killwchar in -lncursesw... " >&6; }
+if test ${ac_cv_lib_ncursesw_killwchar+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lncursesw  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+char killwchar ();
+int
+main (void)
+{
+return killwchar ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_ncursesw_killwchar=yes
+else $as_nop
+  ac_cv_lib_ncursesw_killwchar=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ncursesw_killwchar" >&5
+printf "%s\n" "$ac_cv_lib_ncursesw_killwchar" >&6; }
+if test "x$ac_cv_lib_ncursesw_killwchar" = xyes
+then :
+  printf "%s\n" "#define HAVE_LIBNCURSESW 1" >>confdefs.h
+
+  LIBS="-lncursesw $LIBS"
+
+else $as_nop
+  as_fn_error $? "Could not find ncursesw library" "$LINENO" 5
+fi
+
+                    ac_fn_c_check_header_compile "$LINENO" "ncursesw/curses.h" "ac_cv_header_ncursesw_curses_h" "$ac_includes_default"
+if test "x$ac_cv_header_ncursesw_curses_h" = xyes
+then :
+
+fi
+
+
+                 ;;
+esac
+            fi
+        fi
+
+fi
+ # FAIL of ncurses
+
+fi
+ # FAIL of ncursesw
+
+       for ac_header in ncursesw/curses.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "ncursesw/curses.h" "ac_cv_header_ncursesw_curses_h" "$ac_includes_default"
+if test "x$ac_cv_header_ncursesw_curses_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_NCURSESW_CURSES_H 1" >>confdefs.h
+
+else $as_nop
+         for ac_header in ncurses/ncurses.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "ncurses/ncurses.h" "ac_cv_header_ncurses_ncurses_h" "$ac_includes_default"
+if test "x$ac_cv_header_ncurses_ncurses_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_NCURSES_NCURSES_H 1" >>confdefs.h
+
+else $as_nop
+         for ac_header in ncurses/curses.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "ncurses/curses.h" "ac_cv_header_ncurses_curses_h" "$ac_includes_default"
+if test "x$ac_cv_header_ncurses_curses_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_NCURSES_CURSES_H 1" >>confdefs.h
+
+else $as_nop
+         for ac_header in ncurses.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "ncurses.h" "ac_cv_header_ncurses_h" "$ac_includes_default"
+if test "x$ac_cv_header_ncurses_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_NCURSES_H 1" >>confdefs.h
+
+else $as_nop
+  as_fn_error $? "can not find required ncurses header file" "$LINENO" 5
+fi
+
+done
+fi
+
+done
+fi
+
+done
+fi
+
+done
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for main in -lm" >&5
 printf %s "checking for main in -lm... " >&6; }
@@ -4481,46 +4854,6 @@ then :
   printf "%s\n" "#define HAVE_LIBM 1" >>confdefs.h
 
   LIBS="-lm $LIBS"
-
-fi
-
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for main in -lncurses" >&5
-printf %s "checking for main in -lncurses... " >&6; }
-if test ${ac_cv_lib_ncurses_main+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lncurses  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-int
-main (void)
-{
-return main ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_ncurses_main=yes
-else $as_nop
-  ac_cv_lib_ncurses_main=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ncurses_main" >&5
-printf "%s\n" "$ac_cv_lib_ncurses_main" >&6; }
-if test "x$ac_cv_lib_ncurses_main" = xyes
-then :
-  printf "%s\n" "#define HAVE_LIBNCURSES 1" >>confdefs.h
-
-  LIBS="-lncurses $LIBS"
 
 fi
 
@@ -4566,35 +4899,6 @@ fi
 
 
 # Checks for header files.
-ac_header= ac_cache=
-for ac_item in $ac_header_c_list
-do
-  if test $ac_cache; then
-    ac_fn_c_check_header_compile "$LINENO" $ac_header ac_cv_header_$ac_cache "$ac_includes_default"
-    if eval test \"x\$ac_cv_header_$ac_cache\" = xyes; then
-      printf "%s\n" "#define $ac_item 1" >> confdefs.h
-    fi
-    ac_header= ac_cache=
-  elif test $ac_header; then
-    ac_cache=$ac_item
-  else
-    ac_header=$ac_item
-  fi
-done
-
-
-
-
-
-
-
-
-if test $ac_cv_header_stdlib_h = yes && test $ac_cv_header_string_h = yes
-then :
-
-printf "%s\n" "#define STDC_HEADERS 1" >>confdefs.h
-
-fi
 ac_fn_c_check_header_compile "$LINENO" "arpa/inet.h" "ac_cv_header_arpa_inet_h" "$ac_includes_default"
 if test "x$ac_cv_header_arpa_inet_h" = xyes
 then :
@@ -4814,81 +5118,6 @@ printf "%s\n" "$ac_cv_header_stdbool_h" >&6; }
 
 
 # Checks for library functions.
-
-
-  # Make sure we can run config.sub.
-$SHELL "${ac_aux_dir}config.sub" sun4 >/dev/null 2>&1 ||
-  as_fn_error $? "cannot run $SHELL ${ac_aux_dir}config.sub" "$LINENO" 5
-
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking build system type" >&5
-printf %s "checking build system type... " >&6; }
-if test ${ac_cv_build+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_build_alias=$build_alias
-test "x$ac_build_alias" = x &&
-  ac_build_alias=`$SHELL "${ac_aux_dir}config.guess"`
-test "x$ac_build_alias" = x &&
-  as_fn_error $? "cannot guess build type; you must specify one" "$LINENO" 5
-ac_cv_build=`$SHELL "${ac_aux_dir}config.sub" $ac_build_alias` ||
-  as_fn_error $? "$SHELL ${ac_aux_dir}config.sub $ac_build_alias failed" "$LINENO" 5
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_build" >&5
-printf "%s\n" "$ac_cv_build" >&6; }
-case $ac_cv_build in
-*-*-*) ;;
-*) as_fn_error $? "invalid value of canonical build" "$LINENO" 5;;
-esac
-build=$ac_cv_build
-ac_save_IFS=$IFS; IFS='-'
-set x $ac_cv_build
-shift
-build_cpu=$1
-build_vendor=$2
-shift; shift
-# Remember, the first character of IFS is used to create $*,
-# except with old shells:
-build_os=$*
-IFS=$ac_save_IFS
-case $build_os in *\ *) build_os=`echo "$build_os" | sed 's/ /-/g'`;; esac
-
-
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking host system type" >&5
-printf %s "checking host system type... " >&6; }
-if test ${ac_cv_host+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  if test "x$host_alias" = x; then
-  ac_cv_host=$ac_cv_build
-else
-  ac_cv_host=`$SHELL "${ac_aux_dir}config.sub" $host_alias` ||
-    as_fn_error $? "$SHELL ${ac_aux_dir}config.sub $host_alias failed" "$LINENO" 5
-fi
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_host" >&5
-printf "%s\n" "$ac_cv_host" >&6; }
-case $ac_cv_host in
-*-*-*) ;;
-*) as_fn_error $? "invalid value of canonical host" "$LINENO" 5;;
-esac
-host=$ac_cv_host
-ac_save_IFS=$IFS; IFS='-'
-set x $ac_cv_host
-shift
-host_cpu=$1
-host_vendor=$2
-shift; shift
-# Remember, the first character of IFS is used to create $*,
-# except with old shells:
-host_os=$*
-IFS=$ac_save_IFS
-case $host_os in *\ *) host_os=`echo "$host_os" | sed 's/ /-/g'`;; esac
-
-
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for GNU libc compatible malloc" >&5
 printf %s "checking for GNU libc compatible malloc... " >&6; }
 if test ${ac_cv_func_malloc_0_nonnull+y}
