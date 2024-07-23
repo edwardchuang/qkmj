@@ -1124,7 +1124,7 @@ void show_online_users(int player_id) {
   fp = fopen(RECORD_FILE, "rb");
   if (fp == NULL) {
     // 顯示錯誤訊息
-    snprintf(msg_buf, sizeof(msg_buf), "(current) 无法打开文件\n");
+    snprintf(msg_buf, sizeof(msg_buf), "(current) 無法打開文件\n");
     err(msg_buf);
   } else {
     // 重置檔案指標
