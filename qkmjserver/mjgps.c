@@ -69,8 +69,12 @@ int err(char *errmsg) {
     return -1;
   }
 
-  // 顯示錯誤訊息
-  printf("%s", errmsg);
+// 顯示錯誤訊息
+  time_t now = time(0);
+  struct tm *t = localtime(&now);
+  char datetime[80];
+  strftime(datetime, sizeof(datetime), "%FT%T%z", t);
+  printf("[mjgps][%s] %s", datetime, errmsg);
 
   // 檢查日誌等級
   if (log_level == 0) {
