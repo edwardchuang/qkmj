@@ -1158,7 +1158,7 @@ void show_online_users(int player_id) {
 
   // 組成訊息
   snprintf(msg_buf, sizeof(msg_buf),
-           "101◇目前上線人數: %d 人       注冊人數: %d 人", online_num,
+           "101◇目前上線人數: %d 人       註冊人數: %d 人", online_num,
            total_num);
 
   // 將訊息寫入玩家的 socket
