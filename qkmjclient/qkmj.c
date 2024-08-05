@@ -828,6 +828,7 @@ void gps() {
     // 顯示連線錯誤訊息
     err("無法連往 QKMJ Server");
     endwin();
+    fprintf(stderr, "無法連往 QKMJ Server QKMJ Server: %s port %d\n", GPS_IP, GPS_PORT);
     exit(0);
   }
   //send_gps_line("已連上");
