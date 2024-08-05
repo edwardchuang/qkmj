@@ -773,7 +773,7 @@ int read_user_name(char *name) {
   fp = fopen(RECORD_FILE, "a+b");
   if (fp == NULL) {
     // 顯示錯誤訊息
-    snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) 无法打开文件！\n");
+    snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) 無法打開文件！\n");
     err(msg_buf);
     return 0;
   }
@@ -813,7 +813,7 @@ int read_user_name_update(char *name, int player_id) {
   fp = fopen(RECORD_FILE, "a+b");
   if (fp == NULL) {
     // 顯示錯誤訊息
-    snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) 无法打开文件！\n");
+    snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) 無法打開文件！\n");
     err(msg_buf);
     return 0;
   }
@@ -859,7 +859,7 @@ int read_user_id(unsigned int id) {
   fp = fopen(RECORD_FILE, "a+b");
   if (fp == NULL) {
     // 顯示錯誤訊息
-    snprintf(msg_buf, sizeof(msg_buf), "(read_user_id) 无法打开文件！\n");
+    snprintf(msg_buf, sizeof(msg_buf), "(read_user_id) 無法打開文件！\n");
     err(msg_buf);
     return -1;
   }
@@ -873,7 +873,7 @@ int read_user_id(unsigned int id) {
   // 嘗試讀取記錄
   if (fread(&record, sizeof(record), 1, fp) == -1) {
     // 顯示錯誤訊息
-    snprintf(msg_buf, sizeof(msg_buf), "(read_user_id) 无法写入文件！\n");
+    snprintf(msg_buf, sizeof(msg_buf), "(read_user_id) 無法寫入文件！\n");
     err(msg_buf);
 
     // 關閉檔案
@@ -967,7 +967,7 @@ int check_user(int player_id) {
   baduser_fp = fopen(BADUSER_FILE, "r");
   if (baduser_fp == NULL) {
     // 顯示錯誤訊息
-    snprintf(msg_buf, sizeof(msg_buf), "无法打开文件 %s", BADUSER_FILE);
+    snprintf(msg_buf, sizeof(msg_buf), "無法打開文件 %s", BADUSER_FILE);
     err(msg_buf);
     return 1;
   }
@@ -1014,7 +1014,7 @@ void write_record() {
   fp = fopen(RECORD_FILE, "r+b");
   if (fp == NULL) {
     // 顯示錯誤訊息
-    snprintf(msg_buf, sizeof(msg_buf), "(write_record) 无法打开文件！");
+    snprintf(msg_buf, sizeof(msg_buf), "(write_record) 無法打開文件！");
     err(msg_buf);
     return;
   }
@@ -1040,7 +1040,7 @@ void print_news(int fd, char *name) {
   news_fp = fopen(name, "r");
   if (news_fp == NULL) {
     // 顯示錯誤訊息
-    snprintf(msg_buf, sizeof(msg_buf), "无法打开文件 %s\n", NEWS_FILE);
+    snprintf(msg_buf, sizeof(msg_buf), "無法打開文件 %s\n", NEWS_FILE);
     err(msg_buf);
     return;
   }
