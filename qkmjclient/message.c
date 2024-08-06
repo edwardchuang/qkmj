@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include "command.h"
 #include "qkmj.h"
@@ -179,7 +180,7 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
         case 12:
           // 處理建立新牌桌
           init_serv_socket();
-          snprintf(msg_buf, sizeof(msg_buf), "012%d", SERV_PORT - 1);
+          snprintf(msg_buf, sizeof(msg_buf), "012%d", SERV_PORT);
           write_msg(gps_sockfd, msg_buf);
           my_id = 1;
           in_serv = 1;
