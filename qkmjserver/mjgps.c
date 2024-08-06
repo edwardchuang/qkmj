@@ -1498,7 +1498,7 @@ void gps_processing() {
             // Find the name of table server
             if (strncmp(player[i].name,
                 (char *)(buf + 3),
-                sizeof(player[i].name)) == 0) {
+                strnlen(player[i].name, sizeof(player[i].name))) == 0) {
               if (player[i].serv >= 4) {
                 write_msg(player[player_id].sockfd,
                     "101此桌人數已滿!");
