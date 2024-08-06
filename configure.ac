@@ -54,8 +54,20 @@ AC_CHECK_HEADERS([ncursesw/curses.h], [],
 AC_CHECK_LIB([m], [main])
 AC_CHECK_LIB([crypt], [main])
 
+AC_CHECK_LIB(sqlite3, sqlite3_open, [],
+[
+    if pkg-config --exists sqlite3
+    then
+        AC_MSG_NOTICE([Module sqlite3 found])
+        SQLITE3_CFLAGS=`pkg-config --cflags sqlite3`
+        SQLITE3_LIBS=`pkg-config --libs sqlite3`
+    else
+        AC_MSG_ERROR([Could not find sqlite3 library])
+    fi
+])
+
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h sgtty.h sys/file.h sys/ioctl.h sys/param.h sys/socket.h sys/time.h termio.h termios.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h sgtty.h sys/file.h sys/ioctl.h sys/param.h sys/socket.h sys/time.h termio.h termios.h unistd.h sqlite3.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL
