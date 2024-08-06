@@ -70,18 +70,23 @@ void init_serv_socket() {
   // 初始化伺服器地址結構
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
+  serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  serv_addr.sin_port = htons(0); // 將埠號設為 0，讓系統自動分配一個可用的埠。
 
-  // 嘗試綁定端口，直到找到可用的端口
-  while (bind(serv_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    if (errno == EADDRINUSE) {
-      SERV_PORT++;  // 端口已被使用，嘗試下一個端口
-      serv_addr.sin_port = htons(SERV_PORT);
-    } else {
-      perror("Server: bind failed");
-      exit(EXIT_FAILURE);
-    }
+  // 綁定 socket。
+  if (bind(serv_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    perror("Server: bind failed");
+    exit(EXIT_FAILURE);
   }
+
+  // 取得系統分配的埠號。
+  socklen_t addrlen = sizeof(serv_addr);
+  if (getsockname(serv_sockfd, (struct sockaddr *)&serv_addr, &addrlen) < 0) {
+    perror("Server: getsockname failed");
+    exit(EXIT_FAILURE);
+  }
+
+  SERV_PORT = ntohs(serv_addr.sin_port);
 
   // 開始監聽連線請求
   if (listen(serv_sockfd, 10) < 0) {
