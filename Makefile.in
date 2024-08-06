@@ -108,7 +108,8 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
-am_mjgps_OBJECTS = qkmjserver/mjgps.$(OBJEXT)
+am_mjgps_OBJECTS = qkmjserver/mjgps.$(OBJEXT) \
+	qkmjserver/database.$(OBJEXT)
 mjgps_OBJECTS = $(am_mjgps_OBJECTS)
 mjgps_LDADD = $(LDADD)
 am_qkmj_OBJECTS = qkmjclient/qkmj.$(OBJEXT) qkmjclient/input.$(OBJEXT) \
@@ -140,7 +141,8 @@ am__depfiles_remade = qkmjclient/$(DEPDIR)/card.Po \
 	qkmjclient/$(DEPDIR)/command.Po qkmjclient/$(DEPDIR)/input.Po \
 	qkmjclient/$(DEPDIR)/message.Po qkmjclient/$(DEPDIR)/misc.Po \
 	qkmjclient/$(DEPDIR)/qkmj.Po qkmjclient/$(DEPDIR)/screen.Po \
-	qkmjclient/$(DEPDIR)/socket.Po qkmjserver/$(DEPDIR)/mjgps.Po
+	qkmjclient/$(DEPDIR)/socket.Po \
+	qkmjserver/$(DEPDIR)/database.Po qkmjserver/$(DEPDIR)/mjgps.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -302,7 +304,11 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-mjgps_SOURCES = qkmjserver/mjgps.h qkmjserver/mjgps.c 
+mjgps_SOURCES = qkmjserver/mjgps.h \
+    qkmjserver/mjgps.c \
+    qkmjserver/database.c \
+    qkmjserver/database.h
+
 qkmj_SOURCES = qkmjclient/qkmj.c \
     qkmjclient/input.c \
     qkmjclient/screen.c \
@@ -407,6 +413,8 @@ qkmjserver/$(DEPDIR)/$(am__dirstamp):
 	@: >>qkmjserver/$(DEPDIR)/$(am__dirstamp)
 qkmjserver/mjgps.$(OBJEXT): qkmjserver/$(am__dirstamp) \
 	qkmjserver/$(DEPDIR)/$(am__dirstamp)
+qkmjserver/database.$(OBJEXT): qkmjserver/$(am__dirstamp) \
+	qkmjserver/$(DEPDIR)/$(am__dirstamp)
 
 mjgps$(EXEEXT): $(mjgps_OBJECTS) $(mjgps_DEPENDENCIES) $(EXTRA_mjgps_DEPENDENCIES) 
 	@rm -f mjgps$(EXEEXT)
@@ -463,6 +471,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/qkmj.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/screen.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@qkmjclient/$(DEPDIR)/socket.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@qkmjserver/$(DEPDIR)/database.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@qkmjserver/$(DEPDIR)/mjgps.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -775,6 +784,7 @@ distclean: distclean-am
 	-rm -f qkmjclient/$(DEPDIR)/qkmj.Po
 	-rm -f qkmjclient/$(DEPDIR)/screen.Po
 	-rm -f qkmjclient/$(DEPDIR)/socket.Po
+	-rm -f qkmjserver/$(DEPDIR)/database.Po
 	-rm -f qkmjserver/$(DEPDIR)/mjgps.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -834,6 +844,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f qkmjclient/$(DEPDIR)/qkmj.Po
 	-rm -f qkmjclient/$(DEPDIR)/screen.Po
 	-rm -f qkmjclient/$(DEPDIR)/socket.Po
+	-rm -f qkmjserver/$(DEPDIR)/database.Po
 	-rm -f qkmjserver/$(DEPDIR)/mjgps.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

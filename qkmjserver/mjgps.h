@@ -18,8 +18,9 @@
 #define GAME_FILE HOMEDIR"/qkmj_game.log"
 
 #define DEFAULT_RECORD_FILE HOMEDIR"/qkmj.rec"
-#define DEFAULT_MONEY 40000
+#define DEFAULT_RECORD_DATABASE HOMEDIR"/qkmj.sqlite3"
 
+#define DEFAULT_MONEY 40000
 
 struct player_record
 {

@@ -1,7 +1,10 @@
 # Makefile.am 
 
 bin_PROGRAMS = mjgps qkmj
-mjgps_SOURCES = qkmjserver/mjgps.h qkmjserver/mjgps.c 
+mjgps_SOURCES = qkmjserver/mjgps.h \
+    qkmjserver/mjgps.c \
+    qkmjserver/database.c \
+    qkmjserver/database.h
 qkmj_SOURCES = qkmjclient/qkmj.c \
     qkmjclient/input.c \
     qkmjclient/screen.c \
