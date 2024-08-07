@@ -14,7 +14,9 @@
 
 // Function to handle database errors
 void handle_db_error(sqlite3 *db) {
-    fprintf(stderr, "SQL error: %s\n", sqlite3_errmsg(db));
+    char msg_buf[1024];
+    snprintf(msg_buf, sizeof(msg_buf), "SQL error: %s\n", sqlite3_errmsg(db));
+    err(msg_buf);
 }
 
 sqlite3 *init_database() {
