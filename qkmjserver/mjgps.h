@@ -82,4 +82,5 @@ int read_user_name(char *name);
 int find_user_name(char *name);
 void show_online_users(int player_id);
 
+int err(char *errmsg);
 #endif
