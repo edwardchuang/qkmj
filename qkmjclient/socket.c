@@ -142,7 +142,7 @@ accept_new_client()
       }
     }
   }
-  sprintf(msg_buf,"%s ¥[¤J¦¹®à¡A¥Ø«e¤H¼Æ %d ", new_client_name ,player_in_table);
+  sprintf(msg_buf,"%s åŠ å…¥æ­¤æ¡Œï¼Œç›®å‰äººæ•¸ %d ", new_client_name ,player_in_table);
   send_gps_line(msg_buf);
   strcpy(player[player_id].name, new_client_name);
   player[player_id].id=new_client_id;
@@ -255,7 +255,7 @@ close_client(int player_id)
   player_in_table -- ;
   sprintf(msg_buf,"206%c%c",player_id,player_in_table);
   broadcast_msg(player_id,msg_buf);
-  sprintf(msg_buf,"%s Â÷¶}¦¹®à¡A¥Ø«e¤H¼Æ³Ñ¤U %d ¤H",player[player_id].name,player_in_table);
+  sprintf(msg_buf,"%s é›¢é–‹æ­¤æ¡Œï¼Œç›®å‰äººæ•¸å‰©ä¸‹ %d äºº",player[player_id].name,player_in_table);
   display_comment(msg_buf);
   close(player[player_id].sockfd);
   FD_CLR(player[player_id].sockfd,&afds);

@@ -70,7 +70,7 @@ int msg_type;
             else
             {
               ans_buf[0]=0;
-              ask_question("½Ğ¿é¤J§Aªº±K½X¡G",ans_buf,8,0);
+              ask_question("è«‹è¼¸å…¥ä½ çš„å¯†ç¢¼ï¼š",ans_buf,8,0);
               ans_buf[8]=0;
             }
             sprintf(msg_buf,"102%s",ans_buf);
@@ -80,7 +80,7 @@ int msg_type;
           case 3:
             pass_login=1;
             input_mode=TALK_MODE;
-            display_comment("½Ğ¥´ /HELP ¬d¬İÂ²³æ«ü¥O»¡©ú¡A/Exit Â÷¶}");
+            display_comment("è«‹æ‰“ /HELP æŸ¥çœ‹ç°¡å–®æŒ‡ä»¤èªªæ˜ï¼Œ/Exit é›¢é–‹");
             sprintf(msg_buf,"004%s",my_note);
             write_msg(gps_sockfd,msg_buf);
             break;
@@ -92,7 +92,7 @@ int msg_type;
             do
             {
               ans_buf[0]=0;
-              ask_question("±K½X¿ù»~! ½Ğ­«·s¿é¤J§Aªº¦WºÙ¡G",ans_buf,10,1);
+              ask_question("å¯†ç¢¼éŒ¯èª¤! è«‹é‡æ–°è¼¸å…¥ä½ çš„åç¨±ï¼š",ans_buf,10,1);
             } while(ans_buf[0]==0);
             ans_buf[10]=0;
             sprintf(msg_buf,"101%s",ans_buf);
@@ -101,13 +101,13 @@ int msg_type;
             break;
           case 5:   /* creat a new account */
             ans_buf[0]=0;
-            ask_question("¬İ¨Ó§A¬O­Ó·sªB¤Í, §A­n¨Ï¥Î³o­Ó¦WºÙ¶Ü¡H(y/N)¡G",ans_buf,1,1);
+            ask_question("çœ‹ä¾†ä½ æ˜¯å€‹æ–°æœ‹å‹, ä½ è¦ä½¿ç”¨é€™å€‹åç¨±å—ï¼Ÿ(y/N)ï¼š",ans_buf,1,1);
             if(ans_buf[0]=='y' || ans_buf[0]=='Y')
             {
               ans_buf[0]=0; 
-              ask_question("½Ğ¿é¤J§Aªº±K½X¡G",ans_buf,8,0);
+              ask_question("è«‹è¼¸å…¥ä½ çš„å¯†ç¢¼ï¼š",ans_buf,8,0);
               ans_buf1[0]=0;
-              ask_question("½Ğ¦A¿é¤J¤@¦¸½T»{¡G",ans_buf1,8,0);
+              ask_question("è«‹å†è¼¸å…¥ä¸€æ¬¡ç¢ºèªï¼š",ans_buf1,8,0);
               ans_buf[8]=0;
               ans_buf1[8]=0;
               while(1)
@@ -122,9 +122,9 @@ int msg_type;
                 else
                 {
                   ans_buf[0]=0;
-                  ask_question("¨â¦¸±K½X¤£¦P! ½Ğ­«·s¿é¤J§Aªº±K½X¡G",ans_buf,8,0);
+                  ask_question("å…©æ¬¡å¯†ç¢¼ä¸åŒ! è«‹é‡æ–°è¼¸å…¥ä½ çš„å¯†ç¢¼ï¼š",ans_buf,8,0);
                   ans_buf1[0]=0;
-                  ask_question("½Ğ¦A¿é¤J¤@¦¸½T»{¡G",ans_buf1,8,0);
+                  ask_question("è«‹å†è¼¸å…¥ä¸€æ¬¡ç¢ºèªï¼š",ans_buf1,8,0);
                   ans_buf[8]=0;
                   ans_buf1[8]=0;
                 }
@@ -135,7 +135,7 @@ int msg_type;
               do 
               {
                 ans_buf[0]=0;
-                ask_question("½Ğ­«·s¿é¤J§Aªº¦WºÙ¡G",ans_buf,10,1);
+                ask_question("è«‹é‡æ–°è¼¸å…¥ä½ çš„åç¨±ï¼š",ans_buf,10,1);
               } while(ans_buf[0]==0);
               ans_buf[10]=0;
               sprintf(msg_buf,"101%s",ans_buf);
@@ -145,7 +145,7 @@ int msg_type;
             break;
           case 6:
             ans_buf[0]=0;
-            ask_question("­«ÂĞ¶i¤J! §A­n±ş±¼¥t¤@­Ó±b¸¹¶Ü? (y/N)¡G",ans_buf,1,1);
+            ask_question("é‡è¦†é€²å…¥! ä½ è¦æ®ºæ‰å¦ä¸€å€‹å¸³è™Ÿå—? (y/N)ï¼š",ans_buf,1,1);
             if(ans_buf[0]=='y' || ans_buf[0]=='Y')
             {
             	write_msg(gps_sockfd,"105");
@@ -154,7 +154,7 @@ int msg_type;
             else
               leave();
             break;
-          case 10:  /* Â÷½u */
+          case 10:  /* é›¢ç·š */
             leave();
             break;
           case 11: //JOIN Sever
@@ -162,9 +162,9 @@ int msg_type;
             {
               case '0':
                 Tokenize(buf+4,1);
-                //sprintf(msg_buf,"³s©¹ %s port %s",cmd_argv[1],cmd_argv[2]);
+                //sprintf(msg_buf,"é€£å¾€ %s port %s",cmd_argv[1],cmd_argv[2]);
                 //send_gps_line(msg_buf);
-                send_gps_line("»P¸Ó®à³s½u¤¤...");
+                send_gps_line("èˆ‡è©²æ¡Œé€£ç·šä¸­...");
                                
                 int ret = init_socket(cmd_argv[1],atoi(cmd_argv[2]),&table_sockfd);
 
@@ -172,14 +172,14 @@ int msg_type;
                 in_join=1;
                 break;
               case '1':
-                send_gps_line("¬dµL¦¹®à¡A½Ğ­«·s¦A¸Õ¡C¡]¥i¥Î /FREE ¬d¸ßªÅ®à¡^");
+                send_gps_line("æŸ¥ç„¡æ­¤æ¡Œï¼Œè«‹é‡æ–°å†è©¦ã€‚ï¼ˆå¯ç”¨ /FREE æŸ¥è©¢ç©ºæ¡Œï¼‰");
                 break;
               case '2':
-                send_gps_line("µLªk³s½u");
+                send_gps_line("ç„¡æ³•é€£ç·š");
                 break;
             }
             break;
-          case 12://¶}®à
+          case 12://é–‹æ¡Œ
               init_serv_socket();
               sprintf(msg_buf,"012%d",SERV_PORT - 1);
               write_msg(gps_sockfd,msg_buf);
@@ -203,9 +203,9 @@ int msg_type;
               }
               strcpy(player[1].name,my_name);
               player[1].in_table=1;
-              send_gps_line("±z¤w«Ø¥ß·s®à¡A¥Ø«e¤H¼Æ1¤H¡A¥i¨Ï¥Î /who ¬d¸ß¥»®à²M³æ");
-              send_gps_line("¦p­nÃö®à½Ğ¿é¤J /Leave (/L) ½ğ°£¨Ï¥ÎªÌ½Ğ¥Î /Kick ");
-              send_gps_line("½Ğ¥Î /Note <ªşµù> ³]©wªşµù¡A¨ä¥L¤H¬d¸ßªÅ®à®É±N¥i°Ñ¦Ò¡C"); 
+              send_gps_line("æ‚¨å·²å»ºç«‹æ–°æ¡Œï¼Œç›®å‰äººæ•¸1äººï¼Œå¯ä½¿ç”¨ /who æŸ¥è©¢æœ¬æ¡Œæ¸…å–®");
+              send_gps_line("å¦‚è¦é—œæ¡Œè«‹è¼¸å…¥ /Leave (/L) è¸¢é™¤ä½¿ç”¨è€…è«‹ç”¨ /Kick ");
+              send_gps_line("è«‹ç”¨ /Note <é™„è¨»> è¨­å®šé™„è¨»ï¼Œå…¶ä»–äººæŸ¥è©¢ç©ºæ¡Œæ™‚å°‡å¯åƒè€ƒã€‚"); 
           case 101:
             send_gps_line(buf+3);
             break;
@@ -369,7 +369,7 @@ int msg_type;
                   {
                   for(i=0;i<=3;i++)
                     pool[turn].out_card[pool[turn].out_card_index][i]=buf[i+4];
-                  if(buf[4]==3 || buf[4]==11)  /* §şµP */
+                  if(buf[4]==3 || buf[4]==11)  /* æ ç‰Œ */
                   {
                     pool[turn].out_card[pool[turn].out_card_index][4]=buf[7];
                     pool[turn].out_card[pool[turn].out_card_index][5]=0;
@@ -434,25 +434,25 @@ int msg_type;
             case 102:
               display_comment(buf+3);
               break;
-            case 199://LEAVE ¶}®àªÌÂ÷¶}µP®à
-              write_msg(gps_sockfd,"205"); //³qª¾ GPS Server
+            case 199://LEAVE é–‹æ¡Œè€…é›¢é–‹ç‰Œæ¡Œ
+              write_msg(gps_sockfd,"205"); //é€šçŸ¥ GPS Server
               close(table_sockfd);
               FD_CLR(table_sockfd,&afds);
               in_join=0;
               input_mode=TALK_MODE;
               init_global_screen();
-              display_comment("¶}®àªÌ¤wÂ÷¶}µP®à");
+              display_comment("é–‹æ¡Œè€…å·²é›¢é–‹ç‰Œæ¡Œ");
               display_comment("-------------------");
-              write_msg(gps_sockfd,"201");//§ó·s¤@¤U¥Ø«e½u¤W¤H¼Æ¸ò¤º®e
+              write_msg(gps_sockfd,"201");//æ›´æ–°ä¸€ä¸‹ç›®å‰ç·šä¸Šäººæ•¸è·Ÿå…§å®¹
               break;
-            case 200://LEAVE Â÷¶}µP®à
-              write_msg(gps_sockfd,"205"); //³qª¾ GPS Server
+            case 200://LEAVE é›¢é–‹ç‰Œæ¡Œ
+              write_msg(gps_sockfd,"205"); //é€šçŸ¥ GPS Server
               close(table_sockfd);
               FD_CLR(table_sockfd,&afds);
               in_join=0;
               input_mode=TALK_MODE;
               init_global_screen();
-              write_msg(gps_sockfd,"201");//§ó·s¤@¤U¥Ø«e½u¤W¤H¼Æ¸ò¤º®e
+              write_msg(gps_sockfd,"201");//æ›´æ–°ä¸€ä¸‹ç›®å‰ç·šä¸Šäººæ•¸è·Ÿå…§å®¹
               break;
             case 201:  /* get the new comer's info */
               strcpy(player[buf[3]].name,buf+6);
@@ -460,9 +460,9 @@ int msg_type;
               player[buf[3]].sit = buf[4];
               player_in_table = buf[5];
               if(strcmp(my_name,player[buf[3]].name)==0){
-            	  sprintf(msg_buf,"±z¤w¥[¤J¦¹®à¡A¥Ø«e¤H¼Æ %d ",player_in_table);
+            	  sprintf(msg_buf,"æ‚¨å·²åŠ å…¥æ­¤æ¡Œï¼Œç›®å‰äººæ•¸ %d ",player_in_table);
               }else{
-            	  sprintf(msg_buf,"%s ¥[¤J¦¹®à¡A¥Ø«e¤H¼Æ %d ",player[buf[3]].name,player_in_table);
+            	  sprintf(msg_buf,"%s åŠ å…¥æ­¤æ¡Œï¼Œç›®å‰äººæ•¸ %d ",player[buf[3]].name,player_in_table);
               }
               send_gps_line(msg_buf);
               if(player[buf[3]].sit)
@@ -509,7 +509,7 @@ int msg_type;
                 input_mode=TALK_MODE;
               }
               player_in_table = buf[4];
-              sprintf(msg_buf,"%s Â÷¶}¦¹®à¡A¥Ø«e¤H¼Æ³Ñ¤U %d ¤H",player[buf[3]].name,player_in_table);
+              sprintf(msg_buf,"%s é›¢é–‹æ­¤æ¡Œï¼Œç›®å‰äººæ•¸å‰©ä¸‹ %d äºº",player[buf[3]].name,player_in_table);
               display_comment(msg_buf);
               player[buf[3]].in_table=0;
               break;
@@ -569,7 +569,7 @@ int msg_type;
               show_newcard(buf[3],buf[4]);
               return_cursor();
               break;
-            case 330:  /* ®ü©³¬y§½ */
+            case 330:  /* æµ·åº•æµå±€ */
               for(i=1;i<=4;i++)
               {
                 if(table[i] && i!=my_sit)
@@ -580,7 +580,7 @@ int msg_type;
               }
               info.cont_dealer++;
               clear_screen_area(THROW_Y,THROW_X,8,34);
-              wmvaddstr(stdscr,THROW_Y+3,THROW_X+12,"®ü ©³ ¬y §½");
+              wmvaddstr(stdscr,THROW_Y+3,THROW_X+12,"æµ· åº• æµ å±€");
               return_cursor();
               wait_a_key(PRESS_ANY_KEY_TO_CONTINUE);
               break;

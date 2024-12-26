@@ -112,12 +112,12 @@ process_make(sit, card)
 	/* record end */
 
 	if (sit==card_owner) {
-		wprintw(stdscr, "¦ÛºN");
+		wprintw(stdscr, "è‡ªæ‘¸");
 	} else {
-		wprintw(stdscr, "­JµP");
+		wprintw(stdscr, "èƒ¡ç‰Œ");
 		wmove(stdscr, THROW_Y, THROW_X+19);
 		wprintw(stdscr, "%s ", player[table[card_owner]].name);
-		wprintw(stdscr, "©ñºj");
+		wprintw(stdscr, "æ”¾æ§");
 	}
 	set_color(33, 40);
 	j=1;
@@ -125,7 +125,7 @@ process_make(sit, card)
 	for (i=0; i<=51; i++) {
 		if (card_comb[max_index].tai_score[i]) {
 			wmove(stdscr, THROW_Y+j, THROW_X+k);
-			wprintw(stdscr, "%-10s%2d ¥x", tai[i].name,
+			wprintw(stdscr, "%-10s%2d å°", tai[i].name,
 					card_comb[max_index].tai_score[i]);
 			/* record */
 			if (in_serv && sendlog == 1) {
@@ -144,7 +144,7 @@ process_make(sit, card)
 
 	strcat(result_record_buf, "\",");
 
-	if (card_comb[max_index].tai_score[52]) /* ³s²ø */
+	if (card_comb[max_index].tai_score[52]) /* é€£èŠ */
 	{
 		/* record */
 		if (in_serv && sendlog == 1) {
@@ -156,15 +156,15 @@ process_make(sit, card)
 
 		wmove(stdscr, THROW_Y+j, THROW_X+k);
 		if (info.cont_dealer<10)
-			wprintw(stdscr, "³s%s©Ô%s  %2d ¥x", number_item[info.cont_dealer],
+			wprintw(stdscr, "é€£%sæ‹‰%s  %2d å°", number_item[info.cont_dealer],
 					number_item[info.cont_dealer], info.cont_dealer*2);
 		else
-			wprintw(stdscr, "³s%2d©Ô%2d  %2d ¥x", info.cont_dealer,
+			wprintw(stdscr, "é€£%2dæ‹‰%2d  %2d å°", info.cont_dealer,
 					info.cont_dealer, info.cont_dealer*2);
 	}
 	set_color(31, 40);
 	wmove(stdscr, THROW_Y+6, THROW_X+26);
-	wprintw(stdscr, "¦@ %2d ¥x", card_comb[max_index].tai_sum);
+	wprintw(stdscr, "å…± %2d å°", card_comb[max_index].tai_sum);
 
 	/* record */
 	if (in_serv && sendlog == 1) {
@@ -186,17 +186,17 @@ process_make(sit, card)
 		if (info.cont_dealer>0) {
 			wmove(stdscr, THROW_Y+7, THROW_X+15);
 			if (info.cont_dealer<10)
-				wprintw(stdscr, "²ø®a ³s%s©Ô%s %2d ¥x",
+				wprintw(stdscr, "èŠå®¶ é€£%sæ‹‰%s %2d å°",
 						number_item[info.cont_dealer],
 						number_item[info.cont_dealer],
 						card_comb[max_index].tai_sum+1 +info.cont_dealer*2);
 			else
-				wprintw(stdscr, "²ø®a ³s%2d©Ô%2d %2d ¥x", info.cont_dealer,
+				wprintw(stdscr, "èŠå®¶ é€£%2dæ‹‰%2d %2d å°", info.cont_dealer,
 						info.cont_dealer, card_comb[max_index].tai_sum+1
 								+ info.cont_dealer*2);
 		} else {
 			wmove(stdscr, THROW_Y+7, THROW_X+24);
-			wprintw(stdscr, "²ø®a %2d ¥x", card_comb[max_index].tai_sum+1);
+			wprintw(stdscr, "èŠå®¶ %2d å°", card_comb[max_index].tai_sum+1);
 		}
 	}
 	wrefresh(stdscr);
@@ -223,7 +223,7 @@ process_make(sit, card)
 	/* record end */
 
 	/* Process money */
-	if (sit==card_owner) /* ¦ÛºN */
+	if (sit==card_owner) /* è‡ªæ‘¸ */
 	{
 		for (i=1; i<=4; i++) {
 
@@ -239,7 +239,7 @@ process_make(sit, card)
 				change_money[sit]+=-change_money[i];
 			}
 		}
-	} else /* §O¤H©ñºj */
+	} else /* åˆ¥äººæ”¾æ§ */
 	{
 		if (card_owner==info.dealer) {
 			change_money[card_owner]=-(info.base_value
@@ -295,10 +295,10 @@ process_make(sit, card)
 	set_color(37, 40);
 	clear_screen_area(THROW_Y,THROW_X,8,34);
 	attron(A_BOLD);
-	wmvaddstr(stdscr, THROW_Y+1, THROW_X+12, "ª÷ ÃB ²Î ­p");
+	wmvaddstr(stdscr, THROW_Y+1, THROW_X+12, "é‡‘ é¡ çµ± è¨ˆ");
 	for (i=1; i<=4; i++) {
 		wmove(stdscr, THROW_Y+2+i, THROW_X);
-		wprintw(stdscr, "%s®a¡G%7ld %c %7ld = %7ld", sit_name[i],
+		wprintw(stdscr, "%så®¶ï¼š%7ld %c %7ld = %7ld", sit_name[i],
 				player[table[i]].money, (change_money[i]<0) ? '-' : '+',
 				(change_money[i]<0) ? -change_money[i] : change_money[i],
 				player[table[i]].money+change_money[i]);
@@ -468,16 +468,16 @@ draw_epk(id, kind, card1, card2, card3)
 		attron(A_REVERSE);
 		switch ((sit-my_sit+4)%4) {
 		case 0:
-			wmvaddstr(stdscr, INDEX_Y, INDEX_X+i*6, "§ş");
+			wmvaddstr(stdscr, INDEX_Y, INDEX_X+i*6, "æ ");
 			break;
 		case 1:
-			wmvaddstr(stdscr, INDEX_Y1-i*3-1, INDEX_X1-2, "§ş");
+			wmvaddstr(stdscr, INDEX_Y1-i*3-1, INDEX_X1-2, "æ ");
 			break;
 		case 2:
-			wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-i*6-2, "§ş");
+			wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-i*6-2, "æ ");
 			break;
 		case 3:
-			wmvaddstr(stdscr, INDEX_Y3+i*3+1, INDEX_X3+4, "§ş");
+			wmvaddstr(stdscr, INDEX_Y3+i*3+1, INDEX_X3+4, "æ ");
 			break;
 		}
 		attroff(A_REVERSE);
@@ -487,14 +487,14 @@ draw_epk(id, kind, card1, card2, card3)
 		case 0:
 			show_card(20, INDEX_X+(16-pool[my_sit].num)*2+4, INDEX_Y+1, 1);
 			wrefresh(stdscr);
-			wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2-2, "¢z");
+			wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2-2, "â”Œ");
 			if (kind==KANG || kind==11) {
 				attron(A_REVERSE);
-				wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2, "§ş");
+				wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2, "æ ");
 				attroff(A_REVERSE);
 			} else
-				wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2, "¢w");
-			wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2+2, "¢{  ");
+				wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2, "â”€");
+			wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2+2, "â”  ");
 			wrefresh(stdscr);
 			if (kind==11)
 				card1=card3=30;
@@ -503,14 +503,14 @@ draw_epk(id, kind, card1, card2, card3)
 			show_card(card3, INDEX_X+(16-pool[my_sit].num)*2+2, INDEX_Y+1, 1);
 			break;
 		case 1:
-			wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num)-2, INDEX_X1-2, "¢z");
+			wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num)-2, INDEX_X1-2, "â”Œ");
 			if (kind==KANG || kind==11) {
 				attron(A_REVERSE);
-				wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num)-1, INDEX_X1-2, "§ş");
+				wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num)-1, INDEX_X1-2, "æ ");
 				attroff(A_REVERSE);
 			} else
-				wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num)-1, INDEX_X1-2, "¢x");
-			wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num), INDEX_X1-2, "¢|");
+				wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num)-1, INDEX_X1-2, "â”‚");
+			wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num), INDEX_X1-2, "â””");
 			wrefresh(stdscr);
 			if (kind==11)
 				card1=card2=card3=40;
@@ -519,16 +519,16 @@ draw_epk(id, kind, card1, card2, card3)
 			show_card(card3, INDEX_X1, INDEX_Y1-(16-pool[sit].num)-2, 0);
 			break;
 		case 2:
-			wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2-2, "¢|");
+			wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2-2, "â””");
 			if (kind==KANG || kind==11) {
 				attron(A_REVERSE);
-				wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2, "§ş");
+				wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2, "æ ");
 				attroff(A_REVERSE);
 			} else
-				wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2, "¢w");
+				wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2, "â”€");
 			if (kind==11)
 				card1=card2=card3=30;
-			wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2+2, "¢}");
+			wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2+2, "â”˜");
 			wrefresh(stdscr);
 			show_card(20, INDEX_X2-(16-pool[sit].num)*2-4, INDEX_Y2, 1);
 			show_card(card1, INDEX_X2-(16-pool[sit].num)*2+2, INDEX_Y2, 1);
@@ -536,16 +536,16 @@ draw_epk(id, kind, card1, card2, card3)
 			show_card(card3, INDEX_X2-(16-pool[sit].num)*2-2, INDEX_Y2, 1);
 			break;
 		case 3:
-			wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num), INDEX_X3+4, "¢{");
+			wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num), INDEX_X3+4, "â”");
 			if (kind==KANG || kind==11) {
 				attron(A_REVERSE);
-				wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num)+1, INDEX_X3+4, "§ş");
+				wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num)+1, INDEX_X3+4, "æ ");
 				attroff(A_REVERSE);
 			} else
-				wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num)+1, INDEX_X3+4, "¢x");
+				wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num)+1, INDEX_X3+4, "â”‚");
 			if (kind==11)
 				card1=card2=card3=40;
-			wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num)+2, INDEX_X3+4, "¢}");
+			wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num)+2, INDEX_X3+4, "â”˜");
 			wrefresh(stdscr);
 			show_card(card1, INDEX_X3, INDEX_Y3+(16-pool[sit].num), 0);
 			show_card(card2, INDEX_X3, INDEX_Y3+(16-pool[sit].num)+1, 0);

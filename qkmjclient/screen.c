@@ -234,7 +234,7 @@ char sit;
       break;
     case 1:
       for(i=0;i<pool[sit].out_card_index;i++)
-        if(pool[sit].out_card[i][0]==11)  /* ·t§ş */
+        if(pool[sit].out_card[i][0]==11)  /* æš—æ  */
         {
           show_card(pool[sit].out_card[i][2],INDEX_X1,INDEX_Y1-i*3-1,0);
         }
@@ -259,10 +259,10 @@ char sit;
 show_newcard(sit,type)
 char sit;
 char type;
-/*  type 1 : ºNµP  */
-/*  type 2 : ºN¤J  */
-/*  type 3 : ¥á¥X  */
-/*  type 4 : Åã¥Ü  */
+/*  type 1 : æ‘¸ç‰Œ  */
+/*  type 2 : æ‘¸å…¥  */
+/*  type 3 : ä¸Ÿå‡º  */
+/*  type 4 : é¡¯ç¤º  */
 {
   int i;
 
@@ -333,7 +333,7 @@ char type;
 */
           break;
         case 2:
-/* ¬°³B²z color ªº°İÃD */
+/* ç‚ºè™•ç† color çš„å•é¡Œ */
           show_card(40,INDEX_X3,INDEX_Y3+17,0);
         /*  show_card(20,INDEX_X3,INDEX_Y3+17,0); */
           show_card(40,INDEX_X3,INDEX_Y3+17,0);
@@ -412,16 +412,16 @@ draw_title()
 
   for(y=0;y<24;y++)
   {
-    mvprintstr(stdscr,y,0,"¢x");
-    mvprintstr(stdscr,y,76,"¢x");
+    mvprintstr(stdscr,y,0,"â”‚");
+    mvprintstr(stdscr,y,76,"â”‚");
   }
-  mvprintstr(stdscr,22,0,"¢u");
+  mvprintstr(stdscr,22,0,"â”œ");
   for(x=2;x<=75;x+=2)
   {
-   printstr(stdscr,"¢w");
+   printstr(stdscr,"â”€");
   }
-  mvprintstr(stdscr,22,76,"¢t");
-  wmvaddstr(stdscr,23,2,"¡i¹ï¸Ü¡j");
+  mvprintstr(stdscr,22,76,"â”¤");
+  wmvaddstr(stdscr,23,2,"ã€å°è©±ã€‘");
   wrefresh(stdscr);
 }
 
@@ -472,7 +472,7 @@ init_global_screen()
   input_mode=TALK_MODE;
   talk_left=11;
   inputwin=global_win;
-  wmvaddstr(stdscr,23,2,"¡i¹ï¸Ü¡j");
+  wmvaddstr(stdscr,23,2,"ã€å°è©±ã€‘");
   return_cursor();
 }
   
@@ -490,23 +490,23 @@ draw_table()
 {
   int x,y;
 
-  wmvaddstr(stdscr,4,10,"¡¼");
+  wmvaddstr(stdscr,4,10,"â–¡");
   for(x=13;x<=45;x+=2)
   {
-    waddstr(stdscr,"¢w");
+    waddstr(stdscr,"â”€");
   }
-  waddstr(stdscr,"¡¼");
+  waddstr(stdscr,"â–¡");
   for(y=5;y<=12;y++)
   {
-    wmvaddstr(stdscr,y,10,"¢x");
-    wmvaddstr(stdscr,y,46,"¢x");
+    wmvaddstr(stdscr,y,10,"â”‚");
+    wmvaddstr(stdscr,y,46,"â”‚");
   }
-  wmvaddstr(stdscr,13,10,"¡¼");
+  wmvaddstr(stdscr,13,10,"â–¡");
   for(x=12;x<=44;x+=2)
   {
-    waddstr(stdscr,"¢w");
+    waddstr(stdscr,"â”€");
   }
-  waddstr(stdscr,"¡¼");
+  waddstr(stdscr,"â–¡");
 }
 
 draw_global_screen()
@@ -522,53 +522,53 @@ draw_playing_screen()
   /* Draw outline */
   for(y=0;y<=23;y++)
   {
-    wmvaddstr(stdscr,y,0,"¢x");
-    wmvaddstr(stdscr,y,56,"¢x");
-    wmvaddstr(stdscr,y,76,"¢x");
+    wmvaddstr(stdscr,y,0,"â”‚");
+    wmvaddstr(stdscr,y,56,"â”‚");
+    wmvaddstr(stdscr,y,76,"â”‚");
   }
-  wmvaddstr(stdscr,18,0,"¢u");
+  wmvaddstr(stdscr,18,0,"â”œ");
   for(x=3;x<=77;x+=2)
   {
-    waddstr(stdscr,"¢w");
+    waddstr(stdscr,"â”€");
   }
-  wmvaddstr(stdscr,18,76,"¢t");
-  wmvaddstr(stdscr,18,56,"¢q");
-  wmvaddstr(stdscr,23,2,"¡i¹ï¸Ü¡j ");
+  wmvaddstr(stdscr,18,76,"â”¤");
+  wmvaddstr(stdscr,18,56,"â”¼");
+  wmvaddstr(stdscr,23,2,"ã€å°è©±ã€‘ ");
   /* Draw table outline */
   /* Information section */
-  wmvaddstr(stdscr,1,56,"¢u");
+  wmvaddstr(stdscr,1,56,"â”œ");
   for(x=58;x<=74;x+=2)
-    waddstr(stdscr,"¢w");
-  waddstr(stdscr,"¢t");
-  wmvaddstr(stdscr,3,56,"¢u");
+    waddstr(stdscr,"â”€");
+  waddstr(stdscr,"â”¤");
+  wmvaddstr(stdscr,3,56,"â”œ");
   for(x=58;x<=74;x+=2)
-    waddstr(stdscr,"¢w");
-  waddstr(stdscr,"¢t");
-  wmvaddstr(stdscr,12,56,"¢u");
+    waddstr(stdscr,"â”€");
+  waddstr(stdscr,"â”¤");
+  wmvaddstr(stdscr,12,56,"â”œ");
   for(x=58;x<=74;x+=2)
-    waddstr(stdscr,"¢w");
-  waddstr(stdscr,"¢t");
-  wmvaddstr(stdscr,0,66,"¢x");
-  wmvaddstr(stdscr,1,66,"¢q");
-  wmvaddstr(stdscr,2,66,"¢x");
-  wmvaddstr(stdscr,3,66,"¢r");
+    waddstr(stdscr,"â”€");
+  waddstr(stdscr,"â”¤");
+  wmvaddstr(stdscr,0,66,"â”‚");
+  wmvaddstr(stdscr,1,66,"â”¼");
+  wmvaddstr(stdscr,2,66,"â”‚");
+  wmvaddstr(stdscr,3,66,"â”´");
   /* Characters */
-  wmvaddstr(stdscr,0,60,"­·  §½");
-  wmvaddstr(stdscr,0,68,"³s    ²ø");
-  wmvaddstr(stdscr,2,58,"ªù­·¡G");
-  wmvaddstr(stdscr,2,68,"³Ñ    ±i");
-  wmvaddstr(stdscr,4,58,"ªF®a¡G");
-  wmvaddstr(stdscr,6,58,"«n®a¡G");
-  wmvaddstr(stdscr,8,58,"¦è®a¡G");
-  wmvaddstr(stdscr,10,58,"¥_®a¡G");
-  wmvaddstr(stdscr,5,62,"¢C");
-  wmvaddstr(stdscr,7,62,"¢C");
-  wmvaddstr(stdscr,9,62,"¢C");
-  wmvaddstr(stdscr,11,62,"¢C");
+  wmvaddstr(stdscr,0,60,"é¢¨  å±€");
+  wmvaddstr(stdscr,0,68,"é€£    èŠ");
+  wmvaddstr(stdscr,2,58,"é–€é¢¨ï¼š");
+  wmvaddstr(stdscr,2,68,"å‰©    å¼µ");
+  wmvaddstr(stdscr,4,58,"æ±å®¶ï¼š");
+  wmvaddstr(stdscr,6,58,"å—å®¶ï¼š");
+  wmvaddstr(stdscr,8,58,"è¥¿å®¶ï¼š");
+  wmvaddstr(stdscr,10,58,"åŒ—å®¶ï¼š");
+  wmvaddstr(stdscr,5,62,"ï¼„");
+  wmvaddstr(stdscr,7,62,"ï¼„");
+  wmvaddstr(stdscr,9,62,"ï¼„");
+  wmvaddstr(stdscr,11,62,"ï¼„");
   wmvaddstr(stdscr,13,60,"0  1  2  3  4");
-  wmvaddstr(stdscr,14,60,"µL ¦Y ¸I §ş ­J");
-  wmvaddstr(stdscr,20,64,"¢z  ¢{");
-  wmvaddstr(stdscr,22,64,"¢|  ¢}");
+  wmvaddstr(stdscr,14,60,"ç„¡ åƒ ç¢° æ  èƒ¡");
+  wmvaddstr(stdscr,20,64,"â”Œ  â”");
+  wmvaddstr(stdscr,22,64,"â””  â”˜");
   wrefresh(stdscr);
   wmove(inputwin,talk_y,talk_x);
   wrefresh(inputwin);
@@ -692,7 +692,7 @@ display_info()
   mvwprintw(stdscr,8,74,"  ");
   mvwprintw(stdscr,10,74,"  ");
   attron(A_REVERSE);
-  mvwprintw(stdscr,2+info.dealer*2,74,"²ø");
+  mvwprintw(stdscr,2+info.dealer*2,74,"èŠ");
   attroff(A_REVERSE);
   wrefresh(stdscr);
   wmove(inputwin,talk_y,talk_x);
@@ -769,7 +769,7 @@ int fd;
     if(line_count==22)
     {
       wrefresh(news_win);
-      wait_a_key("½Ğ«ö <ENTER> ¦Ü¤U¤@­¶......");
+      wait_a_key("è«‹æŒ‰ <ENTER> è‡³ä¸‹ä¸€é ......");
       line_count=0;
       wclear(news_win);
       wmove(news_win,0,0);
@@ -779,7 +779,7 @@ wrefresh(news_win);
     line_count++;
   }
   wrefresh(news_win);
-  wait_a_key("½Ğ«ö <ENTER> Ä~Äò.......");
+  wait_a_key("è«‹æŒ‰ <ENTER> ç¹¼çºŒ.......");
   delwin(news_win);
   redraw_screen();
 }
@@ -819,7 +819,7 @@ char *msg;
 {
   char comment[255];
 /*
-  sprintf(comment,"¡¼ ");
+  sprintf(comment,"â–¡ ");
   strcat(comment,msg);
 */
 strcpy(comment,msg);
@@ -885,25 +885,25 @@ int type;
   clear_screen_area(15,58,3,18);
   if(card)
   { 
-    wmvaddstr(stdscr,15,58,"¢z¢w¢w¢w¢w¢w¢w¢w¢{");
-    wmvaddstr(stdscr,16,58,"¢x              ¢x");
-    wmvaddstr(stdscr,17,58,"¢|¢w¢w¢w¢w¢w¢w¢w¢}");
+    wmvaddstr(stdscr,15,58,"â”Œâ”€â”€â”€â”€â”€â”€â”€â”");
+    wmvaddstr(stdscr,16,58,"â”‚              â”‚");
+    wmvaddstr(stdscr,17,58,"â””â”€â”€â”€â”€â”€â”€â”€â”˜");
     switch(pos)
     {
       case 0:
-        wmvaddstr(stdscr,16,60,"ª±");
+        wmvaddstr(stdscr,16,60,"ç©");
         break;
       case 1:
-        wmvaddstr(stdscr,16,60,"¤U");
+        wmvaddstr(stdscr,16,60,"ä¸‹");
         break;
       case 2:
-        wmvaddstr(stdscr,16,60,"¹ï");
+        wmvaddstr(stdscr,16,60,"å°");
         break;
       case 3:
-        wmvaddstr(stdscr,16,60,"¤W");
+        wmvaddstr(stdscr,16,60,"ä¸Š");
         break;
     }
-    wmvaddstr(stdscr,16,62,"®a¥´¡]    ¡^");
+    wmvaddstr(stdscr,16,62,"å®¶æ‰“ï¼ˆ    ï¼‰");
     wrefresh(stdscr);
     show_card(card,68,16,0);
   }

@@ -26,9 +26,9 @@ struct nodetype {
   char info[5];
   int end;
   int type;
-  struct nodetype *three;       /* ¨è¤l */
-  struct nodetype *straight;    /* ¶¶¤l */
-  struct nodetype *pair;        /* ¹ï¤l */
+  struct nodetype *three;       /* åˆ»å­ */
+  struct nodetype *straight;    /* é †å­ */
+  struct nodetype *pair;        /* å°å­ */
   struct nodetype *father;
 };
 typedef struct nodetype *NODEPTR;
@@ -330,7 +330,7 @@ char sit;
 char card;
 char method;  /* 0 for general check, 1 for complete check */
 {
-  NODEPTR p[6];  /* p[0]=¸U p[1]=µ© p[2]=¯Á p[3]=­·µP p[4]=¤T¤¸µP */
+  NODEPTR p[6];  /* p[0]=è¬ p[1]=ç­’ p[2]=ç´¢ p[3]=é¢¨ç‰Œ p[4]=ä¸‰å…ƒç‰Œ */
   int i,j,k,l,len,pair,make,tmp;
   char msg_buf[80];
 
@@ -644,7 +644,7 @@ char make_card;
   check_tai52(sit,comb);
 }
 
-/* ²ø®a */
+/* èŠå®¶ */
 check_tai0(sit,comb)
 char sit;
 char comb;
@@ -653,7 +653,7 @@ char comb;
     card_comb[comb].tai_score[0]=tai[0].score;
 }
 
-/* ªù²M */
+/* é–€æ¸… */
 check_tai1(sit,comb)
 char sit;
 char comb;
@@ -662,7 +662,7 @@ char comb;
     card_comb[comb].tai_score[1]=tai[1].score;
 }
 
-/* ¦ÛºN */
+/* è‡ªæ‘¸ */
 check_tai2(sit,comb)
 char sit;
 char comb;
@@ -672,7 +672,7 @@ char comb;
   
 }
 
-/* Â_»ò¤E */
+/* æ–·éº¼ä¹ */
 check_tai3(sit,comb)
 char sit;
 char comb;
@@ -685,7 +685,7 @@ char comb;
     card_comb[comb].tai_score[3]=tai[3].score;
 }
 
-/* ÂùÀs©ê */
+/* é›™é¾æŠ± */
 check_tai4(sit,comb)
 char sit;
 int comb;
@@ -693,7 +693,7 @@ int comb;
   int i;
   int straight[30],double_straight_num=0;
 
-  if(pool[sit].num!=16)   /* ¥²¶·ªù²M */
+  if(pool[sit].num!=16)   /* å¿…é ˆé–€æ¸… */
     return;
   for(i=0;i<30;i++)
     straight[i]=0;
@@ -722,7 +722,7 @@ int comb;
     card_comb[comb].tai_score[28]=tai[28].score;
 }
 
-/* §ş¤W¶}ªá */
+/* æ ä¸Šé–‹èŠ± */
 check_tai5(sit,comb)
 char sit;
 char comb;
@@ -731,7 +731,7 @@ char comb;
     card_comb[comb].tai_score[5]=tai[5].score;
 }
 
-/* ®ü©³ºN¤ë */
+/* æµ·åº•æ‘¸æœˆ */
 check_tai6(sit,comb)
 char sit;
 char comb;
@@ -740,7 +740,7 @@ char comb;
     card_comb[comb].tai_score[6]=tai[6].score;
 }
 
-/* ªe©³¼´³½ */
+/* æ²³åº•æ’ˆé­š */
 check_tai7(sit,comb)
 char sit;
 char comb;
@@ -749,14 +749,14 @@ char comb;
     card_comb[comb].tai_score[7]=tai[7].score;
 }
 
-/* ·m§ş */
+/* æ¶æ  */
 check_tai8(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* ªF­· */
+/* æ±é¢¨ */
 check_tai9(sit,comb)
 char sit;
 char comb;
@@ -775,7 +775,7 @@ char comb;
   }
 }
 
-/* «n­· */
+/* å—é¢¨ */
 check_tai10(sit,comb)
 char sit;
 char comb;
@@ -794,7 +794,7 @@ char comb;
   }
 }
 
-/* ¦è­· */
+/* è¥¿é¢¨ */
 check_tai11(sit,comb)
 char sit;
 char comb;
@@ -813,7 +813,7 @@ char comb;
   }
 }
 
-/* ¥_­· */
+/* åŒ—é¢¨ */
 check_tai12(sit,comb)
 char sit;
 char comb;
@@ -832,7 +832,7 @@ char comb;
   }
 }
 
-/* ¬õ¤¤ */
+/* ç´…ä¸­ */
 check_tai13(sit,comb)
 char sit;
 char comb;
@@ -841,7 +841,7 @@ char comb;
     card_comb[comb].tai_score[13]=tai[13].score;
 }
 
-/* ¥ÕªO */
+/* ç™½æ¿ */
 check_tai14(sit,comb)
 char sit;
 char comb;
@@ -850,7 +850,7 @@ char comb;
     card_comb[comb].tai_score[14]=tai[14].score;
 }
 
-/* «Cµo */
+/* é’ç™¼ */
 check_tai15(sit,comb)
 char sit;
 char comb;
@@ -859,7 +859,7 @@ char comb;
     card_comb[comb].tai_score[15]=tai[15].score;
 }
 
-/* ªáµP */
+/* èŠ±ç‰Œ */
 check_tai16(sit,comb)
 char sit;
 char comb;
@@ -870,35 +870,35 @@ char comb;
     card_comb[comb].tai_score[16]+=tai[16].score;
 }
 
-/* ªF­·ªF */
+/* æ±é¢¨æ± */
 check_tai17(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* ¦è­·¦è */
+/* è¥¿é¢¨è¥¿ */
 check_tai18(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* «n­·«n */
+/* å—é¢¨å— */
 check_tai19(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* ¥_­·¥_ */
+/* åŒ—é¢¨åŒ— */
 check_tai20(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* ¬K®L¬î¥V */
+/* æ˜¥å¤ç§‹å†¬ */
 check_tai21(sit,comb)
 char sit;
 char comb;
@@ -911,7 +911,7 @@ char comb;
   }
 }
 
-/* ±öÄõµâ¦Ë */
+/* æ¢…è˜­èŠç«¹ */
 check_tai22(sit,comb)
 char sit;
 char comb;
@@ -924,7 +924,7 @@ char comb;
   }
 }
 
-/* ¥ş¨D¤H */
+/* å…¨æ±‚äºº */
 check_tai23(sit,comb)
 char sit;
 char comb;
@@ -933,7 +933,7 @@ char comb;
     card_comb[comb].tai_score[23]=tai[23].score;
 }
 
-/* ¥­­J */
+/* å¹³èƒ¡ */
 check_tai24(sit,comb,make_card)
 char sit;
 char comb;
@@ -941,11 +941,11 @@ char make_card;
 {
   int i,j;
 
-  /* ªáµP */
+  /* èŠ±ç‰Œ */
   for(i=0;i<8;i++)
     if(pool[sit].flower[i])
       goto fail24;
-  /* ¶¶¤l */
+  /* é †å­ */
   for(i=0;i<card_comb[comb].set_count;i++)
   {
     if(card_comb[comb].info[i][0]==2)
@@ -958,21 +958,21 @@ char make_card;
         goto fail24;
     }
   }
-  /* ªù²M */
+  /* é–€æ¸… */
 /*
   if(pool[sit].out_card_index==0)
     goto fail24;
 */
-  /* ¦ÛºN */
+  /* è‡ªæ‘¸ */
   if(turn==card_owner)
     goto fail24;
-  /* ¶¶¤l */
+  /* é †å­ */
   for(i=0;i<pool[sit].out_card_index;i++)
   {
     if(pool[sit].out_card[i][1]==pool[sit].out_card[i][2])
       goto fail24;
   }
-  /* ¨â­±Å¥µP */
+  /* å…©é¢è½ç‰Œ */
   if(make_card%10<=6)
     if(check_make(sit,make_card+3,0))
       goto finish24;
@@ -986,7 +986,7 @@ char make_card;
   fail24:;
 }
 
-/* ²V±a»ò */
+/* æ··å¸¶éº¼ */
 check_tai25(sit,comb)
 char sit;
 char comb;
@@ -1027,7 +1027,7 @@ char comb;
   fail25:;
 }
 
-/* ¤T¦â¦P¶¶ */
+/* ä¸‰è‰²åŒé † */
 check_tai26(sit,comb)
 char sit;
 char comb;
@@ -1069,7 +1069,7 @@ char comb;
     card_comb[comb].tai_score[26]-=1;
 }
 
-/* ¤@±øÀs */
+/* ä¸€æ¢é¾ */
 check_tai27(sit,comb)
 char sit;
 char comb;
@@ -1089,28 +1089,28 @@ char comb;
     card_comb[comb].tai_score[27]-=1;
 }
 
-/* ÂùÂùÀs©ê */
+/* é›™é›™é¾æŠ± */
 check_tai28(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* ¤T·t¨è */
+/* ä¸‰æš—åˆ» */
 check_tai29(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* ¤T§ş¤l */
+/* ä¸‰æ å­ */
 check_tai30(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* ¤T¦â¦P¨è */
+/* ä¸‰è‰²åŒåˆ» */
 check_tai31(sit,comb)
 char sit,comb;
 {
@@ -1146,7 +1146,7 @@ char sit,comb;
   finish31:;
 }
 
-/* ªù²M¦ÛºN */
+/* é–€æ¸…è‡ªæ‘¸ */
 check_tai32(sit,comb)
 char sit;
 char comb;
@@ -1159,7 +1159,7 @@ char comb;
   }
 }
 
-/* ¸I¸I­J */
+/* ç¢°ç¢°èƒ¡ */
 check_tai33(sit,comb)
 char sit;
 char comb;
@@ -1182,7 +1182,7 @@ char comb;
   fail33:;
 }
 
-/* ²V¤@¦â */
+/* æ··ä¸€è‰² */
 check_tai34(sit,comb)
 char sit;
 char comb;
@@ -1222,7 +1222,7 @@ char comb;
   fail34:;
 }
 
-/* ¯Â±a»ò */
+/* ç´”å¸¶éº¼ */
 check_tai35(sit,comb)
 char sit;
 char comb;
@@ -1256,7 +1256,7 @@ char comb;
   fail35:;
 }
 
-/* ²V¦ÑÀY */
+/* æ··è€é ­ */
 check_tai36(sit,comb)
 char sit;
 char comb;
@@ -1276,7 +1276,7 @@ char comb;
   }
   for(i=0;i<pool[sit].out_card_index;i++)
   {
-    if(pool[sit].out_card[i][1]/10<30)   /* if ¦rµP --> ÀË¬d¤U¤@²Õ */
+    if(pool[sit].out_card[i][1]/10<30)   /* if å­—ç‰Œ --> æª¢æŸ¥ä¸‹ä¸€çµ„ */
     {
       exist19=1;
       if(pool[sit].out_card[i][1]%10!=1 && pool[sit].out_card[i][1]%10!=9)
@@ -1296,7 +1296,7 @@ char comb;
   fail36:;
 }
 
-/* ¤p¤T¤¸ */
+/* å°ä¸‰å…ƒ */
 check_tai37(sit,comb)
 char sit;
 char comb;
@@ -1310,14 +1310,14 @@ char comb;
   }
 }
 
-/* ¥|·t¨è */
+/* å››æš—åˆ» */
 check_tai38(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* ¥|§ş¤l */
+/* å››æ å­ */
 check_tai39(sit,comb)
 char sit;
 char comb;
@@ -1336,7 +1336,7 @@ char comb;
     card_comb[comb].tai_score[39]=tai[39].score;
 }
 
-/* ¤j¤T¤¸ */
+/* å¤§ä¸‰å…ƒ */
 check_tai40(sit,comb)
 char sit;
 char comb;
@@ -1351,7 +1351,7 @@ char comb;
   }
 }
 
-/* ¤p¥|³ß */
+/* å°å››å–œ */
 check_tai41(sit,comb)
 char sit;
 char comb;
@@ -1371,7 +1371,7 @@ char comb;
   }
 }
 
-/* ²M¤@¦â */
+/* æ¸…ä¸€è‰² */
 check_tai42(sit,comb)
 char sit;
 char comb;
@@ -1403,7 +1403,7 @@ char comb;
   fail42:;
 }
 
-/* ¦r¤@¦â */
+/* å­—ä¸€è‰² */
 check_tai43(sit,comb)
 char sit;
 char comb;
@@ -1435,14 +1435,14 @@ char comb;
   fail43:;
 }
 
-/* ¤C·m¤@ */
+/* ä¸ƒæ¶ä¸€ */
 check_tai44(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* ¤­·t¨è */
+/* äº”æš—åˆ» */
 check_tai45(sit,comb,make_card)
 char sit;
 char comb;
@@ -1455,7 +1455,7 @@ char msg_buf[80];
   {
     if(card_comb[comb].info[i][0]==2)
       if(card_comb[comb].info[i][1]!=make_card || sit==card_owner)
-        three_card++;       /* ¦ÛºN¥iºâ·t¨è */
+        three_card++;       /* è‡ªæ‘¸å¯ç®—æš—åˆ» */
   }
   for(i=0;i<pool[sit].out_card_index;i++)
     if(pool[sit].out_card[i][0]==11)
@@ -1471,7 +1471,7 @@ char msg_buf[80];
   }
 }
 
-/* ²M¦ÑÀY */
+/* æ¸…è€é ­ */
 check_tai46(sit,comb)
 char sit;
 char comb;
@@ -1503,7 +1503,7 @@ char comb;
   fail46:;
 }
 
-/* ¤j¥|³ß */
+/* å¤§å››å–œ */
 check_tai47(sit,comb)
 char sit;
 char comb;
@@ -1524,14 +1524,14 @@ char comb;
   }
 }
 
-/* ¤K¥P¹L®ü */
+/* å…«ä»™éæµ· */
 check_tai48(sit,comb)
 char sit;
 char comb;
 {
 }
 
-/* ¤Ñ­J */
+/* å¤©èƒ¡ */
 check_tai49(sit,comb)
 char sit;
 char comb;
@@ -1541,7 +1541,7 @@ char comb;
     card_comb[comb].tai_score[49]=tai[49].score;
 }
 
-/* ¦a­J */
+/* åœ°èƒ¡ */
 check_tai50(sit,comb)
 char sit;
 char comb;
@@ -1550,7 +1550,7 @@ char comb;
     card_comb[comb].tai_score[50]=tai[50].score;
 }
 
-/* ¤H­J */
+/* äººèƒ¡ */
 check_tai51(sit,comb)
 char sit;
 char comb;
@@ -1559,7 +1559,7 @@ char comb;
     card_comb[comb].tai_score[51]=tai[51].score;
 }
 
-/* ³s²ø */
+/* é€£èŠ */
 check_tai52(sit,comb)
 char sit;
 char comb;
