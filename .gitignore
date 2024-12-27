@@ -5,6 +5,8 @@ qkmjserver/mjgps
 qkmjserver/mjrec
 autom4te.cache
 Makefile
+**/Makefile
+**/Makefile.in
 .deps/
 .libs/
 **/*.lo
