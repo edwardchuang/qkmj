@@ -1,15 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <time.h>
-#include <sys/time.h>
-#include <cjson/cJSON.h>
-
+#include "checkscr.h"
 #include "qkmj.h"
 
 void init_check_mode() {
@@ -94,9 +83,6 @@ static void display_tai_info(int sit, int card_owner, int max_index) {
 
 // 計算金錢變化
 static void calculate_money_change(long change_money[], int sit, int card_owner, int max_index) {
-  // 初始化金錢變化
-  memset(change_money, 0, sizeof(change_money));
-
   // 計算基本底分
   long base_payment = info.base_value;
 
@@ -222,9 +208,10 @@ void process_make(char sit, char card) {
   show_newcard(sit, 4);
   return_cursor();
 
+  memset(change_money, 0, sizeof(change_money));
+
   // 計算金錢變化
   calculate_money_change(change_money, sit, card_owner, max_index);
-
 
   /* 記錄牌局資訊 (使用 cJSON) */
   if (in_serv && sendlog == 1) {
