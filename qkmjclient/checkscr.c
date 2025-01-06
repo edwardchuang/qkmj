@@ -94,26 +94,41 @@ static void display_tai_info(int sit, int card_owner, int max_index) {
 
 // 計算金錢變化
 static void calculate_money_change(long change_money[], int sit, int card_owner, int max_index) {
-  for (int i = 0; i <= 4; i++) change_money[i] = 0; // 初始化金錢變化
+  // 初始化金錢變化
+  memset(change_money, 0, sizeof(change_money));
 
-  if (sit == card_owner) { // 自摸
+  // 計算基本底分
+  long base_payment = info.base_value;
+
+  // 計算台數加成
+  long tai_payment = card_comb[max_index].tai_sum * info.tai_value;
+
+  // 連莊加成 (莊家連莊)
+  long cont_dealer_bonus = 0;
+  if (card_owner == info.dealer && info.cont_dealer > 0) {
+    cont_dealer_bonus = info.cont_dealer * 2 * info.tai_value;
+  }
+
+  // 自摸或放槍的判斷合併
+  bool is_self_drawn = (sit == card_owner);
+  long winner_payment = base_payment + tai_payment + (is_self_drawn ? 1 : 0) * info.tai_value + cont_dealer_bonus;
+
+  // 調整支付金額 (莊家額外支付)
+  if (card_owner == info.dealer) {
+    winner_payment += info.tai_value; //莊家額外支付
+  }
+
+  // 計算輸贏金額
+  if (is_self_drawn) { // 自摸
     for (int i = 1; i <= 4; i++) {
       if (i != sit && table[i]) {
-        if (i == info.dealer) {
-          change_money[i] = -(info.base_value + (card_comb[max_index].tai_sum + 1 + info.cont_dealer * 2) * info.tai_value);
-        } else {
-          change_money[i] = -(info.base_value + card_comb[max_index].tai_sum * info.tai_value);
-        }
+        change_money[i] = -winner_payment;
         change_money[sit] -= change_money[i];
       }
     }
   } else { // 放槍
-    if (card_owner == info.dealer) {
-      change_money[card_owner] = -(info.base_value + (card_comb[max_index].tai_sum + 1 + info.cont_dealer * 2) * info.tai_value);
-    } else {
-      change_money[card_owner] = -(info.base_value + card_comb[max_index].tai_sum * info.tai_value);
-    }
-    change_money[sit] -= change_money[card_owner];
+    change_money[card_owner] = -winner_payment;
+    change_money[sit] = winner_payment;
   }
 }
 

@@ -250,12 +250,10 @@ void compare_check() {
 	}
 
 	if (!getting_card) {
-			next_player_request = 1;
+		next_player_request = 1;
 	}
 
-	// 清除所有玩家的 check_for 標記 (移至迴圈外，只需一次操作)
-	for (i = 1; i <= 4; i++) {
-			check_for[i] = 0;
-	}
-	getting_card = 0;
+	// 清除所有玩家的 check_for 標記 (使用 memset 更有效率)
+  memset(check_for, 0, sizeof(check_for)); 
+  getting_card = 0;
 }
