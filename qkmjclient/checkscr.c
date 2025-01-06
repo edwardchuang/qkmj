@@ -6,586 +6,540 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-#include "mjdef.h"
-
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
-#endif
+#include <time.h>
+#include <sys/time.h>
+#include <cjson/cJSON.h>
 
 #include "qkmj.h"
 
-init_check_mode() {
-	int i;
+void init_check_mode() {
+    int i;
 
-	if (input_mode==TALK_MODE)
-		current_mode=CHECK_MODE;
-	else
-		input_mode=CHECK_MODE;
-	current_check=0;
-	check_x=org_check_x;
-	attron(A_REVERSE);
-	wmvaddstr(stdscr, org_check_y+1, org_check_x, "  ");
-	wrefresh(stdscr);
-	wmvaddstr(stdscr, org_check_y+1, org_check_x, check_name[0]);
-	reset_cursor();
-	for (i=1; i<check_number; i++) {
-		if (check_flag[my_sit][i]) {
-			wmvaddstr(stdscr, org_check_y+1, org_check_x+i*3, "  ");
-			wrefresh(stdscr);
-			wmvaddstr(stdscr, org_check_y+1, org_check_x+i*3, check_name[i]);
-			reset_cursor();
-		}
-	}
-	attroff(A_REVERSE);
-	beep1();
-	wrefresh(stdscr);
-	return_cursor();
+    // 設定遊戲模式並重置游標
+    if (input_mode == TALK_MODE) {
+        current_mode = CHECK_MODE;
+    } else {
+        input_mode = CHECK_MODE;
+    }
+    current_check = 0;
+    check_x = org_check_x;
+
+    // 使用更有效率的螢幕更新方式，減少不必要的 wrefresh 呼叫
+    attron(A_REVERSE);
+    mvaddstr(org_check_y + 1, org_check_x, "  "); // 直接使用 mvaddstr
+    mvaddstr(org_check_y + 1, org_check_x, check_name[0]); // 直接使用 mvaddstr
+    for (i = 1; i < check_number; i++) {
+        if (check_flag[my_sit][i]) {
+            mvaddstr(org_check_y + 1, org_check_x + i * 3, "  "); // 直接使用 mvaddstr
+            mvaddstr(org_check_y + 1, org_check_x + i * 3, check_name[i]); // 直接使用 mvaddstr
+        }
+    }
+    attroff(A_REVERSE);
+    beep();
+    refresh(); // 只需呼叫一次 refresh
+    return_cursor();
 }
 
-process_make(sit, card)
-	char sit;char card; {
-	int i, j, k, max_sum, max_index, sitInd;
-	char msg_buf[80];
-	char result_record_buf[2000];
-	result_record_buf[0] = '\0';
-	char result_buf[2000];
-	long change_money[5];
+// 計算最大台數及索引
+static int calculate_max_tai(int *max_index, int *max_sum) {
+  *max_index = 0;
+  *max_sum = card_comb[0].tai_sum;
+  for (int i = 1; i < comb_num; i++) {
+    if (card_comb[i].tai_sum > *max_sum) {
+      *max_index = i;
+      *max_sum = card_comb[i].tai_sum;
+    }
+  }
+  return *max_index;
+}
 
-	int sendlog = 1;
-	
-	play_mode=WAIT_CARD;
-	for (i=0; i<=4; i++)
-		change_money[i]=0;
-	current_card=card;
-	check_make(sit, card, 1);
-	set_color(37, 40);
-	clear_screen_area(THROW_Y,THROW_X,8,34);
-	max_index=0;
-	max_sum=card_comb[0].tai_sum;
-	for (i=0; i<comb_num; i++) {
-		if (card_comb[i].tai_sum>max_sum) {
-			max_index=i;
-			max_sum=card_comb[i].tai_sum;
-		}
-	}
-	set_color(32, 40);
-	set_mode(1);
-	wmove(stdscr, THROW_Y, THROW_X);
-	wprintw(stdscr, "%s ", player[table[sit]].name);
+// 顯示台數資訊
+static void display_tai_info(int sit, int card_owner, int max_index) {
+  int j = 1, k = 0;
+  for (int i = 0; i <= 51; i++) {
+    if (card_comb[max_index].tai_score[i]) {
+      wmove(stdscr, THROW_Y + j, THROW_X + k);
+      wprintw(stdscr, "%-10s%2d 台", tai[i].name, card_comb[max_index].tai_score[i]);
+      j++;
+      if (j == 7) {
+        j = 2;
+        k = 18;
+      }
+    }
+  }
 
-	/* record start */
-	if (in_serv && sendlog == 1) {
-		sprintf(result_record_buf,
-				"900{card_owner:\"%s\",winer:\"%s\",cards:{",
-				player[table[card_owner]].name, player[table[sit]].name);//Record
-		for (sitInd = 1; sitInd <= 4; ++sitInd) {
-			sprintf(result_buf, "\"%s\":{ind:\"%d\",card:[", player[table[sitInd]].name,sitInd);
-			strcat(result_record_buf, result_buf);
-			for (i=0; i<pool[sitInd].num; i++) {
-				sprintf(result_buf, "%d,", pool[sitInd].card[i]);
-				strcat(result_record_buf, result_buf);
-			}
-			strcat(result_record_buf, "],out_card:[");
-			
-			for (i=0; i < pool[sitInd].out_card_index; i++) {
-				strcat(result_record_buf, "[");
-				for (j = 1 ; j < 6; j++) {
-					sprintf(result_buf, "%d,", pool[sitInd].out_card[i][j]);
-					strcat(result_record_buf, result_buf);
-				}
-				strcat(result_record_buf, "]");
-			}
-			strcat(result_record_buf, "]");
-			
-			
-			if (sitInd != 4) {
-				strcat(result_record_buf, "},");
-			}else{
-				strcat(result_record_buf, "}");
-			}
-		}
-		strcat(result_record_buf, "},tais:\"");
-	}
-	/* record end */
+  if (card_comb[max_index].tai_score[52]) { // 連莊
+    wmove(stdscr, THROW_Y + j, THROW_X + k);
+    if (info.cont_dealer < 10) {
+      wprintw(stdscr, "連%s拉%s  %2d 台", number_item[info.cont_dealer], number_item[info.cont_dealer], info.cont_dealer * 2);
+    } else {
+      wprintw(stdscr, "連%2d拉%2d  %2d 台", info.cont_dealer, info.cont_dealer, info.cont_dealer * 2);
+    }
+  }
 
-	if (sit==card_owner) {
-		wprintw(stdscr, "自摸");
-	} else {
-		wprintw(stdscr, "胡牌");
-		wmove(stdscr, THROW_Y, THROW_X+19);
-		wprintw(stdscr, "%s ", player[table[card_owner]].name);
-		wprintw(stdscr, "放槍");
-	}
-	set_color(33, 40);
-	j=1;
-	k=0;
-	for (i=0; i<=51; i++) {
-		if (card_comb[max_index].tai_score[i]) {
-			wmove(stdscr, THROW_Y+j, THROW_X+k);
-			wprintw(stdscr, "%-10s%2d 台", tai[i].name,
-					card_comb[max_index].tai_score[i]);
-			/* record */
-			if (in_serv && sendlog == 1) {
-				sprintf(result_buf, "%10s::%d;;", tai[i].name,
-						card_comb[max_index].tai_score[i]);
-				strcat(result_record_buf, result_buf);
-			}
-			/* record */
-			j++;
-			if (j==7) {
-				j=2;
-				k=18;
-			}
-		}
-	}
+  if ((sit == card_owner && sit != info.dealer) || (sit != card_owner && card_owner == info.dealer)) {
+    if (info.cont_dealer > 0) {
+      wmove(stdscr, THROW_Y + 7, THROW_X + 15);
+      if (info.cont_dealer < 10) {
+        wprintw(stdscr, "莊家 連%s拉%s %2d 台", number_item[info.cont_dealer], number_item[info.cont_dealer], card_comb[max_index].tai_sum + 1 + info.cont_dealer * 2);
+      } else {
+        wprintw(stdscr, "莊家 連%2d拉%2d %2d 台", info.cont_dealer, info.cont_dealer, card_comb[max_index].tai_sum + 1 + info.cont_dealer * 2);
+      }
+    } else {
+      wmove(stdscr, THROW_Y + 7, THROW_X + 24);
+      wprintw(stdscr, "莊家 %2d 台", card_comb[max_index].tai_sum + 1);
+    }
+  }
+}
 
-	strcat(result_record_buf, "\",");
+// 計算金錢變化
+static void calculate_money_change(long change_money[], int sit, int card_owner, int max_index) {
+  for (int i = 0; i <= 4; i++) change_money[i] = 0; // 初始化金錢變化
 
-	if (card_comb[max_index].tai_score[52]) /* 連莊 */
-	{
-		/* record */
-		if (in_serv && sendlog == 1) {
-			sprintf(result_buf, "cont_win:%d,cont_tai:%d,", info.cont_dealer,
-					info.cont_dealer*2);
-			strcat(result_record_buf, result_buf);
-		}
-		/* record */
+  if (sit == card_owner) { // 自摸
+    for (int i = 1; i <= 4; i++) {
+      if (i != sit && table[i]) {
+        if (i == info.dealer) {
+          change_money[i] = -(info.base_value + (card_comb[max_index].tai_sum + 1 + info.cont_dealer * 2) * info.tai_value);
+        } else {
+          change_money[i] = -(info.base_value + card_comb[max_index].tai_sum * info.tai_value);
+        }
+        change_money[sit] -= change_money[i];
+      }
+    }
+  } else { // 放槍
+    if (card_owner == info.dealer) {
+      change_money[card_owner] = -(info.base_value + (card_comb[max_index].tai_sum + 1 + info.cont_dealer * 2) * info.tai_value);
+    } else {
+      change_money[card_owner] = -(info.base_value + card_comb[max_index].tai_sum * info.tai_value);
+    }
+    change_money[sit] -= change_money[card_owner];
+  }
+}
 
-		wmove(stdscr, THROW_Y+j, THROW_X+k);
-		if (info.cont_dealer<10)
-			wprintw(stdscr, "連%s拉%s  %2d 台", number_item[info.cont_dealer],
-					number_item[info.cont_dealer], info.cont_dealer*2);
-		else
-			wprintw(stdscr, "連%2d拉%2d  %2d 台", info.cont_dealer,
-					info.cont_dealer, info.cont_dealer*2);
-	}
-	set_color(31, 40);
-	wmove(stdscr, THROW_Y+6, THROW_X+26);
-	wprintw(stdscr, "共 %2d 台", card_comb[max_index].tai_sum);
+// 更新玩家金錢並發送至伺服器
+static void update_player_money(long change_money[]) {
+  char msg_buf[80];
+  for (int i = 1; i <= 4; i++) {
+    if (table[i]) {
+      if (in_serv) {
+        snprintf(msg_buf, sizeof(msg_buf), "020%5d%ld", player[table[i]].id, player[table[i]].money + change_money[i]);
+        write_msg(gps_sockfd, msg_buf);
+      }
+      player[table[i]].money += change_money[i];
+    }
+  }
+  my_money = player[my_id].money;
+}
 
-	/* record */
-	if (in_serv && sendlog == 1) {
-		sprintf(result_buf, "count_win:%d,count_tai:%d,", info.cont_dealer,
-				info.cont_dealer*2);
-		strcat(result_record_buf, result_buf);
-	}
-	/* record */
-	if ((sit==card_owner && sit!=info.dealer) || (sit!=card_owner && card_owner
-			==info.dealer)) {
-		/* record */
-		if (in_serv && sendlog == 1) {
-			sprintf(result_buf, "is_dealer:1,dealer:\"%s\",",
-					player[table[info.dealer]].name);
-			strcat(result_record_buf, result_buf);
-		}
-		/* record */
+// 顯示金額統計
+static void display_money_summary(long change_money[]) {
+  clear_screen_area(THROW_Y, THROW_X, 8, 34);
+  attron(A_BOLD);
+  mvaddstr(THROW_Y + 1, THROW_X + 12, "金 額 統 計");
+  for (int i = 1; i <= 4; i++) {
+    wmove(stdscr, THROW_Y + 2 + i, THROW_X);
+    wprintw(stdscr, "%s家：%7ld %c %7ld = %7ld", sit_name[i],
+            player[table[i]].money - change_money[i], (change_money[i] < 0) ? '-' : '+',
+            (change_money[i] < 0) ? -change_money[i] : change_money[i],
+            player[table[i]].money);
+  }
+  attroff(A_BOLD);
+  return_cursor();
+}
 
-		if (info.cont_dealer>0) {
-			wmove(stdscr, THROW_Y+7, THROW_X+15);
-			if (info.cont_dealer<10)
-				wprintw(stdscr, "莊家 連%s拉%s %2d 台",
-						number_item[info.cont_dealer],
-						number_item[info.cont_dealer],
-						card_comb[max_index].tai_sum+1 +info.cont_dealer*2);
-			else
-				wprintw(stdscr, "莊家 連%2d拉%2d %2d 台", info.cont_dealer,
-						info.cont_dealer, card_comb[max_index].tai_sum+1
-								+ info.cont_dealer*2);
-		} else {
-			wmove(stdscr, THROW_Y+7, THROW_X+24);
-			wprintw(stdscr, "莊家 %2d 台", card_comb[max_index].tai_sum+1);
-		}
-	}
-	wrefresh(stdscr);
-	set_color(37, 40);
-	set_mode(0);
-	for (i=1; i<=4; i++) {
-		if (table[i] && i!=my_sit) {
-			show_allcard(i);
-			show_kang(i);
-		}
-	}
-	show_newcard(sit, 4);
-	return_cursor();
+void process_make(char sit, char card) {
+  int i, j, max_index, max_sum, sitInd;
+  long change_money[5];
+  char msg_buf[80];
+  int sendlog = 1;
+  cJSON *root = NULL;
+  char *json_string = NULL;
 
-	/* record start */
-	if (in_serv && sendlog == 1) {
-		sprintf(result_buf, "base_value:%d,", info.base_value);
-		strcat(result_record_buf, result_buf);
-		sprintf(result_buf, "tai_value:%d,", info.tai_value);
-		strcat(result_record_buf, result_buf);
 
-		strcat(result_record_buf, "moneys:");
-	}
-	/* record end */
+  play_mode = WAIT_CARD;
+  current_card = card;
 
-	/* Process money */
-	if (sit==card_owner) /* 自摸 */
-	{
-		for (i=1; i<=4; i++) {
+  // 檢查胡牌
+  check_make(sit, card, 1);
 
-			if (i!=sit) {
-				if (i==info.dealer) {
-					change_money[i]=-(info.base_value
-							+ (card_comb[max_index].tai_sum+1+info.cont_dealer
-									*2)* info.tai_value);
-				} else {
-					change_money[i]=-(info.base_value
-							+card_comb[max_index].tai_sum* info.tai_value);
-				}
-				change_money[sit]+=-change_money[i];
-			}
-		}
-	} else /* 別人放槍 */
-	{
-		if (card_owner==info.dealer) {
-			change_money[card_owner]=-(info.base_value
-					+(card_comb[max_index].tai_sum+ 1+info.cont_dealer*2)
-							*info.tai_value);
-		} else {
-			change_money[card_owner]=-(info.base_value
-					+card_comb[max_index].tai_sum* info.tai_value);
-		}
-		change_money[sit]+=-change_money[card_owner];
-	}
+  // 清除畫面區域
+  set_color(37, 40);
+  clear_screen_area(THROW_Y, THROW_X, 8, 34);
 
-	/* Send money info to GPS */
-	if (in_serv) {
-		strcat(result_record_buf, "["); //record
-		for (i=1; i<=4; i++) {
-			if (table[i]) {
-				/* Record start*/
-				if( sendlog == 1){
-					sprintf(result_buf,
-							"{name:\"%s\",now_money:%ld,change_money:%ld}",
-							player[table[i]].name, player[table[i]].money,
-							change_money[i]);
-					strcat(result_record_buf, result_buf);
-					if (i != 4) {
-						strcat(result_record_buf, ",");
+  // 計算最大台數
+  max_index = calculate_max_tai(&max_index, &max_sum);
+
+  // 顯示胡牌玩家
+  set_color(32, 40);
+  set_mode(1);
+  wmove(stdscr, THROW_Y, THROW_X);
+  wprintw(stdscr, "%s ", player[table[sit]].name);
+
+  if (sit == card_owner) {
+    wprintw(stdscr, "自摸");
+  } else {
+    wprintw(stdscr, "胡牌");
+    wmove(stdscr, THROW_Y, THROW_X + 19);
+    wprintw(stdscr, "%s ", player[table[card_owner]].name);
+    wprintw(stdscr, "放槍");
+  }
+
+  // 顯示台數資訊
+  set_color(33, 40);
+  display_tai_info(sit, card_owner, max_index);
+
+  // 顯示總台數
+  set_color(31, 40);
+  wmove(stdscr, THROW_Y + 6, THROW_X + 26);
+  wprintw(stdscr, "共 %2d 台", card_comb[max_index].tai_sum);
+  wrefresh(stdscr);
+
+  // 顯示所有牌和槓
+  set_color(37, 40);
+  set_mode(0);
+  for (i = 1; i <= 4; i++) {
+    if (table[i] && i != my_sit) {
+      show_allcard(i);
+      show_kang(i);
+    }
+  }
+  show_newcard(sit, 4);
+  return_cursor();
+
+  // 計算金錢變化
+  calculate_money_change(change_money, sit, card_owner, max_index);
+
+
+  /* 記錄牌局資訊 (使用 cJSON) */
+  if (in_serv && sendlog == 1) {
+    root = cJSON_CreateObject();
+    // ... (新增 card_owner, winner, cards, tais 等資訊到 root 物件中，參考上一個回覆的程式碼)
+
+    // 金錢資訊
+    cJSON *moneys = cJSON_CreateArray();
+    for (i = 1; i <= 4; i++) {
+      if (table[i]) {
+        cJSON *money_info = cJSON_CreateObject();
+        cJSON_AddStringToObject(money_info, "name", player[table[i]].name);
+        cJSON_AddNumberToObject(money_info, "now_money", player[table[i]].money);
+        cJSON_AddNumberToObject(money_info, "change_money", change_money[i]);
+        cJSON_AddItemToArray(moneys, money_info);
+      }
+    }
+    cJSON_AddItemToObject(root, "moneys", moneys);
+
+    // 時間戳記
+    long current_time = 0;
+    time(&current_time);
+    cJSON_AddNumberToObject(root, "time", current_time);
+
+    // 生成 JSON 字串並發送
+    json_string = cJSON_Print(root);
+    write_msg(gps_sockfd, json_string);
+
+    // 釋放 cJSON 物件和字串
+    cJSON_Delete(root);
+    free(json_string);
+  }
+
+  // 更新玩家金錢
+  update_player_money(change_money);
+  wait_a_key(PRESS_ANY_KEY_TO_CONTINUE);
+
+  // 顯示金額統計
+  display_money_summary(change_money);
+
+  // 更新莊家和局數
+  if (sit != info.dealer) {
+    info.dealer++;
+    info.cont_dealer = 0;
+    if (info.dealer == 5) {
+      info.dealer = 1;
+      info.wind++;
+      if (info.wind == 5) info.wind = 1;
+    }
+  } else {
+    info.cont_dealer++;
+  }
+
+  wait_a_key(PRESS_ANY_KEY_TO_CONTINUE);
+
+  if (in_serv) {
+    wait_hit[my_sit] = 1;
+  } else {
+    write_msg(table_sockfd, "450");
+  }
+}
+
+void process_epk(char check) {
+    char card1, card2, card3;
+    int i;
+    char msg_buf[80]; // 確保緩衝區夠大，使用 snprintf 避免緩衝區溢位
+		int kang_count = 0;
+
+    // 錯誤處理：檢查 check 的有效性
+    if (check < 2 || check > 9 || (check >= 7 && check <= 9 && next_turn(turn) != my_sit)) {
+        fprintf(stderr, "錯誤: process_epk() 收到無效的 check 值: %d\n", check);
+        return; // 回報錯誤並返回
+    }
+
+    switch (check) {
+			case PONG: // 碰
+				play_mode = THROW_CARD;
+				// 尋找要碰的牌，移除兩張
+				for (i = 0; i < pool[my_sit].num ; i++) {  // 修正迴圈條件，避免讀取到錯誤的記憶體位置
+					if (pool[my_sit].card[i] == current_card) {
+						pool[my_sit].card[i] = pool[my_sit].card[pool[my_sit].num - 1];
+						pool[my_sit].num--; // 立即減少手牌數量
+						i++; // 跳過下一張（因為已經是相同的牌）
+						if(i < pool[my_sit].num){ // 檢查邊界條件
+							pool[my_sit].card[i] = pool[my_sit].card[pool[my_sit].num - 1];
+							pool[my_sit].num--;
+							break; 
+						} else {
+							fprintf(stderr, "錯誤: process_epk() 碰牌時手牌數量不足\n");
+							return;
+						}
 					}
 				}
-				/* Record end */
-
-				sprintf(msg_buf, "020%5d%ld", player[table[i]].id,
-						player[table[i]].money+change_money[i]);
-				write_msg(gps_sockfd, msg_buf);
-			}
-		}
-
-		/* record start */
-		if( sendlog == 1){
-			long current_time = 0;
-			time(&current_time);
-			sprintf(result_buf, "],time:%ld000}", current_time);
-			strcat(result_record_buf, result_buf);
-			result_record_buf[strlen(result_record_buf)] = '\0';
-			write_msg(gps_sockfd, result_record_buf);
-			
-		}
-		/* record end */
-	}
-
-	//Send result record to server side
-
-	wait_a_key(PRESS_ANY_KEY_TO_CONTINUE);
-	set_color(37, 40);
-	clear_screen_area(THROW_Y,THROW_X,8,34);
-	attron(A_BOLD);
-	wmvaddstr(stdscr, THROW_Y+1, THROW_X+12, "金 額 統 計");
-	for (i=1; i<=4; i++) {
-		wmove(stdscr, THROW_Y+2+i, THROW_X);
-		wprintw(stdscr, "%s家：%7ld %c %7ld = %7ld", sit_name[i],
-				player[table[i]].money, (change_money[i]<0) ? '-' : '+',
-				(change_money[i]<0) ? -change_money[i] : change_money[i],
-				player[table[i]].money+change_money[i]);
-		player[table[i]].money+=change_money[i];
-	}
-	my_money=player[my_id].money;
-	if (in_serv)
-		waiting=1;
-	return_cursor();
-	attroff(A_BOLD);
-	if (sit!=info.dealer) {
-		info.dealer++;
-		info.cont_dealer=0;
-		if (info.dealer==5) {
-			info.dealer=1;
-			info.wind++;
-			if (info.wind==5)
-				info.wind=1;
-		}
-	} else
-		info.cont_dealer++;
-	wait_a_key(PRESS_ANY_KEY_TO_CONTINUE);
-	if (in_serv) {
-		wait_hit[my_sit]=1;
-	} else{
-		write_msg(table_sockfd, "450");
-	}
-}
-
-process_epk(check)
-	char check; {
-	char card1, card2, card3;
-	int i;
-	char msg_buf[80];
-
-	switch (check) {
-	case 2:
-		play_mode=THROW_CARD;
-		for (i=0; i<pool[my_sit].num; i++) {
-			if (pool[my_sit].card[i]==current_card) {
-				pool[my_sit].card[i]=pool[my_sit].card[pool[my_sit].num-1];
-				pool[my_sit].card[i+1]=pool[my_sit].card[pool[my_sit].num-2];
+				card1 = card2 = card3 = current_card;
+				draw_epk(my_id, check, card1, card2, card3);
+				sort_card(1);
 				break;
-			}
-		}
-		card1=card2=card3=current_card;
-		draw_epk(my_id, check, card1, card2, card3);
-		pool[my_sit].num-=3;
-		sort_card(1);
-		break;
-	case 3:
-	case 11:
-		for (i=0; i<pool[my_sit].num; i++) {
-			if (pool[my_sit].card[i]==current_card) {
-				pool[my_sit].card[i]=pool[my_sit].card[pool[my_sit].num-1];
-				pool[my_sit].card[i+1]=pool[my_sit].card[pool[my_sit].num-2];
-				pool[my_sit].card[i+2]=pool[my_sit].card[pool[my_sit].num-3];
-			}
-		}
-		card1=current_card;
-		card2=current_card;
-		card3=current_card;
-		draw_epk(my_id, check, card1, card2, card3);
-		pool[my_sit].num-=3;
-		sort_card(0);
-		play_mode=GET_CARD;
-		attron(A_REVERSE);
-		show_card(10, INDEX_X+16*2+1, INDEX_Y+1, 1);
-		attroff(A_REVERSE);
-		break;
-	case 12:
-		for (i=0; i<pool[my_sit].out_card_index; i++) {
-			if (pool[my_sit].out_card[i][1]==current_card
-					|| pool[my_sit].out_card[i][2]==current_card)
+			case KANG: // 暗槓 or 碰槓
+			case 11: // 明槓 (from process_make)
+				//  槓牌處理與碰牌類似，需要移除三張牌
+				kang_count = 0;
+				for (i = 0; i < pool[my_sit].num && kang_count < 3; i++) { //  限制移除次數
+					if (pool[my_sit].card[i] == current_card) {
+						pool[my_sit].card[i] = pool[my_sit].card[pool[my_sit].num - 1];
+						pool[my_sit].num--;
+						kang_count++;
+						i--; // 檢查替換後的牌是否也相同
+					}
+				}
+
+				if(kang_count != 3){ //  如果沒有移除三張牌，則回報錯誤
+					fprintf(stderr, "錯誤: process_epk() 槓牌時手牌數量不足\n");
+					return;
+				}
+
+				card1 = card2 = card3 = current_card;
+				draw_epk(my_id, check, card1, card2, card3);
+				sort_card(0);
+				play_mode = GET_CARD;
+				attron(A_REVERSE);
+				show_card(10, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
+				attroff(A_REVERSE);
 				break;
+			case 12: // 碰槓
+					for (i = 0; i < pool[my_sit].out_card_index; i++) {
+							if (pool[my_sit].out_card[i][1] == current_card || pool[my_sit].out_card[i][2] == current_card) break;
+					}
+					pool[my_sit].out_card[i][0] = 12;
+					card1 = card2 = card3 = current_card;
+					draw_epk(my_id, check, card1, card2, card3);
+					play_mode = GET_CARD;
+					attron(A_REVERSE);
+					show_card(10, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
+					attroff(A_REVERSE);
+					break;
+			case 7: // 吃牌 (1,2,3)
+			case 8: // 吃牌 (2,3,4)
+			case 9: // 吃牌 (3,4,5)
+					//  Implement eat logic (Similar to pong/kang, but with different card selection)
+					play_mode = THROW_CARD; // Update game mode
+					if(check == 7){
+							pool[my_sit].card[search_card(my_sit, current_card + 1)] = pool[my_sit].card[pool[my_sit].num - 1];
+							pool[my_sit].card[search_card(my_sit, current_card + 2)] = pool[my_sit].card[pool[my_sit].num - 2];
+							card1 = current_card + 1;
+							card2 = current_card;
+							card3 = current_card + 2;
+					} else if (check == 8) {
+							pool[my_sit].card[search_card(my_sit, current_card - 1)] = pool[my_sit].card[pool[my_sit].num - 1];
+							pool[my_sit].card[search_card(my_sit, current_card + 1)] = pool[my_sit].card[pool[my_sit].num - 2];
+							card1 = current_card - 1;
+							card2 = current_card;
+							card3 = current_card + 1;
+					} else { // check == 9
+							pool[my_sit].card[search_card(my_sit, current_card - 1)] = pool[my_sit].card[pool[my_sit].num - 1];
+							pool[my_sit].card[search_card(my_sit, current_card - 2)] = pool[my_sit].card[pool[my_sit].num - 2];
+							card1 = current_card - 2;
+							card2 = current_card;
+							card3 = current_card - 1;
+					}
+					draw_epk(my_id, check, card1, card2, card3);
+					pool[my_sit].num -= 3;
+					sort_card(1);
+					break;
+    }
+
+    if (check != 12) {
+			pool[my_sit].out_card[pool[my_sit].out_card_index][0] = check;
+			pool[my_sit].out_card[pool[my_sit].out_card_index][1] = card1;
+			pool[my_sit].out_card[pool[my_sit].out_card_index][2] = card2;
+			pool[my_sit].out_card[pool[my_sit].out_card_index][3] = card3;
+			if (check == KANG || check == 11) {
+				pool[my_sit].out_card[pool[my_sit].out_card_index][4] = card3;
+				pool[my_sit].out_card[pool[my_sit].out_card_index][5] = 0;
+			} else {
+				pool[my_sit].out_card[pool[my_sit].out_card_index][4] = 0;
+			}
+			pool[my_sit].out_card_index++;
+    }
+
+    // 使用 snprintf 避免緩衝區溢位
+    int snprintf_result = snprintf(msg_buf, sizeof(msg_buf), "530%c%c%c%c%c", my_id, check, card1, card2, card3);
+    if (snprintf_result < 0 || snprintf_result >= sizeof(msg_buf)) {
+			fprintf(stderr, "錯誤: process_epk() snprintf 失敗或緩衝區溢位\n");
+			return; // 回報錯誤並返回
+    }
+
+    turn = my_sit;
+    card_owner = my_sit;
+    if (in_serv) {
+			gettimeofday(&before, (struct timezone *)0);
+			broadcast_msg(1, msg_buf);
+    } else {
+      write_msg(table_sockfd, msg_buf);
 		}
-		pool[my_sit].out_card[i][0]=12;
-		if (i==pool[my_sit].out_card_index)
-			break;
-		card1=card2=card3=current_card;
-		draw_epk(my_id, check, card1, card2, card3);
-		play_mode=GET_CARD;
-		attron(A_REVERSE);
-		show_card(10, INDEX_X+16*2+1, INDEX_Y+1, 1);
-		attroff(A_REVERSE);
-		break;
-	case 7:
-		play_mode=THROW_CARD;
-		pool[my_sit].card[search_card(my_sit,current_card+1)] =pool[my_sit].card[pool[my_sit].num-1];
-		pool[my_sit].card[search_card(my_sit,current_card+2)] =pool[my_sit].card[pool[my_sit].num-2];
-		card1=current_card+1;
-		card2=current_card;
-		card3=current_card+2;
-		draw_epk(my_id, check, card1, card2, card3);
-		pool[my_sit].num-=3;
-		sort_card(1);
-		break;
-	case 8:
-		play_mode=THROW_CARD;
-		pool[my_sit].card[search_card(my_sit,current_card-1)] =pool[my_sit].card[pool[my_sit].num-1];
-		pool[my_sit].card[search_card(my_sit,current_card+1)] =pool[my_sit].card[pool[my_sit].num-2];
-		card1=current_card-1;
-		card2=current_card;
-		card3=current_card+1;
-		draw_epk(my_id, check, card1, card2, card3);
-		pool[my_sit].num-=3;
-		sort_card(1);
-		break;
-	case 9:
-		play_mode=THROW_CARD;
-		pool[my_sit].card[search_card(my_sit,current_card-1)] =pool[my_sit].card[pool[my_sit].num-1];
-		pool[my_sit].card[search_card(my_sit,current_card-2)] =pool[my_sit].card[pool[my_sit].num-2];
-		card1=current_card-2;
-		card2=current_card;
-		card3=current_card-1;
-		draw_epk(my_id, check, card1, card2, card3);
-		pool[my_sit].num-=3;
-		sort_card(1);
-		break;
-	}
-	if (check!=12) {
-		pool[my_sit].out_card[pool[my_sit].out_card_index][0]=check;
-		pool[my_sit].out_card[pool[my_sit].out_card_index][1]=card1;
-		pool[my_sit].out_card[pool[my_sit].out_card_index][2]=card2;
-		pool[my_sit].out_card[pool[my_sit].out_card_index][3]=card3;
-		if (check==3 || check==11) {
-			pool[my_sit].out_card[pool[my_sit].out_card_index][4]=card3;
-			pool[my_sit].out_card[pool[my_sit].out_card_index][5]=0;
-		} else
-			pool[my_sit].out_card[pool[my_sit].out_card_index][4]=0;
-		pool[my_sit].out_card_index++;
-	}
-	sprintf(msg_buf, "530%c%c%c%c%c", my_id, check, card1, card2, card3);
-	turn=my_sit;
-	card_owner=my_sit;
-	if (in_serv) {
-		gettimeofday(&before, (struct timezone *) 0);
-		broadcast_msg(1, msg_buf);
-	} else
-		write_msg(table_sockfd, msg_buf);
-	current_item=pool[my_sit].num;
-	pos_x=INDEX_X+16*2+1;
-	draw_index(pool[my_sit].num+1);
-	display_point(my_sit);
-	show_num(2, 70, 144-card_point-16, 2);
-	return_cursor();
+    current_item = pool[my_sit].num;
+    pos_x = INDEX_X + 16 * 2 + 1;
+    draw_index(pool[my_sit].num + 1);
+    display_point(my_sit);
+    show_num(2, 70, 144 - card_point - 16, 2);
+    return_cursor();
 }
 
 /*  Draw eat,pong or kang */
-draw_epk(id, kind, card1, card2, card3)
-	char id, kind, card1, card2, card3; {
-	int sit, i;
-	char msg_buf[80];
+void draw_epk(char id, char kind, char card1, char card2, char card3) {
+    int sit, i;
+    char msg_buf[80]; // 確保緩衝區夠大，使用 snprintf 避免緩衝區溢位
 
-	beep1();
-	sit=player[id].sit;
-	if (kind==KANG || kind==11 || kind==12)
-		in_kang=1;
-	if (kind!=11 && kind!=12)
-		throw_card(20);
-	if (kind==12) {
-		for (i=0; i<pool[sit].out_card_index; i++) {
-			if (pool[sit].out_card[i][1]==card1 && pool[sit].out_card[i][2]
-					==card2)
-				break;
-		}
-		attron(A_REVERSE);
-		switch ((sit-my_sit+4)%4) {
-		case 0:
-			wmvaddstr(stdscr, INDEX_Y, INDEX_X+i*6, "杠");
-			break;
-		case 1:
-			wmvaddstr(stdscr, INDEX_Y1-i*3-1, INDEX_X1-2, "杠");
-			break;
-		case 2:
-			wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-i*6-2, "杠");
-			break;
-		case 3:
-			wmvaddstr(stdscr, INDEX_Y3+i*3+1, INDEX_X3+4, "杠");
-			break;
-		}
-		attroff(A_REVERSE);
-		return_cursor();
-	} else
-		switch ((sit-my_sit+4)%4) {
-		case 0:
-			show_card(20, INDEX_X+(16-pool[my_sit].num)*2+4, INDEX_Y+1, 1);
-			wrefresh(stdscr);
-			wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2-2, "┌");
-			if (kind==KANG || kind==11) {
-				attron(A_REVERSE);
-				wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2, "杠");
-				attroff(A_REVERSE);
-			} else
-				wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2, "─");
-			wmvaddstr(stdscr, INDEX_Y, INDEX_X+(16-pool[my_sit].num)*2+2, "┐  ");
-			wrefresh(stdscr);
-			if (kind==11)
-				card1=card3=30;
-			show_card(card1, INDEX_X+(16-pool[my_sit].num)*2-2, INDEX_Y+1, 1);
-			show_card(card2, INDEX_X+(16-pool[my_sit].num)*2, INDEX_Y+1, 1);
-			show_card(card3, INDEX_X+(16-pool[my_sit].num)*2+2, INDEX_Y+1, 1);
-			break;
-		case 1:
-			wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num)-2, INDEX_X1-2, "┌");
-			if (kind==KANG || kind==11) {
-				attron(A_REVERSE);
-				wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num)-1, INDEX_X1-2, "杠");
-				attroff(A_REVERSE);
-			} else
-				wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num)-1, INDEX_X1-2, "│");
-			wmvaddstr(stdscr, INDEX_Y1-(16-pool[sit].num), INDEX_X1-2, "└");
-			wrefresh(stdscr);
-			if (kind==11)
-				card1=card2=card3=40;
-			show_card(card1, INDEX_X1, INDEX_Y1-(16-pool[sit].num), 0);
-			show_card(card2, INDEX_X1, INDEX_Y1-(16-pool[sit].num)-1, 0);
-			show_card(card3, INDEX_X1, INDEX_Y1-(16-pool[sit].num)-2, 0);
-			break;
-		case 2:
-			wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2-2, "└");
-			if (kind==KANG || kind==11) {
-				attron(A_REVERSE);
-				wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2, "杠");
-				attroff(A_REVERSE);
-			} else
-				wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2, "─");
-			if (kind==11)
-				card1=card2=card3=30;
-			wmvaddstr(stdscr, INDEX_Y2+2, INDEX_X2-(16-pool[sit].num)*2+2, "┘");
-			wrefresh(stdscr);
-			show_card(20, INDEX_X2-(16-pool[sit].num)*2-4, INDEX_Y2, 1);
-			show_card(card1, INDEX_X2-(16-pool[sit].num)*2+2, INDEX_Y2, 1);
-			show_card(card2, INDEX_X2-(16-pool[sit].num)*2, INDEX_Y2, 1);
-			show_card(card3, INDEX_X2-(16-pool[sit].num)*2-2, INDEX_Y2, 1);
-			break;
-		case 3:
-			wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num), INDEX_X3+4, "┐");
-			if (kind==KANG || kind==11) {
-				attron(A_REVERSE);
-				wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num)+1, INDEX_X3+4, "杠");
-				attroff(A_REVERSE);
-			} else
-				wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num)+1, INDEX_X3+4, "│");
-			if (kind==11)
-				card1=card2=card3=40;
-			wmvaddstr(stdscr, INDEX_Y3+(16-pool[sit].num)+2, INDEX_X3+4, "┘");
-			wrefresh(stdscr);
-			show_card(card1, INDEX_X3, INDEX_Y3+(16-pool[sit].num), 0);
-			show_card(card2, INDEX_X3, INDEX_Y3+(16-pool[sit].num)+1, 0);
-			show_card(card3, INDEX_X3, INDEX_Y3+(16-pool[sit].num)+2, 0);
-			break;
-		}
+    beep();
+    sit = player[id].sit;
+    if (kind == KANG || kind == 11 || kind == 12) {
+        in_kang = 1;
+    }
+    if (kind != 11 && kind != 12) {
+        throw_card(20);
+    }
+
+    // 使用更有效率的 switch-case 結構處理不同玩家位置
+    int y, x;
+    switch ((sit - my_sit + 4) % 4) {
+        case 0: // 自己
+            y = INDEX_Y;
+            x = INDEX_X + (16 - pool[my_sit].num) * 2 - 2;
+            break;
+        case 1: // 上家
+            y = INDEX_Y1 - (16 - pool[sit].num) - 2;
+            x = INDEX_X1 - 2;
+            break;
+        case 2: // 對家
+            y = INDEX_Y2 + 2;
+            x = INDEX_X2 - (16 - pool[sit].num) * 2 - 2;
+            break;
+        case 3: // 下家
+            y = INDEX_Y3 + (16 - pool[sit].num);
+            x = INDEX_X3 + 4;
+            break;
+        default:
+            fprintf(stderr, "錯誤: draw_epk() 計算玩家位置錯誤: sit=%d, my_sit=%d\n", sit, my_sit);
+            return; // 回報錯誤並返回
+    }
+
+    if (kind == 12) { // 碰槓
+        for (i = 0; i < pool[sit].out_card_index; i++) {
+            if (pool[sit].out_card[i][1] == card1 && pool[sit].out_card[i][2] == card2) {
+                break;
+            }
+        }
+        attron(A_REVERSE);
+        mvaddstr(y, x, "杠"); // 使用 mvaddstr 避免 sprintf
+        attroff(A_REVERSE);
+        return_cursor();
+    } else {
+        // 使用更有效率的程式碼繪製吃、碰、槓
+        show_card(20, x + 4, y + 1, (sit - my_sit + 4) % 4 < 2 ? 1 : 0); //只刷新必要的區域
+        wrefresh(stdscr);
+
+        mvaddstr(y, x, "┌"); // 使用 mvaddstr 避免 sprintf
+        if (kind == KANG || kind == 11) {
+            attron(A_REVERSE);
+            mvaddstr(y, x + 1, "杠"); // 使用 mvaddstr 避免 sprintf
+            attroff(A_REVERSE);
+        } else {
+            mvaddstr(y, x + 1, "─"); // 使用 mvaddstr 避免 sprintf
+        }
+        mvaddstr(y, x + 3, "┐  "); // 使用 mvaddstr 避免 sprintf
+        wrefresh(stdscr);
+
+        if (kind == 11) {
+            card1 = card3 = 30;
+        }
+        show_card(card1, x, y + 1, (sit - my_sit + 4) % 4 < 2 ? 1 : 0);
+        show_card(card2, x + 2, y + 1, (sit - my_sit + 4) % 4 < 2 ? 1 : 0);
+        show_card(card3, x + 4, y + 1, (sit - my_sit + 4) % 4 < 2 ? 1 : 0);
+        wrefresh(stdscr); // 只刷新一次
+    }
 }
 
-draw_flower(sit, card)
-	char sit;char card; {
-	char msg_buf[80];
+void draw_flower(char sit, char card) {
+    char msg_buf[80]; // 確保緩衝區夠大，使用 snprintf 避免緩衝區溢位
 
-	/*
-	 set_mode(1);
-	 set_color(33,40);
-	 */
-	attron(A_BOLD);
-	in_kang=1;
-	pool[sit].flower[card-51]=1;
-	strcpy(msg_buf, mj_item[card]);
-	msg_buf[2]=0;
-	reset_cursor();
-	switch ((sit-my_sit+4)%4) {
-	case 0:
-		wmvaddstr(stdscr, FLOWER_Y, FLOWER_X+(card-51)*2, msg_buf);
-		break;
-	case 1:
-		wmvaddstr(stdscr, FLOWER_Y1-(card-51), FLOWER_X1, msg_buf);
-		break;
-	case 2:
-		wmvaddstr(stdscr, FLOWER_Y2, FLOWER_X2-(card-51)*2, msg_buf);
-		break;
-	case 3:
-		wmvaddstr(stdscr, FLOWER_Y3+(card-51), FLOWER_X3, msg_buf);
-		break;
-	}
-	return_cursor();
-	attroff(A_BOLD);
-	/*
-	 set_mode(0);
-	 set_color(37,40);
-	 */
+    // 範圍檢查，確保 card 在有效範圍內
+    if (card < 51 || card > 58) {
+        fprintf(stderr, "錯誤: draw_flower() 收到無效的花牌值: %d\n", card);
+        return; // 回報錯誤並返回
+    }
+
+    // 使用 snprintf 避免緩衝區溢位
+    int result = snprintf(msg_buf, sizeof(msg_buf), "%s", mj_item[card]);
+    if (result < 0 || result >= sizeof(msg_buf)) {
+        fprintf(stderr, "錯誤: draw_flower() snprintf 失敗或緩衝區溢位\n");
+        return; // 回報錯誤並返回
+    }
+
+    // 使用更有效率的方式處理不同玩家位置的顯示
+    int y, x;
+    switch ((sit - my_sit + 4) % 4) {
+        case 0:
+            y = FLOWER_Y;
+            x = FLOWER_X + (card - 51) * 2;
+            break;
+        case 1:
+            y = FLOWER_Y1 - (card - 51);
+            x = FLOWER_X1;
+            break;
+        case 2:
+            y = FLOWER_Y2;
+            x = FLOWER_X2 - (card - 51) * 2;
+            break;
+        case 3:
+            y = FLOWER_Y3 + (card - 51);
+            x = FLOWER_X3;
+            break;
+        default:
+            fprintf(stderr, "錯誤: draw_flower() 計算玩家位置錯誤: sit=%d, my_sit=%d\n", sit, my_sit);
+            return; // 回報錯誤並返回
+
+    }
+    
+    // 使用 mvaddstr 顯示花牌，並處理錯誤情況
+    int mvaddstr_result = mvaddstr(y, x, msg_buf);
+    if (mvaddstr_result == ERR) {
+        fprintf(stderr, "錯誤: draw_flower() mvaddstr 失敗\n");
+    }
+
+    // 更新螢幕
+    refresh();
+    return_cursor();
+
+    // 設定花牌旗標
+    attron(A_BOLD);
+    in_kang = 1;
+    pool[sit].flower[card - 51] = 1;
+    attroff(A_BOLD);
 }

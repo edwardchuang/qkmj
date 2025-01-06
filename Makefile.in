@@ -111,12 +111,12 @@ am__dirstamp = $(am__leading_dot)dirstamp
 am_mjgps_OBJECTS = qkmjserver/mjgps.$(OBJEXT)
 mjgps_OBJECTS = $(am_mjgps_OBJECTS)
 mjgps_LDADD = $(LDADD)
-am_qkmj_OBJECTS = qkmjclient/qkmj.$(OBJEXT) qkmjclient/input.$(OBJEXT) \
-	qkmjclient/screen.$(OBJEXT) qkmjclient/socket.$(OBJEXT) \
-	qkmjclient/command.$(OBJEXT) qkmjclient/message.$(OBJEXT) \
-	qkmjclient/check.$(OBJEXT) qkmjclient/checkscr.$(OBJEXT) \
-	qkmjclient/card.$(OBJEXT) qkmjclient/chkmake.$(OBJEXT) \
-	qkmjclient/misc.$(OBJEXT)
+am_qkmj_OBJECTS = qkmjclient/card.$(OBJEXT) qkmjclient/check.$(OBJEXT) \
+	qkmjclient/checkscr.$(OBJEXT) qkmjclient/chkmake.$(OBJEXT) \
+	qkmjclient/command.$(OBJEXT) qkmjclient/input.$(OBJEXT) \
+	qkmjclient/message.$(OBJEXT) qkmjclient/misc.$(OBJEXT) \
+	qkmjclient/qkmj.$(OBJEXT) qkmjclient/screen.$(OBJEXT) \
+	qkmjclient/socket.$(OBJEXT)
 qkmj_OBJECTS = $(am_qkmj_OBJECTS)
 qkmj_DEPENDENCIES =
 AM_V_P = $(am__v_P_@AM_V@)
@@ -303,21 +303,22 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 mjgps_SOURCES = qkmjserver/mjgps.h qkmjserver/mjgps.c 
-qkmj_SOURCES = qkmjclient/qkmj.c \
-    qkmjclient/input.c \
-    qkmjclient/screen.c \
-    qkmjclient/socket.c \
-    qkmjclient/command.c \
-    qkmjclient/message.c \
+qkmj_SOURCES = \
+    qkmjclient/card.c \
     qkmjclient/check.c \
     qkmjclient/checkscr.c \
-    qkmjclient/card.c \
     qkmjclient/chkmake.c \
-    qkmjclient/misc.c \
+    qkmjclient/command.c \
+    qkmjclient/input.c \
     qkmjclient/input.h \
-    qkmjclient/socket.h \
+    qkmjclient/message.c \
+    qkmjclient/misc.c \
+    qkmjclient/misc.h \
     qkmjclient/mjdef.h \
-    qkmjclient/misc.h
+    qkmjclient/qkmj.c \
+    qkmjclient/screen.c \
+    qkmjclient/socket.c \
+    qkmjclient/socket.h
 
 qkmj_LDADD = $(NCURSES_LIBS)
 all: all-am
@@ -417,27 +418,27 @@ qkmjclient/$(am__dirstamp):
 qkmjclient/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) qkmjclient/$(DEPDIR)
 	@: >>qkmjclient/$(DEPDIR)/$(am__dirstamp)
-qkmjclient/qkmj.$(OBJEXT): qkmjclient/$(am__dirstamp) \
-	qkmjclient/$(DEPDIR)/$(am__dirstamp)
-qkmjclient/input.$(OBJEXT): qkmjclient/$(am__dirstamp) \
-	qkmjclient/$(DEPDIR)/$(am__dirstamp)
-qkmjclient/screen.$(OBJEXT): qkmjclient/$(am__dirstamp) \
-	qkmjclient/$(DEPDIR)/$(am__dirstamp)
-qkmjclient/socket.$(OBJEXT): qkmjclient/$(am__dirstamp) \
-	qkmjclient/$(DEPDIR)/$(am__dirstamp)
-qkmjclient/command.$(OBJEXT): qkmjclient/$(am__dirstamp) \
-	qkmjclient/$(DEPDIR)/$(am__dirstamp)
-qkmjclient/message.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+qkmjclient/card.$(OBJEXT): qkmjclient/$(am__dirstamp) \
 	qkmjclient/$(DEPDIR)/$(am__dirstamp)
 qkmjclient/check.$(OBJEXT): qkmjclient/$(am__dirstamp) \
 	qkmjclient/$(DEPDIR)/$(am__dirstamp)
 qkmjclient/checkscr.$(OBJEXT): qkmjclient/$(am__dirstamp) \
 	qkmjclient/$(DEPDIR)/$(am__dirstamp)
-qkmjclient/card.$(OBJEXT): qkmjclient/$(am__dirstamp) \
-	qkmjclient/$(DEPDIR)/$(am__dirstamp)
 qkmjclient/chkmake.$(OBJEXT): qkmjclient/$(am__dirstamp) \
 	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/command.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/input.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/message.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
 qkmjclient/misc.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/qkmj.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/screen.$(OBJEXT): qkmjclient/$(am__dirstamp) \
+	qkmjclient/$(DEPDIR)/$(am__dirstamp)
+qkmjclient/socket.$(OBJEXT): qkmjclient/$(am__dirstamp) \
 	qkmjclient/$(DEPDIR)/$(am__dirstamp)
 
 qkmj$(EXEEXT): $(qkmj_OBJECTS) $(qkmj_DEPENDENCIES) $(EXTRA_qkmj_DEPENDENCIES) 

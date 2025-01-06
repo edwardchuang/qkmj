@@ -5146,6 +5146,48 @@ then :
 
 fi
 
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for main in -lcjson" >&5
+printf %s "checking for main in -lcjson... " >&6; }
+if test ${ac_cv_lib_cjson_main+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e) ac_check_lib_save_LIBS=$LIBS
+LIBS="-lcjson  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+int
+main (void)
+{
+return main ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_cjson_main=yes
+else case e in #(
+  e) ac_cv_lib_cjson_main=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS ;;
+esac
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_cjson_main" >&5
+printf "%s\n" "$ac_cv_lib_cjson_main" >&6; }
+if test "x$ac_cv_lib_cjson_main" = xyes
+then :
+  printf "%s\n" "#define HAVE_LIBCJSON 1" >>confdefs.h
+
+  LIBS="-lcjson $LIBS"
+
+fi
+
 
 # Checks for header files.
 ac_fn_c_check_header_compile "$LINENO" "arpa/inet.h" "ac_cv_header_arpa_inet_h" "$ac_includes_default"
@@ -5224,6 +5266,12 @@ ac_fn_c_check_header_compile "$LINENO" "unistd.h" "ac_cv_header_unistd_h" "$ac_i
 if test "x$ac_cv_header_unistd_h" = xyes
 then :
   printf "%s\n" "#define HAVE_UNISTD_H 1" >>confdefs.h
+
+fi
+ac_fn_c_check_header_compile "$LINENO" "cjson/cJSON.h" "ac_cv_header_cjson_cJSON_h" "$ac_includes_default"
+if test "x$ac_cv_header_cjson_cJSON_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_CJSON_CJSON_H 1" >>confdefs.h
 
 fi
 

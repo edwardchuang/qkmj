@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -7,373 +6,256 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define THREE_CARD 1
-#define STRAIGHT_CARD 2
-#define PAIR_CARD 3
-
-#include "mjdef.h"
-
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
-#endif
-
 #include "qkmj.h"
 
-
-clear_check_flag(sit)
-char sit;
+void clear_check_flag(char sit)
 {
-  int i,j;
-
-  for(j=1;j<6;j++)
-    check_flag[sit][j]=0;
+  check_flag[sit][1] = 0;
+  check_flag[sit][2] = 0;
+  check_flag[sit][3] = 0;
+  check_flag[sit][4] = 0;
+  check_flag[sit][5] = 0;
 }
 
-int search_card(sit,card)
-char sit;
-char card;
-{
-  int i;
+int search_card(char sit, char card) {
+	if (card == 0) return 0;  // 及早返回
+
+	for (int i = 0; i < pool[sit].num; i++) {
+		if (pool[sit].card[i] == card) return i; // 找到牌後立即返回
+	}
+	return -1;
+}
+
+int check_kang(char sit, char card) {
+	if (card == 0) return 0; // 及早返回
+
+	// 優化：直接檢查是否有四張相同的牌
+	int count = 0;
+	for (int i = 0; i < pool[sit].num; i++) {
+		if (pool[sit].card[i] == card) {
+			count++;
+			if(count == 4) return 1; // 找到暗槓
+		}
+	}
+
+	// 檢查碰槓。此迴圈可能較慢，可考慮使用更有效率的資料結構儲存 out_card
+	for (int i = 0; i < pool[sit].out_card_index; i++) {
+		if (pool[sit].out_card[i][0] == 2 && pool[sit].out_card[i][1] == card && sit == card_owner) {
+			return 2;
+		}
+	}
+
+	return 0; // 無法槓
+}
+
+int check_pong(char sit, char card) {
+	if (card == 0) return 0;
+
+	int count = 0;
+	for (int i = 0; i < pool[sit].num; i++) {
+		if (pool[sit].card[i] == card) {
+			count++;
+			if (count == 2) return 1;  // 找到碰
+		}
+	}
+
+	return 0;  // 無法碰
+}
+
+int check_eat(char sit, char card) {
+	// 檢查玩家是否為下家且牌的範圍有效
+	if (next_turn(turn) != sit || card < 1 || card > 29) {
+		return 0; // 不是下家或牌無效，及早返回
+	}
+
+	int j = card % 10;
+
+	// 使用 if-else 結構簡化邏輯，避免 switch statement
+	if (search_card(sit, card + 1) >= 0 && search_card(sit, card + 2) >= 0) { // 檢查 1, 2, 8, 9
+		if (j == 1 || j == 2 || j == 8 || j == 9) return 1;
+	}
+	if (search_card(sit, card - 1) >= 0 && search_card(sit, card + 1) >= 0) { // 檢查 2, 3-8
+		if (j >= 2 && j <= 8) return 1;
+	}
+	if (search_card(sit, card - 2) >= 0 && search_card(sit, card - 1) >= 0) { // 檢查 3-9
+		if (j >= 3 && j <= 9) return 1;
+	}
+
+	return 0; // 無法吃牌
+}
  
-  if(card==0)
-    return(0);
-  for(i=0;i<pool[sit].num;i++)
-  {
-    if(pool[sit].card[i]==card)
-      goto found;
-  }
-  i=-1;
-  found:;
-  return(i);
+void check_card(char sit, char card) { // 使用 char 類型參數
+	clear_check_flag(sit);
+
+	// 呼叫檢查函式並設定對應的檢查旗標
+	check_flag[sit][1] = check_eat(sit, card);
+	check_flag[sit][2] = check_pong(sit, card);
+	check_flag[sit][3] = check_kang(sit, card);
+	check_flag[sit][4] = check_make(sit, card, 0);
 }
 
-int check_kang(sit,card)
-char sit;
-char card;
-{
-  int i,kang;
+int check_begin_flower(char sit, char card, char position) {  /* command for server */
+	char msg_buf[80];  // 確保緩衝區夠大
 
-  kang=1;
-  if(card==0)
-    return(0);
-  for(i=0;i<pool[sit].num-2;i++)
-    if(pool[sit].card[i]==card)
-        goto found;
-  for(i=0;i<pool[sit].out_card_index;i++)
-    if(pool[sit].out_card[i][0]==2 && pool[sit].out_card[i][1]==card &&
-       sit==card_owner)
-    {
-      return 2;
-    }
-  kang=0;
-  found:;
-  if(pool[sit].card[i+1]!=card || pool[sit].card[i+2]!=card)
-    kang=0;
-  return(kang);
+	// 使用範圍檢查，避免不必要的計算
+	if (card >= 51 && card <= 58) {
+		snprintf(msg_buf, sizeof(msg_buf), "525%c%c", sit, pool[sit].card[position]); // 使用 snprintf 確保安全，避免緩衝區溢位
+		broadcast_msg(1, msg_buf);
+		draw_flower(sit, card);
+		card = mj[card_point++];
+		if (sit == my_sit) {
+			change_card(position, card);
+		} else {
+			pool[sit].card[position] = card;
+			snprintf(msg_buf, sizeof(msg_buf), "301%c%c", position, card);  // 使用 snprintf 確保安全，避免緩衝區溢位
+			write_msg(player[table[sit]].sockfd, msg_buf);
+		}
+		return 1; // 找到花牌
+	} else {
+		return 0; // 不是花牌
+	}
 }
 
-int check_pong(sit,card)
-char sit;
-char card;
-{
-  int i,pong;
+int check_flower(char sit, char card) {
+  char msg_buf[80];  // 確保緩衝區夠大
 
-  pong=1;
-  if(card==0)
-    return(0);
-  for(i=0;i<pool[sit].num-1;i++)
-    if(pool[sit].card[i]==card)
-      goto found;
-  pong=0;
-  found:;
-  if(pool[sit].card[i+1]!=card)
-    pong=0;
-  return(pong);
+	// 使用範圍檢查，避免不必要的計算
+	if (card >= 51 && card <= 58) {
+		snprintf(msg_buf, sizeof(msg_buf), "525%c%c", sit, card); // 使用 snprintf 確保安全，避免緩衝區溢位
+		draw_flower(sit, card);
+
+		if (in_join) {
+			write_msg(table_sockfd, msg_buf);
+		} else {
+			broadcast_msg(1, msg_buf);
+			card = mj[card_point++];
+			show_num(2, 70, 144 - card_point - 16, 2);
+			card_owner = my_sit;
+
+			snprintf(msg_buf, sizeof(msg_buf), "305%c", (char)my_sit); // 使用 snprintf 確保安全，避免緩衝區溢位
+			broadcast_msg(1, msg_buf);
+
+			snprintf(msg_buf, sizeof(msg_buf), "306%c", card_point);  // 使用 snprintf 確保安全，避免緩衝區溢位
+			broadcast_msg(1, msg_buf);
+
+			play_mode = GET_CARD;
+			attron(A_REVERSE);
+			show_card(10, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
+			attroff(A_REVERSE);
+			return_cursor();
+		}
+		return 1; // 找到花牌
+	} else {
+		return 0; // 不是花牌
+	}
 }
 
-int check_eat(sit,card)
-char sit;
-char card;
-{
-  int i,j,eat;
-  char msg_buf[80];
-  
-  eat=0;
-  i=next_turn(turn);
-  if(i!=sit)
-    return(0);
-  if(card<1 || card>29)
-    return(0);
-  j=card%10;
-  switch(j)
-  {
-    case 1:
-      if(search_card(sit,card+1)>=0 && search_card(sit,card+2)>=0)
-        eat=1;
-      break;
-    case 2:
-      if(search_card(sit,card-1)>=0 && search_card(sit,card+1)>=0)
-        eat=1;
-      if(search_card(sit,card+1)>=0 && search_card(sit,card+2)>=0)
-        eat=1;
-      break;
-    case 3:
-    case 4:
-    case 5:
-    case 6:
-    case 7:
-      if(search_card(sit,card-2)>=0 && search_card(sit,card-1)>=0)
-        eat=1;
-      if(search_card(sit,card-1)>=0 && search_card(sit,card+1)>=0)
-        eat=1;
-      if(search_card(sit,card+1)>=0 && search_card(sit,card+2)>=0)
-        eat=1;
-      break;
-    case 8:
-      if(search_card(sit,card-2)>=0 && search_card(sit,card-1)>=0)
-        eat=1;
-      if(search_card(sit,card-1)>=0 && search_card(sit,card+1)>=0)
-        eat=1;
-      break;
-    case 9:
-      if(search_card(sit,card-2)>=0 && search_card(sit,card-1)>=0)
-        eat=1;
-      break;
-    default:
-      break;
-  }
-  return(eat);
+void write_check(char check) {
+	char msg_buf[80];  // 確保緩衝區夠大
+
+	if (in_join) {
+		snprintf(msg_buf, sizeof(msg_buf), "510%c", check + '0'); // 使用 snprintf 確保安全，避免緩衝區溢位
+		write_msg(table_sockfd, msg_buf);
+	} else {
+		in_check[player[1].sit] = 0;
+		check_for[player[1].sit] = check;
+	}
 }
 
-check_card(sit,card)
-char sit;
-char card;
-{
-  char msg_buf[80];
+void send_pool_card() {
+	int j;
+	// 大幅增加緩衝區大小，以容納所有玩家數據 + 訊息標頭。
+	// 計算安全的緩衝區大小。 例如：3 (標頭) + 4 個玩家 * 每個玩家 16 張牌 + 1 (空終止符)
+	char msg_buf[3 + (4 * 16) + 1];  // 或定義一個常數表示此訊息大小
 
-  clear_check_flag(sit);
-  check_flag[sit][1]=check_eat(sit,card);
-  check_flag[sit][2]=check_pong(sit,card);
-  check_flag[sit][3]=check_kang(sit,card);
-  check_flag[sit][4]=check_make(sit,card,0);
+	snprintf(msg_buf, 3, "521");  // 新增訊息標頭 "521"
+
+	for (int player_index = 1; player_index <= 4; player_index++) {
+		for (j = 0; j < 16; j++) {
+			// 計算 msg_buf 內的正確偏移量
+			int offset = 3 + (player_index - 1) * 16 + j;
+
+			// 確保我們不會寫入超出緩衝區邊界！
+			if (offset < sizeof(msg_buf)) {
+				msg_buf[offset] = pool[player_index].card[j];
+			} else {
+				// 錯誤處理 - 記錄或回報錯誤。緩衝區太小！
+				fprintf(stderr, "錯誤: send_pool_card() 緩衝區溢位！\n");
+				return; // 或以更適合您的應用程序的方式處理錯誤
+			}
+		}
+	}
+
+	msg_buf[sizeof(msg_buf) - 1] = '\0';  // 空終止字串，確保是有效的 C 字串
+
+	broadcast_msg(1, msg_buf);
 }
 
-check_begin_flower(sit,card,position)  /* command for server */
-char sit;
-char card;
-char position;
-{
-  int i;
-  char msg_buf[80];
+void compare_check() {
+	int i, j;
+	char msg_buf[80];
 
-  if(card<=58 && card>=51)
-  {
-    sprintf(msg_buf,"525%c%c",sit,pool[sit].card[position]);
-    broadcast_msg(1,msg_buf);
-    draw_flower(sit,card);
-    card=mj[card_point++];
-    if(sit==my_sit)
-      change_card(position,card);
-    else
-    {
-      pool[sit].card[position]=card;
-      sprintf(msg_buf,"301%c%c",position,card);
-      write_msg(player[table[sit]].sockfd,msg_buf);
-    }
-    return(1);
-  }
-  else
-    return(0);
+	next_player_request = 0;
+
+	// 優化：合併迴圈，減少迭代次數
+	i = next_turn(card_owner); // 從出牌者的下家開始檢查
+	for (j = 0; j < 4; j++) {
+		// 檢查胡牌
+		if (check_for[i] == MAKE) {
+			send_pool_card();
+			snprintf(msg_buf, sizeof(msg_buf), "522%c%c", i, current_card); // 使用 snprintf 防止緩衝區溢位
+			broadcast_msg(1, msg_buf);
+			process_make(i, current_card);
+			return; // 胡牌後直接返回，無需繼續檢查
+		} else if (check_for[i] == KANG || check_for[i] == PONG || (check_for[i] >= 7 && check_for[i] <= 9)) {
+			card_owner = i;
+			if (table[i] == 1) { // 本機玩家
+				// 根據不同的 check_for 值呼叫 process_epk
+				switch (check_for[i]) {
+					case KANG:
+						process_epk(search_card(i, current_card) >= 0 ? (turn == i ? 11 : KANG) : 12);
+						break;
+					case PONG:
+						process_epk(PONG);
+						break;
+					default: // 吃牌 (7, 8, 9)
+						process_epk(check_for[i]);
+				}
+			} else { // 遠端玩家
+				char action = 0;
+				switch(check_for[i]) {
+					case KANG:
+						action = search_card(i,current_card) >=0 ? (turn ==i ? 11 : KANG) : 12;
+						break;
+					case PONG:
+						action = PONG;
+						break;
+					default: // 吃牌
+						action = check_for[i];
+				}
+				snprintf(msg_buf, sizeof(msg_buf), "520%c", action); // 使用 snprintf 防止緩衝區溢位
+				write_msg(player[table[i]].sockfd, msg_buf);
+
+				show_newcard(i, check_for[i] == KANG ? 1 : 2); // 槓牌更新一張牌，碰/吃更新兩張牌
+				return_cursor();
+			}
+
+			turn = i;
+			snprintf(msg_buf, sizeof(msg_buf), "314%c%c", i, check_for[i] == KANG ? 1 : 2); // 使用 snprintf 防止緩衝區溢位
+			broadcast_msg(table[i], msg_buf);
+			return; // 槓/碰/吃後直接返回
+		}
+
+		i = next_turn(i); // 檢查下一個玩家
+	}
+
+	if (!getting_card) {
+			next_player_request = 1;
+	}
+
+	// 清除所有玩家的 check_for 標記 (移至迴圈外，只需一次操作)
+	for (i = 1; i <= 4; i++) {
+			check_for[i] = 0;
+	}
+	getting_card = 0;
 }
-
-check_flower(sit,card)
-char sit;
-char card;
-{
-  int i;
-  char msg_buf[80];
-
-  if(card<=58 && card>=51)
-  {
-    sprintf(msg_buf,"525%c%c",sit,card);
-    draw_flower(sit,card);
-    if(in_join)
-    {
-      write_msg(table_sockfd,msg_buf);
-    }
-    else
-    {
-      broadcast_msg(1,msg_buf);
-      card=mj[card_point++];
-      show_num(2,70,144-card_point-16,2);
-      card_owner=my_sit;
-      sprintf(msg_buf,"305%c",(char) my_sit);
-      broadcast_msg(1,msg_buf);
-      sprintf(msg_buf,"306%c",card_point);
-      broadcast_msg(1,msg_buf);
-      play_mode=GET_CARD;
-      attron(A_REVERSE);
-      show_card(10,INDEX_X+16*2+1,INDEX_Y+1,1);
-      attroff(A_REVERSE);
-      return_cursor();
-    }
-    return(1);
-  }
-  else
-    return(0);  
-}
-
-write_check(check)  /* Finished checking! */
-char check;
-{
-  char msg_buf[80];
-
-  if(in_join)
-  {
-    sprintf(msg_buf,"510%c",check+'0');
-    write_msg(table_sockfd,msg_buf);
-  }
-  else
-  {
-    in_check[player[1].sit]=0;
-    check_for[player[1].sit]=check;
-  }
-}
-
-send_pool_card()
-{
-  int j;
-  char msg_buf[80];
-
-  /* ----------------------- */
-  /*   0-2: 512 公布四家的牌 */
-  /*  3-18: 東家的牌         */
-  /* 19-34: 南家的牌         */   
-  /* 35-50: 西家的牌         */
-  /* 51-66: 北家的牌         */
-  /*    67: 0                */
-  /* ----------------------- */
-  sprintf(msg_buf,"521");
-  for(j=0;j<16;j++)
-    msg_buf[3+j]=pool[1].card[j];
-  for(j=0;j<16;j++)
-    msg_buf[19+j]=pool[2].card[j];
-  for(j=0;j<16;j++)
-    msg_buf[35+j]=pool[3].card[j];
-  for(j=0;j<16;j++)
-    msg_buf[51+j]=pool[4].card[j];
-  msg_buf[67]=0;
-  broadcast_msg(1,msg_buf);
-}
-
-compare_check()
-{
-  int i,j;
-  char msg_buf[80];
-  
-  next_player_request=0;
-  /* Check for make */
-  i=card_owner;
-  for(j=1;j<=4;j++)
-  {
-    i=next_turn(i);
-    if(check_for[i]==MAKE)
-    {
-      send_pool_card(i);
-      sprintf(msg_buf,"522%c%c",i,current_card);
-      broadcast_msg(1,msg_buf);
-      process_make(i,current_card);
-      goto finish;
-    }
-  }
-  /* Check for kang */
-  for(i=1;i<=4;i++)
-  {
-    if(check_for[i]==KANG)
-    {
-      card_owner=i;
-      if(table[i]==1) /* Server wants to process_epk */
-      {
-        if(search_card(i,current_card)>=0)
-        {
-        if(turn==i)  /* 自己摸牌 */
-          process_epk(11);
-        else
-          process_epk(KANG);
-        }
-        else 
-          process_epk(12);
-      }
-      else
-      {
-        if(search_card(i,current_card)>=0)
-        {
-        if(turn==i)
-          sprintf(msg_buf,"520%c",11); 
-        else
-          sprintf(msg_buf,"520%c",KANG);
-        }
-        else
-          sprintf(msg_buf,"520%c",12);
-        write_msg(player[table[i]].sockfd,msg_buf);
-        show_newcard(turn,1);
-        return_cursor();
-      }
-      turn=i;
-      sprintf(msg_buf,"314%c%c",i,1);
-      broadcast_msg(table[i],msg_buf);
-      goto finish;
-    }
-  }
-  /* Check for pong */
-  for(i=1;i<=4;i++)
-  {
-    if(check_for[i]==PONG)
-    {
-      card_owner=i;
-      if(table[i]==1)
-        process_epk(PONG);
-      else
-      {
-        sprintf(msg_buf,"520%c",PONG);
-        write_msg(player[table[i]].sockfd,msg_buf);
-        show_newcard(i,2);
-        return_cursor();
-      }
-      turn=i;
-      sprintf(msg_buf,"314%c%c",i,2);
-      broadcast_msg(table[i],msg_buf);
-      goto finish;
-    }
-  }
-  /* Check for eat */
-  for(i=1;i<=4;i++)
-  {
-    if(check_for[i]>=7 && check_for[i]<=9)
-    {
-      card_owner=i;
-      if(table[i]==1)
-        process_epk(check_for[i]);
-      else
-      {
-        sprintf(msg_buf,"520%c",check_for[i]);
-        write_msg(player[table[i]].sockfd,msg_buf);
-        show_newcard(i,2);
-        return_cursor();
-      }
-      turn=i;
-      sprintf(msg_buf,"314%c%c",i,2);
-      broadcast_msg(table[i],msg_buf);
-      goto finish;
-    }
-  }
-  if(!getting_card)
-    next_player_request=1;
-  finish:;
-  for(i=1;i<=4;i++)
-    check_for[i]=0;
-  getting_card=0;
-}
-

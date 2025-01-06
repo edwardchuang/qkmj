@@ -53,9 +53,10 @@ AC_CHECK_HEADERS([ncursesw/curses.h], [],
 
 AC_CHECK_LIB([m], [main])
 AC_CHECK_LIB([crypt], [main])
+AC_CHECK_LIB([cjson], [main])
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h sgtty.h sys/file.h sys/ioctl.h sys/param.h sys/socket.h sys/time.h termio.h termios.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h netinet/in.h sgtty.h sys/file.h sys/ioctl.h sys/param.h sys/socket.h sys/time.h termio.h termios.h unistd.h cjson/cJSON.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL

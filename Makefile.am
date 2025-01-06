@@ -2,19 +2,20 @@
 
 bin_PROGRAMS = mjgps qkmj
 mjgps_SOURCES = qkmjserver/mjgps.h qkmjserver/mjgps.c 
-qkmj_SOURCES = qkmjclient/qkmj.c \
-    qkmjclient/input.c \
-    qkmjclient/screen.c \
-    qkmjclient/socket.c \
-    qkmjclient/command.c \
-    qkmjclient/message.c \
+qkmj_SOURCES = \
+    qkmjclient/card.c \
     qkmjclient/check.c \
     qkmjclient/checkscr.c \
-    qkmjclient/card.c \
     qkmjclient/chkmake.c \
-    qkmjclient/misc.c \
+    qkmjclient/command.c \
+    qkmjclient/input.c \
     qkmjclient/input.h \
-    qkmjclient/socket.h \
+    qkmjclient/message.c \
+    qkmjclient/misc.c \
+    qkmjclient/misc.h \
     qkmjclient/mjdef.h \
-    qkmjclient/misc.h
+    qkmjclient/qkmj.c \
+    qkmjclient/screen.c \
+    qkmjclient/socket.c \
+    qkmjclient/socket.h
 qkmj_LDADD = $(NCURSES_LIBS)

@@ -1,14 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "curses.h"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <math.h>
+#include <time.h> // For time()
 
-#include "mjdef.h"
+#define MAX_CARDS 144
+#define MAX_CARD_TYPES 150
+
 #include "qkmj.h"
 
 int card_num=144;
@@ -22,45 +19,22 @@ char all_card[150]={1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,
                     41,41,41,41,42,42,42,42,43,43,43,43,51,52,53,54,
                     55,56,57,58};
 
-generate_card()
-{
-  double drand48();
-  long time(),seed;
-  double rand_num;
-  int i,j,index,rand_int,range;
-  int matrix[150];
-  int tmp;
+void generate_card() {
+  srand48(time(NULL)); // Seed only once (better, but still not perfect)
 
-  range=144;
-  seed=time((long int *) 0);
-  srand48(seed);
-  for(i=0;i<150;i++)
-    mj[i]=0;
-  for(i=0;i<card_num;i++)
-  {
-    index=0;
-    rand_int=generate_random(card_num-i);
-    for(j=0;j<card_num;j++)
-    {
-      if(!mj[j])   /* The room is empty */
-      {
-        if(index==rand_int)
-          break;
-        index++;
-      }
-    }
-    mj[j]=all_card[i];
+  // Fisher-Yates Shuffle directly in all_card
+  for (int i = MAX_CARDS - 1; i > 0; i--) {
+    int j = (int)(drand48() * (i + 1)); // Important: i + 1 for correct range
+    // Swap
+    char temp = all_card[i];
+    all_card[i] = all_card[j];
+    all_card[j] = temp;
   }
+
+  // Copy the shuffled cards to mj (if still needed)
+    memcpy(mj, all_card, sizeof(char) * MAX_CARDS);
 }
 
-generate_random(range)
-int range;
-{
-  double rand_num;
-  double drand48();
-  int rand_int;
-
-  rand_num=drand48();
-  rand_int=(int) (range*rand_num);
-  return(rand_int);
+int generate_random(int range) {
+    return (int)(drand48() * range);
 }
