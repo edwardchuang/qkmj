@@ -1101,7 +1101,33 @@ static void handle_shutdown_server(int player_id, char* msg){
     handle_shutdown_server_internal(player_id, msg);
 }
 
+static void handle_get_userid(int player_id, char* msg){
+    handle_get_userid_internal(player_id, msg);
+}
 
+static void handle_version_check(int player_id, char* msg){
+    handle_version_check_internal(player_id, msg);
+}
+
+static void handle_user_login(int player_id, char* msg){
+    handle_user_login_internal(player_id, msg);
+}
+
+static void handle_check_password(int player_id, char* msg){
+    handle_check_password_internal(player_id, msg);
+}
+
+static void handle_create_account(int player_id, char* msg){
+    handle_create_account_internal(player_id, msg);
+}
+
+static void handle_change_password(int player_id, char* msg){
+    handle_change_password_internal(player_id, msg);
+}
+
+static void handle_log_user(int player_id, char* msg){
+    handle_log_user_internal(player_id, msg);
+}
 // --- 訊息處理器函數實作 (結束) ---
 
 
@@ -1127,6 +1153,13 @@ void init_message_handlers() {
     add_message_handler(14, handle_check_create_table);
     add_message_handler(20, handle_win_game);
     add_message_handler(21, handle_find_user);
+    add_message_handler(99, handle_get_userid);
+    add_message_handler(100, handle_version_check);
+    add_message_handler(101, handle_user_login);
+    add_message_handler(102, handle_check_password);
+    add_message_handler(103, handle_create_account);
+    add_message_handler(104, handle_change_password);
+    add_message_handler(105, handle_log_user);
     add_message_handler(900, handle_game_record);
     add_message_handler(200, handle_leave_game);
     add_message_handler(202, handle_force_leave);
@@ -1140,6 +1173,114 @@ void init_message_handlers() {
 }
 
 // --- 內部函式實作 ---
+
+static void handle_get_userid_internal(int player_id, char* msg) {
+    msg[15] = 0;
+	strcpy(player[player_id].username, msg + 3);
+}
+
+static void handle_version_check_internal(int player_id, char* msg) {
+    *(msg + 6) = 0;
+	strcpy(player[player_id].version, msg + 3);
+}
+
+static void handle_user_login_internal(int player_id, char* msg) {
+    msg[13] = 0;
+    strcpy(player[player_id].name, msg + 3);
+    for (int i = 0; i < strlen(msg) - 3; i++) {
+        if (msg[3 + i] <= 32 && msg[3 + i] != 0) {
+            write_msg(player[player_id].sockfd, "101Invalid username!");
+            close_id(player_id);
+            break;
+        }
+    }
+    if (read_user_name(player[player_id].name)) {
+        write_msg(player[player_id].sockfd, "002");
+    } else {
+        write_msg(player[player_id].sockfd, "005");
+    }
+}
+
+static void handle_check_password_internal(int player_id, char* msg) {
+    if (read_user_name(player[player_id].name)) {
+        *(msg + 11) = 0;
+        if (checkpasswd(record.password, msg + 3)) {
+            int find_duplicated = 0;
+            for (int i = 1; i < MAX_PLAYER; i++) {
+                if ((player[i].login == 2 || player[i].login == 3) && strcmp(
+                        player[i].name,
+                        player[player_id].name) == 0) {
+                    write_msg(player[player_id].sockfd, "006");
+                    player[player_id].login = 3;
+                    find_duplicated = 1;
+                    break;
+                }
+            }
+            if (find_duplicated){
+                return;
+            }
+            
+            time(&record.last_login_time);
+            record.last_login_from[0] = 0;
+            if (player[player_id].username[0] != 0) {
+                sprintf(record.last_login_from, "%s@", player[player_id].username);
+            }
+            strcat(record.last_login_from, lookup(&player[player_id].addr));
+            record.login_count++;
+            write_record();
+            if (check_user(player_id))
+                welcome_user(player_id);
+            else
+                close_id(player_id);
+        } else {
+            write_msg(player[player_id].sockfd, "004");
+        }
+    }
+}
+
+static void handle_create_account_internal(int player_id, char* msg) {
+    *(msg + 11) = 0;
+    if (!add_user(player_id, player[player_id].name, msg + 3)) {
+        close_id(player_id);
+        return;
+    }
+    welcome_user(player_id);
+}
+
+static void handle_change_password_internal(int player_id, char* msg) {
+    *(msg + 11) = 0;
+    read_user_name(player[player_id].name);
+    strcpy(record.password, genpasswd(msg + 3));
+    write_record();
+}
+
+static void handle_log_user_internal(int player_id, char* msg) {
+    if (read_user_name(player[player_id].name) && player[player_id].login == 3) {
+        *(msg + 11) = 0;
+        for (int i = 1; i < MAX_PLAYER; i++) {
+            if ((player[i].login == 2 || player[i].login == 3) && (i != player_id) && strcmp(
+                    player[i].name, player[player_id].name)
+                    == 0) {
+                close_id(i);
+                break;
+            }
+        }
+        time(&record.last_login_time);
+        record.last_login_from[0] = 0;
+        if (player[player_id].username[0] != 0) {
+            sprintf(record.last_login_from, "%s@",
+                    player[player_id].username);
+        }
+        strcat(record.last_login_from,
+                lookup(&player[player_id].addr));
+        record.login_count++;
+        write_record();
+        if (check_user(player_id))
+            welcome_user(player_id);
+        else
+            close_id(player_id);
+    }
+}
 
 // 處理 JOIN 訊息的內部函式
 static void handle_join_internal(int player_id, char *msg) {

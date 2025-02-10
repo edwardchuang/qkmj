@@ -172,6 +172,20 @@ static void handle_force_leave_internal(int player_id, char* msg);
 static void handle_leave_table_internal(int player_id, char* msg);
 static void handle_show_current_state(int player_id, char* msg);
 static void handle_shutdown_server_internal(int player_id, char* msg);
+static void handle_get_userid(int player_id, char* msg);
+static void handle_version_check(int player_id, char* msg);
+static void handle_user_login(int player_id, char* msg);
+static void handle_check_password(int player_id, char* msg);
+static void handle_create_account(int player_id, char* msg);
+static void handle_change_password(int player_id, char* msg);
+static void handle_log_user(int player_id, char* msg);
+static void handle_get_userid_internal(int player_id, char* msg);
+static void handle_version_check_internal(int player_id, char* msg);
+static void handle_user_login_internal(int player_id, char* msg);
+static void handle_check_password_internal(int player_id, char* msg);
+static void handle_create_account_internal(int player_id, char* msg);
+static void handle_change_password_internal(int player_id, char* msg);
+static void handle_log_user_internal(int player_id, char* msg);
 int main(int argc, char **argv);
 
 #endif
