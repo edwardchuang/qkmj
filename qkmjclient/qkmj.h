@@ -102,7 +102,7 @@ extern int my_sit;
 extern long my_money;
 extern unsigned int my_gps_id;
 extern unsigned char my_name[50];
-extern unsigned char my_pass[10];
+extern unsigned char my_pass[15];
 extern unsigned char my_note[255];
 extern struct ask_mode_info {
   int question;
@@ -164,7 +164,7 @@ extern int color;
 extern int cheat_mode;
 extern char table_card[6][17];
 
-/* ------------------------------------------------------------------ */
+// 函式宣告 (移至這裡)
 int request_card();
 void change_card(char position, char card);
 void get_card(char card);
@@ -179,11 +179,16 @@ void sort_card(int mode);
 void new_game();
 void opening();
 void open_deal();
-void err(char* errmsg);
+void err(const char* errmsg);
 void init_variable();
 void clear_variable();
 void gps();
-void read_qkmjrc();
-void leave();
+static void read_qkmjrc();
+static void init_config();
+static void check_game_state();
+static void handle_server_data();
+static void handle_client_data(int player_id);
+static void process_gps_data(int gps_sockfd);
+static void handle_waiting_state();
 
 #endif/*_QKMJ_H_*/

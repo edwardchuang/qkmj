@@ -3,51 +3,30 @@
 
 #include "mjdef.h"
 
-#define TABLE 1
-#define LIST 2
-#define PLAYER 3
-#define JOIN 4
-#define SERV 5
-#define QUIT 6
-#define EXIT 7
-#define WHO 8
-#define SIT 9
-#define NUM 10
-#define NEW 11
-#define SHOW 12
-#define LEAVE 13
-#define HELP 14
-#define NOTE 15
-#define STAT 16
-#define LOGIN 17
-#define PASSWD 18
-#define preserve1 19
-#define BROADCAST 20
-#define KICK 21
-#define KILL 22
-#define INVITE 23
-#define MSG 24
-#define SHUTDOWN 25
-#define LURKER 26
-#define FIND 27
-#define BEEP 28
-#define EXEC 29
-#define FREE 30
-#define S_PLAYER 31
-#define S_JOIN 32
-#define S_HELP 33
-#define S_WHO 34
-#define S_SERV 35
-#define S_LEAVE 36
-#define S_TABLE 37
-#define S_QUIT 38
+//  使用 enum 定義指令 ID，提升可讀性和維護性
+typedef enum {
+    CMD_UNKNOWN = 0,
+    CMD_TABLE, CMD_LIST, CMD_PLAYER, CMD_JOIN, CMD_SERV, CMD_QUIT, CMD_EXIT,
+    CMD_WHO, CMD_SIT, CMD_NUM, CMD_NEW, CMD_SHOW, CMD_LEAVE, CMD_HELP,
+    CMD_NOTE, CMD_STAT, CMD_LOGIN, CMD_PASSWD, CMD_BROADCAST, CMD_KICK,
+    CMD_KILL, CMD_INVITE, CMD_MSG, CMD_SHUTDOWN, CMD_LURKER, CMD_FIND,
+    CMD_BEEP, CMD_EXEC, CMD_FREE, CMD_S_PLAYER, CMD_S_JOIN, CMD_S_HELP,
+    CMD_S_WHO, CMD_S_SERV, CMD_S_LEAVE, CMD_S_TABLE, CMD_S_QUIT
+} CommandId;
 
-void Tokenize(char *strinput);
-void my_strupr(char* upper,char* org);
-int command_mapper(char *cmd);
-void who(char *name);
-void list_players();
-void help();
-void command_parser(char *msg);
+//  使用結構體儲存指令名稱和 ID 的映射關係，提升可維護性
+typedef struct {
+  const char* name;
+  CommandId id;
+} CommandMapping;
+
+//  函數原型宣告 (提升程式碼可讀性)
+void Tokenize(const char* strinput);
+void my_strupr(char* upper, const char* org);
+static CommandId command_mapper(const char* cmd);
+void who(const char* name);
+static void help();
+static void handle_command(CommandId cmd_id, int narg, unsigned char** argv);
+void command_parser(const char* msg);
 
 #endif

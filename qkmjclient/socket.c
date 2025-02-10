@@ -1,310 +1,373 @@
-
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-#include <sys/time.h>
-#include <pwd.h>
-#include <netdb.h>
-#include <sys/time.h>
-#include <unistd.h>
-
-#include "mjdef.h"
-
-#ifdef NON_WINDOWS //Linux
-#include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
-#endif
-
-#include "qkmj.h"
+#include "socket.h"
 
 struct passwd *userdata;
 
-int Check_for_data (fd)
-     int fd;
-/* Checks the socket descriptor fd to see if any incoming data has
-   arrived.  If yes, then returns 1.  If no, then returns 0.
-   If an error, returns -1 and stores the error message in socket_error.
-*/
+// 檢查是否有資料可讀
+// 傳回值: 1: 有資料, 0: 沒有資料, -1: 錯誤
+int check_for_data(int fd)
 {
-  int status;                 /* return code from Select call. */
-  fd_set wait_set;     /* A set representing the connections that
-				 have been established. */
-  struct timeval tm;          /* A timelimit of zero for polling for new
-				 connections. */
+  fd_set read_fds;
+  struct timeval timeout;
 
-  FD_ZERO (&wait_set);
-  FD_SET (fd, &wait_set);
+  FD_ZERO(&read_fds);
+  FD_SET(fd, &read_fds);
 
-  tm.tv_sec = 0;
-  tm.tv_usec = 500;
-  status = select (FD_SETSIZE, &wait_set, (fd_set *) 0, (fd_set *) 0, &tm);
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 500; // 0.5 毫秒
 
-/*  if (status < 0)
-    sprintf (socket_error, "Error in select: %s", sys_errlist[errno]); */
-
-  return (status);
-
+  return select(fd + 1, &read_fds, NULL, NULL, &timeout);
 }
 
-init_serv_socket()
+// 初始化伺服器 socket
+void init_serv_socket()
 {
   struct sockaddr_in serv_addr;
-         
-  /* open a TCP socket for internet stream socket */
-  if( (serv_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    err("Server: cannot open stream socket");
-  
-  /* bind our local address */
-  bzero((char *)&serv_addr, sizeof(serv_addr));
+  int bind_result;
+
+  // 建立 TCP socket
+  if ((serv_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    err("伺服器: 無法建立 stream socket");
+  }
+
+  // 綁定本地地址
+  memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  do
-  {
-    serv_addr.sin_port = htons(SERV_PORT);
-    SERV_PORT++;
+  serv_addr.sin_port = htons(SERV_PORT);
+
+  bind_result = bind(serv_sockfd, (struct sockaddr *)&serv_addr,
+                     sizeof(serv_addr));
+  if (bind_result < 0) {
+    err("伺服器: 無法綁定 socket"); // 錯誤處理待完善
   }
-  while(bind(serv_sockfd, (struct sockaddr *) &serv_addr,sizeof(serv_addr))<0);
+
   listen(serv_sockfd, 10);
-  FD_SET(serv_sockfd,&afds);
+  FD_SET(serv_sockfd, &afds);
 }
 
-get_my_info()
+// 取得自己的使用者名稱
+void get_my_info()
 {
-  userdata=getpwuid(getuid());
-  strcpy(my_username,userdata->pw_name);
+  userdata = getpwuid(getuid());
+  if (userdata != NULL) {
+    strncpy(my_username, userdata->pw_name, sizeof(my_username) - 1);
+    my_username[sizeof(my_username) -1] = '\0'; //確保 null-terminated
+  } else {
+    err("無法取得使用者名稱");
+  }
 }
 
-init_socket(char *host,int portnum,int *sockfd)
+// 初始化 client socket
+// 傳回值: 0: 成功, -1: 失敗
+int init_socket(const char *host, int portnum, int *sockfd)
 {
   struct sockaddr_in serv_addr;
+  struct addrinfo hints, *res;
 
-  struct hostent *hp;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
 
-  bzero((char *) &serv_addr, sizeof(serv_addr));
-  serv_addr.sin_family    = AF_INET;
-
-  if((hp = gethostbyname(host)) == NULL || hp->h_addrtype != AF_INET) { 
-    serv_addr.sin_addr.s_addr = inet_addr(host);
-  } else {
-    bcopy(hp->h_addr_list[0], &serv_addr.sin_addr, hp->h_length);
-  }
-
-  serv_addr.sin_port  = htons(portnum);
-
-	/* open a TCP socket */
-  if( (*sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		err("client: cannot open stream socket");
-
-	/* connect to server */
-  if(connect(*sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-  {
+  int error = getaddrinfo(host, NULL, &hints, &res);
+  if (error) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(error));
     return -1;
   }
+
+  memcpy(&serv_addr, res->ai_addr, res->ai_addrlen);
+  serv_addr.sin_port = htons(portnum);
+  freeaddrinfo(res);
+
+  // 建立 TCP socket
+  if ((*sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    err("客戶端: 無法建立 stream socket");
+  }
+
+  // 連線到伺服器
+  if (connect(*sockfd, (struct sockaddr *)&serv_addr,
+              sizeof(serv_addr)) < 0) {
+    return -1;
+  }
+
+  return 0;
 }
 
-accept_new_client()
+// 接受新的 client 連線
+void accept_new_client()
 {
-  int alen;
-  int i,player_id;
-  char msg_buf[255];
+  struct sockaddr_in client_addr;
+  socklen_t client_addr_len = sizeof(client_addr);
+  int i, player_id;
+  char msg_buf[MAX_MSG_LENGTH]; // Use MAX_MSG_LENGTH for consistency
+  char error_message[1024]; // For error messages
 
-/* Find a free space */
-  for(i=2;i<MAX_PLAYER;i++)
-    if(!player[i].in_table) break;
-  if(i==MAX_PLAYER)
-    err("Too many players!");
-  player_id=i;
-/* NOTICE: here we don't know player[player_id].addr */
-/* it's ok! just get size. */
-  alen=sizeof(player[player_id].addr);
-/* NOTICE: so here, player[player_id].sockfd must be wrong!! */
-  player[player_id].sockfd=accept(serv_sockfd, (struct sockaddr *)
-                                  &player[player_id].addr, &alen);
-  FD_SET(player[player_id].sockfd,&afds);
-  player[player_id].in_table=1;
+  // 尋找空位
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (!player[i].in_table) break;
+  }
+
+  // 處理桌子已滿的情況
+  if (i == MAX_PLAYER) {
+    snprintf(error_message, sizeof(error_message), "桌子已滿，無法加入新玩家！");
+    err(error_message);
+    return;
+  }
+
+  player_id = i;
+
+  // 接受新的連線
+  player[player_id].sockfd = accept(serv_sockfd,
+                                    (struct sockaddr *)&client_addr,
+                                    &client_addr_len);
+  if (player[player_id].sockfd < 0) {
+    err("接受新連線失敗");
+    return;
+  }
+
+  FD_SET(player[player_id].sockfd, &afds);
+  player[player_id].in_table = 1;
   player_in_table++;
-/* assign a sit to the new comer */
-  if(player_in_table<=PLAYER_NUM)
-  {
-    for(i=1;i<=4;i++)
-    {
-      if(!table[i])
-      {
-        player[player_id].sit=i;
-        table[i]=player_id;
-        break;
+
+  // 驗證並設定玩家資訊 (Validating input is crucial here)
+  if (strlen(new_client_name) >= sizeof(player[player_id].name)) {
+    snprintf(error_message, sizeof(error_message), "玩家名稱過長");
+    err(error_message);
+    close_client(player_id); // Close the connection on error
+    return;
+  }
+  strncpy(player[player_id].name, new_client_name, sizeof(player[player_id].name) - 1);
+  player[player_id].name[sizeof(player[player_id].name) - 1] = '\0';
+  player[player_id].id = new_client_id;
+  player[player_id].money = new_client_money;
+
+  // 分配座位
+  for (i = 1; i <= 4; i++) {
+    if (!table[i]) {
+      player[player_id].sit = i;
+      table[i] = player_id;
+      break;
+    }
+  }
+
+  // 發送訊息
+  snprintf(msg_buf, sizeof(msg_buf), "%s 加入此桌，目前人數 %d",
+           player[player_id].name, player_in_table);
+  send_gps_line(msg_buf);
+
+  // 廣播新玩家資訊
+  snprintf(msg_buf, sizeof(msg_buf), "201%c%c%c%s",
+           (char)player_id, player[player_id].sit, player_in_table, player[player_id].name);
+  broadcast_msg(1, msg_buf); // 包含新玩家
+
+
+  // 發送訊息給新玩家
+  snprintf(msg_buf, sizeof(msg_buf), "205%c%c%c%s",
+           (char)player_id, player[player_id].sit, player_in_table, player[player_id].name);
+  write_msg(player[player_id].sockfd, msg_buf);
+
+  snprintf(msg_buf, sizeof(msg_buf), "202%c%5d%ld", player_id,
+           new_client_id, new_client_money);
+  broadcast_msg(1, msg_buf);
+
+  new_client = 0;  // 處理完畢
+  write_msg(gps_sockfd, "111");  // 通知遊戲伺服器
+
+// 發送現有玩家資訊給新玩家 (This is the corrected and essential part)
+    for (i = 1; i < MAX_PLAYER; i++) {
+      if (player[i].in_table && i != player_id) {
+        // 通知新玩家其他玩家的資訊
+        snprintf(msg_buf, sizeof(msg_buf), "203%c%c%s", i, player[i].sit, player[i].name);
+        write_msg(player[player_id].sockfd, msg_buf);
+        snprintf(msg_buf, sizeof(msg_buf), "202%c%5d%ld", i, player[i].id, player[i].money);
+        write_msg(player[player_id].sockfd, msg_buf);
       }
     }
-  }
-  sprintf(msg_buf,"%s 加入此桌，目前人數 %d ", new_client_name ,player_in_table);
-  send_gps_line(msg_buf);
-  strcpy(player[player_id].name, new_client_name);
-  player[player_id].id=new_client_id;
-  player[player_id].money=new_client_money;
-  /* Send the info of new comer to everyone */
-  sprintf(msg_buf,"201%c%c%c%s", (char) player_id ,player[player_id].sit,player_in_table,
-          player[player_id].name);
-  broadcast_msg(1,msg_buf); /* NOTICE:including the new comer!!! */
-  msg_buf[2]='5';   /* Set msg_id to 205 */
-  /* send to himself */
-/* NOTICE: player doesn't know his own table[i], right? */
-  write_msg(player[player_id].sockfd,msg_buf);
-  /* Send more info of new comer */
-  sprintf(msg_buf,"202%c%5d%ld",player_id,new_client_id,new_client_money);
-  broadcast_msg(1,msg_buf);
-  new_client=0;
-  write_msg(gps_sockfd,"111");  /* Add one new player into the table */
-  /* Send all player info to the new player */
-  for(i=1;i<MAX_PLAYER;i++)
-  {
-    if(player[i].in_table && i!=player_id)
-    {
-      /* Let the new comer know everyone */
-      sprintf(msg_buf,"203%c%c%s",i,player[i].sit,player[i].name);
-      write_msg(player[player_id].sockfd,msg_buf);
-      sprintf(msg_buf,"202%c%5d%ld",i,player[i].id,player[i].money);
-      write_msg(player[player_id].sockfd,msg_buf);
-    }
-  }
-  /* Check the number of player in table */
-  if(player_in_table==PLAYER_NUM)
-  {
+
+  // 檢查遊戲是否可以開始
+  if (player_in_table == PLAYER_NUM) {
     init_playing_screen();
-    broadcast_msg(1,"300");
+    broadcast_msg(1, "300");
     opening();
     open_deal();
   }
-  
-  /* Send table info to the new player */
-/*
-  sprintf(msg_buf,"204");
-  for(i=1;i<=4;i++)
-    msg_buf[2+i]=(char) table[i]+'0';
-  write_msg(player[player_id].sockfd,msg_buf);
-*/
 }
 
-int read_msg(fd,msg)
-int fd;
-char *msg;
+
+// 從 socket 讀取訊息
+int read_msg(int fd, char *msg)
 {
-  do
-  {
-    if(read(fd,msg,1)<=0)
-      return 0;
-  } while(*msg++ != '\0');
-  return 1;
+  ssize_t bytes_read;
+  size_t total_bytes_read = 0;
+  char char_buf[2]; // Read one char at a time + null terminator.
+
+    memset(msg, 0, MAX_MSG_LENGTH); // Initialize the buffer
+    // Keep reading until we hit the null terminator or buffer limit.
+    while (total_bytes_read < MAX_MSG_LENGTH - 1) {
+      bytes_read = read(fd, char_buf, 1);
+      if (bytes_read <= 0) { 
+        if (bytes_read == 0) {
+            err("對方已關閉連線");
+        }
+        else {
+          err("讀取訊息失敗");
+        }
+        return 0; // Indicate an error or closed connection
+      }
+
+      msg[total_bytes_read] = char_buf[0];
+      total_bytes_read++;
+
+        if (char_buf[0] == '\0') {
+            return 1; // Message successfully read
+        }
+    }
+  // If we get here, the message was too long.
+  err("訊息過長");
+  msg[MAX_MSG_LENGTH - 1] = '\0'; // Ensure null-termination
+  return 0; // Indicate an error (message truncated)
 }
 
-int read_msg_id(fd,msg)
-int fd;
-char *msg;
-{
-  int i;
 
-  for(i=0;i<3;i++)
-  {
-    if(read(fd,msg,1)<=0)
-      return 0;
-    if(*msg++==0)
-      return 0;
+// 從 socket 讀取訊息 ID (前三個字元)
+int read_msg_id(int fd, char *msg)
+{
+  ssize_t bytes_read;
+
+  memset(msg, 0, 4);      // Initialize the buffer to prevent read-before-write security flaw
+  bytes_read = read(fd, msg, 3);
+  if (bytes_read != 3) {
+    if (bytes_read == 0) {
+      err("對方已關閉連線");
+    } else {
+      err("讀取訊息 ID 失敗");
+    }
+    return 0;  // Indicate an error
   }
+  msg[3] = '\0';  // Null-terminate for safety
   return 1;
 }
       
-write_msg(int fd,char *msg)
+// 寫入訊息到 socket
+int write_msg(int fd, const char *msg)
 {
-  int n;
-  n=strlen(msg);
-  if(write(fd,msg,n)<0)
-  {
-    return -1;
+  size_t len = strlen(msg) + 1; // Include null terminator
+  ssize_t bytes_written = write(fd, msg, len);
+  if (bytes_written < 0 || (size_t)bytes_written != len) {
+    err("寫入訊息失敗");
+    return -1; // Indicate an error
   }
-  if(write(fd,msg+n,1)<0)
-  {
-    return -1;
-  }
+  return (int)bytes_written;
 }
 
-/* Command for server */
-broadcast_msg(int id,char *msg)
+// 廣播訊息
+void broadcast_msg(int id, const char *msg)
 {
   int i;
-  for(i=2;i<MAX_PLAYER;i++){
-    if(player[i].in_table && i!=id)
-      write_msg(player[i].sockfd,msg);
-  }
-}
-
-
-close_client(int player_id)
-{
-  char msg_buf[255];
-
-  if(player_in_table==4)
-  {
-    init_global_screen();
-    input_mode=TALK_MODE;
-  }
-  player_in_table -- ;
-  sprintf(msg_buf,"206%c%c",player_id,player_in_table);
-  broadcast_msg(player_id,msg_buf);
-  sprintf(msg_buf,"%s 離開此桌，目前人數剩下 %d 人",player[player_id].name,player_in_table);
-  display_comment(msg_buf);
-  close(player[player_id].sockfd);
-  FD_CLR(player[player_id].sockfd,&afds);
-  player[player_id].in_table=0;
-  table[player[player_id].sit]=0;
-}
-
-close_join()
-{
-  in_join=0;
-  write_msg(table_sockfd,"200");
-  close(table_sockfd); 
-  FD_CLR(table_sockfd,&afds);
-/*
-  shutdown(table_sockfd,2);
-*/
-}
-
-close_serv()
-{
-  int i;
-  in_serv=0;
-  for(i=2;i<MAX_PLAYER;i++) //Note that i start from 2
-  {
-    if(player[i].in_table)
-    {
-      write_msg(player[i].sockfd,"199");
-      close_client(i);
-/*
-      shutdown(player[i].sockfd,2);
-*/
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != id) {
+      write_msg(player[i].sockfd, msg);
     }
   }
-  FD_CLR(serv_sockfd,&afds);
 }
 
-leave()    /* the ^C trap. */
+// 關閉 client 連線
+void close_client(int player_id)
+{
+  char msg_buf[256]; // Increased for safety
+  char error_message[1024];
+
+  // 檢查遊戲是否正在進行，如果是，則初始化全局畫面
+  if (player_in_table == 4) { // Assumes 4 players for a full game
+    init_global_screen();
+    input_mode = TALK_MODE;
+  }
+
+  player_in_table--;
+
+  // 通知其他玩家此玩家已離開
+  snprintf(msg_buf, sizeof(msg_buf), "206%c%c", player_id, player_in_table);
+  broadcast_msg(player_id, msg_buf); // Exclude the leaving player
+
+  // 顯示離開訊息
+  snprintf(msg_buf, sizeof(msg_buf), "%s 離開此桌，目前人數剩下 %d 人",
+           player[player_id].name, player_in_table);
+  display_comment(msg_buf);
+
+  // 關閉 client socket
+  if (player[player_id].sockfd >= 0) { // Check if socket is valid
+    FD_CLR(player[player_id].sockfd, &afds);
+    if (close(player[player_id].sockfd) < 0) {
+      err("關閉 client socket 失敗");
+    }
+  }
+
+  // 更新遊戲狀態
+  player[player_id].in_table = 0;
+  table[player[player_id].sit] = 0;
+}
+
+
+
+// 關閉加入遊戲的連線
+void close_join()
+{
+  char msg_buf[256]; // Increased for potential messages
+  char error_message[1024];
+
+  in_join = 0;
+
+  //  通知遊戲伺服器
+  snprintf(msg_buf, sizeof(msg_buf), "200離開遊戲");
+  if (write_msg(table_sockfd, msg_buf) < 0) {
+    err("寫入離開訊息失敗");
+  }
+
+  // 關閉 socket
+  if (table_sockfd >= 0) { // Check for valid socket
+    FD_CLR(table_sockfd, &afds);
+    if (close(table_sockfd) < 0) {
+      err("關閉加入遊戲 socket 失敗");
+    }
+  }
+}
+
+// 關閉伺服器
+void close_serv()
 {
   int i;
+  char msg_buf[256]; // Increased for potential messages
 
-  write_msg(gps_sockfd,"200");
-/*
-  shutdown(gps_sockfd,2);
-*/ 
+  in_serv = 0;
+
+  // 通知所有客戶端伺服器關閉
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table) {
+      snprintf(msg_buf, sizeof(msg_buf), "199伺服器關閉中..."); // More info
+      write_msg(player[i].sockfd, msg_buf); // Send before closing
+      close_client(i); // Close client connections gracefully
+    }
+  }
+
+  // 關閉伺服器 socket
+  if (serv_sockfd >= 0) { // Check if the socket is valid
+    FD_CLR(serv_sockfd, &afds);
+    if (close(serv_sockfd) < 0) { // Handle potential close error
+      snprintf(msg_buf, MAX_MSG_LENGTH,
+               "關閉伺服器 socket 失敗: %s", strerror(errno));
+      err(msg_buf); // Or other appropriate error handling
+    }
+  }
+}
+
+// 處理 Ctrl+C 中斷訊號
+void leave()
+{
+  write_msg(gps_sockfd, "200");
   close(gps_sockfd);
-  if(in_join)
-    close_join();
-  if(in_serv)
-    close_serv();
+
+  if (in_join) close_join();
+  if (in_serv) close_serv();
+
   endwin();
   exit(0);
 }

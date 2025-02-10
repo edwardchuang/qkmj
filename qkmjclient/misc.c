@@ -1,129 +1,77 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include "curses.h"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/time.h>
+#include "misc.h"
 
-#include "mjdef.h"
-#include "qkmj.h"
-#define NO_SUN_HP 1
-
-float thinktime()
+// 計算思考時間 (計算 gettimeofday() 兩次呼叫之間的時間差)
+float thinktime(struct timeval before)
 {
+  struct timeval after;
   float t;
-  char msg_buf[80];
+  char error_message[1024]; // For error messages
 
-  gettimeofday(&after, (struct timezone *) 0);
-  after.tv_sec-=before.tv_sec;
-  after.tv_usec-=before.tv_usec;
-  if(after.tv_usec<0)
-  {
-    after.tv_sec--;
-    after.tv_usec+=1000000;
+  if (gettimeofday(&after, NULL) == -1) {
+    snprintf(error_message, sizeof(error_message), 
+             "gettimeofday 失敗: %s", strerror(errno));
+    err(error_message);
+    return -1.0f; // Indicate an error
   }
-  t=(float) after.tv_sec+(float) after.tv_usec/1000000; 
-  return(t);
+
+  t = (float)(after.tv_sec - before.tv_sec) + 
+      (float)(after.tv_usec - before.tv_usec) / 1000000.0f;
+
+  return t;
 }
 
-beep1()
-{
-  if(set_beep)
-    beep();
-}
-
-beep()
-{
-  putchar('\007');
-  fflush(stdout);
-}
-
-mvwgetstring(win,y,x,max_len,str_buf,mode)
-WINDOW *win;
-int y;
-int x;
-int max_len;
-unsigned char *str_buf;
-int mode;
+// 從 ncurses 視窗讀取字串 (提供更進階的輸入功能，例如退格鍵和清除鍵)
+void mvwgetstring(WINDOW *win, int y, int x, int max_len, 
+                  char *str_buf, int mode)
 {
   int ch;
-  unsigned char ch_buf[2];
-  int org_x,org_y;
-  int i;
+  int org_x = x; // Store original x coordinate
 
-  keypad(win,TRUE);
-  meta(win,TRUE);
-  org_y=y;
-  org_x=x;
-  wmvaddstr(win,y,x,str_buf);
+  keypad(win, TRUE); // Enable keypad input
+  echo(); // Enable echoing of input
+  curs_set(1); // Show cursor
+  
+  wmvaddstr(win, y, x, str_buf);
   wrefresh(win);
-  x=org_x+strlen(str_buf);
-  while(1)
-  {
-    ch=my_getch();
-    switch(ch)
-    {
-      case KEY_UP:
-      case KEY_DOWN:
-      case KEY_LEFT:
-      case KEY_RIGHT:
-        break;
-      case BACKSPACE:
-      case KEY_BACKSPACE: /* ncurses */
-      case CTRL_H:
-        if(x>org_x)
-        {
-          x--;
-          str_buf[x-org_x]=0;
-          mvwaddch(win,y,x,' ');
-          wmove(win,y,x); 
-          wrefresh(win);
-        }
-        break;
-      case CTRL_U:
-        wmove(win,y,org_x);
-        for(i=0;i<x-org_x;i++)
-          waddch(win,' ');
-        wmove(win,y,org_x);
-        str_buf[0]=0;
-        x=org_x;
+  x += strlen(str_buf); // Move cursor to end
+
+  while (1) {
+    ch = getch();
+    switch (ch) {
+    case KEY_BACKSPACE:
+    case '\b': // Backspace
+      if (x > org_x) {
+        x--;
+        str_buf[x - org_x] = '\0'; // Null terminate at correct position
+        mvwaddch(win, y, x, ' ');
+        wmove(win, y, x);
         wrefresh(win);
-        break;
-      case KEY_ENTER: 
-      case ENTER:
-        return;  
-        break;
-      default:
-        if(x-org_x>=max_len)
-          break;
-        str_buf[x-org_x]=ch;
-        str_buf[x+1-org_x]=0;
-        if(mode==0)
-          mvwaddstr(win,y,x++,"*");
-        else 
-        {
-          ch_buf[0]=ch;
-          ch_buf[1]=0; 
-          mvwaddstr(win,y,x++,ch_buf);
-        }
+      }
+      break;
+    case KEY_DL: // Delete
+      if (x > org_x) {
+        str_buf[x - org_x] = '\0'; // Null terminate at correct position
+        mvwaddch(win, y, x, ' ');
         wrefresh(win);
-        break;
+      }
+      break;
+    case '\n': // Enter key
+    case '\r':
+      return;
+    default:
+      if (x - org_x >= max_len) break;
+      str_buf[x - org_x] = ch;
+      str_buf[x - org_x + 1] = '\0'; // Corrected null termination
+      if (mode == 0) {
+        mvwaddstr(win, y, x++, "*");
+      } else {
+        char ch_buf[2]; // Declare ch_buf
+        ch_buf[0] = ch;
+        ch_buf[1] = '\0';
+        mvwaddstr(win, y, x++, ch_buf);
+      }
+      wrefresh(win);
+      break;
     }
   }
 }
-
-/*
-attron(mode)
-int mode;
-{
-  set_mode(mode);
-}
-attroff(mode)
-int mode;
-{
-  set_mode(0);
-}
-*/
