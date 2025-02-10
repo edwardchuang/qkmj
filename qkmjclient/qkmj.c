@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <locale.h>
+
 #include "qkmj.h"
 #include "input.h"
 
@@ -1841,6 +1843,7 @@ static int init_fd_sets() {
 
 // 程式進入點
 int main(int argc, char *argv[]) {
+  setlocale(LC_ALL, "");
   setenv("TERM", "xterm", 1);
 
   // 初始化 curses
