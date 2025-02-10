@@ -402,12 +402,7 @@ int add_user(int player_id, const char *name, const char *passwd) {
     struct stat status;
     char msg_buf[1000];
 
-    if (stat(RECORD_FILE, &status) != 0) {
-        snprintf(msg_buf, sizeof(msg_buf), "stat failed: %s", strerror(errno));
-        err(msg_buf);
-        return 0;
-    }
-
+    stat(RECORD_FILE, &status);
     if (!read_user_name("")) {
       record.id = status.st_size / sizeof(record);
     }
