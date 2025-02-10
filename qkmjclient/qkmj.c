@@ -806,11 +806,11 @@ void gps() {
   init_global_screen();
   input_mode = 0;
 
-  snprintf(msg_buf, sizeof(msg_buf), "連往 QKMJ Server %s %d", GPS_IP,
-           GPS_PORT);
+  snprintf(msg_buf, sizeof(msg_buf), "連往 QKMJ Server %s %d", config.gps_ip,
+           config.gps_port);
   display_comment(msg_buf);
 
-  status = init_socket(GPS_IP, GPS_PORT, &gps_sockfd);
+  status = init_socket(config.gps_ip, config.gps_port, &gps_sockfd);
   if (status < 0) {
     perror("無法連往 QKMJ Server");
     endwin();
