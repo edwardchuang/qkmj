@@ -470,7 +470,8 @@ int check_user(int player_id) {
 void write_record() {
     char msg_buf[1000];
 
-    if ((fp = fopen(RECORD_FILE, "r+b")) == NULL) {
+    fp = fopen(RECORD_FILE, "wb");
+    if (fp == NULL) {
         snprintf(msg_buf, sizeof(msg_buf), "(write_record) Cannot open file!");
         err(msg_buf);
         return;
