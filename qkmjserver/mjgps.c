@@ -1494,7 +1494,7 @@ void gps_processing() {
             continue;
         }
         if (FD_ISSET(gps_sockfd, &rfds)) {
-            for (player_num = 1; player_num < MAX_PLAYER; player_num++)
+            for (player_num = 1; player_num < MAX_PLAYER - 1; player_num++)
                 if (!player[player_num].login)
                     break;
             if (player_num == MAX_PLAYER - 1)
