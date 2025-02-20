@@ -79,87 +79,42 @@ static void process_msg_from_gps(int player_id, unsigned char *buf,
   }
 
   switch (msg_id) {
-  case 2: { // 請求密碼
-    if (my_pass[0] != 0) {
-      strncpy(ans_buf, (char *)my_pass, MAX_MSG_LEN - 1);
-      ans_buf[MAX_MSG_LEN - 1] = '\0';
-    } else {
-      ans_buf[0] = 0;
-      ask_question("請輸入你的密碼：", ans_buf, PASSWORD_LENGTH - 1,
-                   0);
-      ans_buf[PASSWORD_LENGTH - 1] = 0;
-    }
-    snprintf(msg_buf, MAX_MSG_LEN, "102%s", ans_buf);
-    write_msg(gps_sockfd, msg_buf);
-    strncpy((char *)my_pass, ans_buf, PASSWORD_LENGTH - 1);
-    my_pass[PASSWORD_LENGTH - 1] = '\0';
-    break;
-  }
-
-  case 3: { // 登入成功
-    pass_login = 1;
-    input_mode = TALK_MODE;
-    display_comment("請打 /HELP 查看簡單指令說明，/Exit 離開");
-    snprintf(msg_buf, MAX_MSG_LEN, "004%s", my_note);
-    write_msg(gps_sockfd, msg_buf);
-    break;
-  }
-
-  case 4: { // 密碼錯誤
-    pass_count++;
-    my_pass[0] = 0;
-    if (pass_count == 3) leave();
-
-    for (;;) { // 使用迴圈代替 goto
-      ans_buf[0] = 0;
-      ask_question("密碼錯誤! 請重新輸入你的名稱：", ans_buf,
-                   NAME_LENGTH - 1, 1);
-      if (ans_buf[0] != 0) {
-        ans_buf[NAME_LENGTH - 1] = 0;
-        snprintf(msg_buf, MAX_MSG_LEN, "101%s", ans_buf);
-        write_msg(gps_sockfd, msg_buf);
-        strncpy((char *)my_name, ans_buf, NAME_LENGTH - 1);
-        my_name[NAME_LENGTH - 1] = '\0';
-        break;
-      }
-    }
-    break;
-  }
-
-  case 5: { // 創建新帳號
-    ans_buf[0] = 0;
-    ask_question("看來你是個新朋友, 你要使用這個名稱嗎？(y/N)：",
-                 ans_buf, 1, 1);
-    if (ans_buf[0] == 'y' || ans_buf[0] == 'Y') {
-
-      for (;;) {
+    case 2: { // 請求密碼
+      if (my_pass[0] != 0) {
+        strncpy(ans_buf, (char *)my_pass, MAX_MSG_LEN - 1);
+        ans_buf[MAX_MSG_LEN - 1] = '\0';
+      } else {
         ans_buf[0] = 0;
         ask_question("請輸入你的密碼：", ans_buf, PASSWORD_LENGTH - 1,
-                     0);
-        ans_buf1[0] = 0;
-        ask_question("請再輸入一次確認：", ans_buf1,
-                     PASSWORD_LENGTH - 1, 0);
-        ans_buf[PASSWORD_LENGTH - 1] = 0;  // Null-terminate
-        ans_buf1[PASSWORD_LENGTH - 1] = 0; // Null-terminate
-
-        if (strcmp(ans_buf, ans_buf1) == 0) {
-          snprintf(msg_buf, MAX_MSG_LEN, "103%s", ans_buf);
-          write_msg(gps_sockfd, msg_buf);
-          strncpy((char *)my_pass, ans_buf, PASSWORD_LENGTH - 1);
-          my_pass[PASSWORD_LENGTH - 1] = '\0';
-          break;  // 成功，跳出迴圈
-        } else {
-          display_comment("密碼不符，請重新輸入");
-        }
+                    0);
+        ans_buf[PASSWORD_LENGTH - 1] = 0;
       }
+      snprintf(msg_buf, MAX_MSG_LEN, "102%s", ans_buf);
+      write_msg(gps_sockfd, msg_buf);
+      strncpy((char *)my_pass, ans_buf, PASSWORD_LENGTH - 1);
+      my_pass[PASSWORD_LENGTH - 1] = '\0';
+      break;
+    }
 
-    } else {
-      for (;;) {
+    case 3: { // 登入成功
+      pass_login = 1;
+      input_mode = TALK_MODE;
+      display_comment("請打 /HELP 查看簡單指令說明，/Exit 離開");
+      snprintf(msg_buf, MAX_MSG_LEN, "004%s", my_note);
+      write_msg(gps_sockfd, msg_buf);
+      break;
+    }
+
+    case 4: { // 密碼錯誤
+      pass_count++;
+      my_pass[0] = 0;
+      if (pass_count == 3) leave();
+
+      for (;;) { // 使用迴圈代替 goto
         ans_buf[0] = 0;
-        ask_question("請重新輸入你的名稱：", ans_buf,
-                     NAME_LENGTH - 1, 1);
-
-        if (ans_buf[0] != 0) {  // 輸入不為空
+        ask_question("密碼錯誤! 請重新輸入你的名稱：", ans_buf,
+                    NAME_LENGTH - 1, 1);
+        if (ans_buf[0] != 0) {
           ans_buf[NAME_LENGTH - 1] = 0;
           snprintf(msg_buf, MAX_MSG_LEN, "101%s", ans_buf);
           write_msg(gps_sockfd, msg_buf);
@@ -168,127 +123,172 @@ static void process_msg_from_gps(int player_id, unsigned char *buf,
           break;
         }
       }
+      break;
     }
-    break;
-  }
 
-  case 6: { // 重複登入
-    ans_buf[0] = 0;
-    ask_question("重覆進入! 你要殺掉另一個帳號嗎? (y/N)：",
-                 ans_buf, 1, 1);
-    if (ans_buf[0] == 'y' || ans_buf[0] == 'Y') {
-      write_msg(gps_sockfd, "105");
-    } else
+    case 5: { // 創建新帳號
+      ans_buf[0] = 0;
+      ask_question("看來你是個新朋友, 你要使用這個名稱嗎？(y/N)：",
+                  ans_buf, 1, 1);
+      if (ans_buf[0] == 'y' || ans_buf[0] == 'Y') {
+
+        for (;;) {
+          ans_buf[0] = 0;
+          ask_question("請輸入你的密碼：", ans_buf, PASSWORD_LENGTH - 1,
+                      0);
+          ans_buf1[0] = 0;
+          ask_question("請再輸入一次確認：", ans_buf1,
+                      PASSWORD_LENGTH - 1, 0);
+          ans_buf[PASSWORD_LENGTH - 1] = 0;  // Null-terminate
+          ans_buf1[PASSWORD_LENGTH - 1] = 0; // Null-terminate
+
+          if (strcmp(ans_buf, ans_buf1) == 0) {
+            snprintf(msg_buf, MAX_MSG_LEN, "103%s", ans_buf);
+            write_msg(gps_sockfd, msg_buf);
+            strncpy((char *)my_pass, ans_buf, PASSWORD_LENGTH - 1);
+            my_pass[PASSWORD_LENGTH - 1] = '\0';
+            break;  // 成功，跳出迴圈
+          } else {
+            display_comment("密碼不符，請重新輸入");
+          }
+        }
+
+      } else {
+        for (;;) {
+          ans_buf[0] = 0;
+          ask_question("請重新輸入你的名稱：", ans_buf,
+                      NAME_LENGTH - 1, 1);
+
+          if (ans_buf[0] != 0) {  // 輸入不為空
+            ans_buf[NAME_LENGTH - 1] = 0;
+            snprintf(msg_buf, MAX_MSG_LEN, "101%s", ans_buf);
+            write_msg(gps_sockfd, msg_buf);
+            strncpy((char *)my_name, ans_buf, NAME_LENGTH - 1);
+            my_name[NAME_LENGTH - 1] = '\0';
+            break;
+          }
+        }
+      }
+      break;
+    }
+
+    case 6: { // 重複登入
+      ans_buf[0] = 0;
+      ask_question("重覆進入! 你要殺掉另一個帳號嗎? (y/N)：",
+                  ans_buf, 1, 1);
+      if (ans_buf[0] == 'y' || ans_buf[0] == 'Y') {
+        write_msg(gps_sockfd, "105");
+      } else
+        leave();
+      break;
+    }
+
+    case 10: { // 離線
       leave();
-    break;
-  }
-
-  case 10: { // 離線
-    leave();
-    break;
-  }
-
-  case 11: { // 加入伺服器
-    switch (buf[3]) {
-    case '0': {
-      Tokenize((char *)buf + 4);
-      send_gps_line("與該桌連線中...");
-      int ret = init_socket((char *)cmd_argv[1], atoi((char *)cmd_argv[2]),
-                                &table_sockfd);
-      FD_SET(table_sockfd, &afds);
-      in_join = 1;
       break;
     }
-    case '1':
-      send_gps_line("查無此桌，請重新再試。（可用 /FREE 查詢空桌）");
+
+    case 11: { // 加入伺服器
+      switch (buf[3]) {
+      case '0': {
+        Tokenize((char *)buf + 4);
+        send_gps_line("與該桌連線中...");
+        int ret = init_socket((char *)cmd_argv[1], atoi((char *)cmd_argv[2]),
+                                  &table_sockfd);
+        FD_SET(table_sockfd, &afds);
+        in_join = 1;
+        break;
+      }
+      case '1':
+        send_gps_line("查無此桌，請重新再試。（可用 /FREE 查詢空桌）");
+        break;
+      case '2':
+        send_gps_line("無法連線");
+        break;
+      default:
+        break;
+      }
       break;
-    case '2':
-      send_gps_line("無法連線");
+    }
+
+    case 12: { // 開桌
+      init_serv_socket();
+      snprintf(msg_buf, MAX_MSG_LEN, "012%d", SERV_PORT - 1);
+      write_msg(gps_sockfd, msg_buf);
+      my_id = 1;
+      in_serv = 1;
+      on_seat = 0;
+      player_in_table = 1;
+      player[1].sit = 1;
+      player[1].money = my_money;
+      player[1].id = my_gps_id;
+      strncpy(player[1].name, (char *)my_name, NAME_LENGTH - 1);
+      player[1].name[NAME_LENGTH - 1] = '\0';
+      my_sit = 1;
+      for (int i = 0; i <= 4; i++) {
+        table[i] = 0;
+      }
+      table[1] = 1;
+      if (player_in_table == PLAYER_NUM) {
+        init_playing_screen();
+        opening();
+        open_deal();
+      }
+      strncpy(player[1].name, (char *)my_name, NAME_LENGTH - 1);
+      player[1].name[NAME_LENGTH - 1] = '\0';
+      player[1].in_table = 1;
+      send_gps_line("您已建立新桌，目前人數1人，可使用 /who 查詢本桌清單");
+      send_gps_line("如要關桌請輸入 /Leave (/L) 踢除使用者請用 /Kick ");
+      send_gps_line("請用 /Note <附註> 設定附註，其他人查詢空桌時將可參考。");
       break;
-    default:
+    }
+
+    case 101: { // 顯示訊息
+      send_gps_line((char *)buf + 3);
       break;
     }
-    break;
-  }
 
-  case 12: { // 開桌
-    init_serv_socket();
-    snprintf(msg_buf, MAX_MSG_LEN, "012%d", SERV_PORT - 1);
-    write_msg(gps_sockfd, msg_buf);
-    my_id = 1;
-    in_serv = 1;
-    on_seat = 0;
-    player_in_table = 1;
-    player[1].sit = 1;
-    player[1].money = my_money;
-    player[1].id = my_gps_id;
-    strncpy(player[1].name, (char *)my_name, NAME_LENGTH - 1);
-    player[1].name[NAME_LENGTH - 1] = '\0';
-    my_sit = 1;
-    for (int i = 0; i <= 4; i++) {
-      table[i] = 0;
+    case 102: { // 顯示新聞
+      display_news(gps_sockfd);
+      break;
     }
-    table[1] = 1;
-    if (player_in_table == PLAYER_NUM) {
-      init_playing_screen();
-      opening();
-      open_deal();
+
+    case 120: { // 取得客戶端 ID 和金錢
+      char temp_buf[6] = {0};
+      strncpy(temp_buf, (char *)buf + 3, 5); // 複製字串，避免溢位
+      temp_buf[5] = '\0';          // 確保字串結束符
+
+      char temp_buf2[16] = {0};
+      strncpy(temp_buf2, (char *)buf + 8, 15); // 複製字串，避免溢位
+      temp_buf2[15] = '\0';          // 確保字串結束符
+
+      int new_client_id = atoi(temp_buf);
+      long new_client_money = atol(temp_buf2);
+
+      if (!in_serv) {
+        my_gps_id = new_client_id;
+        my_money = new_client_money;
+      }
+      break;
     }
-    strncpy(player[1].name, (char *)my_name, NAME_LENGTH - 1);
-    player[1].name[NAME_LENGTH - 1] = '\0';
-    player[1].in_table = 1;
-    send_gps_line("您已建立新桌，目前人數1人，可使用 /who 查詢本桌清單");
-    send_gps_line("如要關桌請輸入 /Leave (/L) 踢除使用者請用 /Kick ");
-    send_gps_line("請用 /Note <附註> 設定附註，其他人查詢空桌時將可參考。");
-    break;
-  }
 
-  case 101: { // 顯示訊息
-    send_gps_line((char *)buf + 3);
-    break;
-  }
-
-  case 102: { // 顯示新聞
-    display_news(gps_sockfd);
-    break;
-  }
-
-  case 120: { // 取得客戶端 ID 和金錢
-    char temp_buf[6] = {0};
-    strncpy(temp_buf, (char *)buf + 3, 5); // 複製字串，避免溢位
-    temp_buf[5] = '\0';          // 確保字串結束符
-
-    char temp_buf2[16] = {0};
-    strncpy(temp_buf2, (char *)buf + 8, 15); // 複製字串，避免溢位
-    temp_buf2[15] = '\0';          // 確保字串結束符
-
-    int new_client_id = atoi(temp_buf);
-    long new_client_money = atol(temp_buf2);
-
-    if (!in_serv) {
-      my_gps_id = new_client_id;
-      my_money = new_client_money;
+    case 200: { // 關閉連線
+      close(gps_sockfd);
+      endwin();
+      break;
     }
-    break;
-  }
 
-  case 200: { // 關閉連線
-    close(gps_sockfd);
-    endwin();
-    break;
-  }
+    case 211: { // 取得新客戶端名稱
+      strncpy(new_client_name, (char *)buf + 3, NAME_LENGTH - 1);
+      new_client_name[NAME_LENGTH - 1] = '\0';
+      new_client = 1;
+      break;
+    }
 
-  case 211: { // 取得新客戶端名稱
-    strncpy(new_client_name, (char *)buf + 3, NAME_LENGTH - 1);
-    new_client_name[NAME_LENGTH - 1] = '\0';
-    new_client = 1;
-    break;
-  }
-
-  default: {  // 未知的訊息 ID
-    snprintf(msg_buf, MAX_MSG_LEN, "msg_id=%d", msg_id);
-    display_comment(msg_buf);
-  }
+    default: {  // 未知的訊息 ID
+      snprintf(msg_buf, MAX_MSG_LEN, "msg_id=%d", msg_id);
+      display_comment(msg_buf);
+    }
   }
 }
 
