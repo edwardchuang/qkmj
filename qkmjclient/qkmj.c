@@ -833,6 +833,8 @@ void gps() {
   write_msg(gps_sockfd, msg_buf);
 
   pass_count = 0;
+  memset(ans_buf, 0, sizeof(ans_buf));
+
   if (my_name[0] != 0 && my_pass[0] != 0) {
     strncpy(ans_buf, (char *)my_name, sizeof(ans_buf) - 1);
     ans_buf[sizeof(ans_buf) - 1] = '\0';
