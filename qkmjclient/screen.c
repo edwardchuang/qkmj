@@ -110,12 +110,11 @@ void wait_a_key(const char *msg)
 // question: 問題, answer: 答案, ans_len: 答案長度, type: 輸入類型
 void ask_question(const char *question, char *answer, int ans_len, int type)
 {
+  memset(answer, 0, ans_len);
   werase(inputwin);
   mvwaddstr(inputwin, 0, 0, question);
   wrefresh(inputwin);
   mvwgetstring(inputwin, 0, strlen(question), ans_len, answer, type);
-  werase(inputwin);
-  mvwaddstr(inputwin, 0, 0, talk_buf);
   wrefresh(inputwin);
 }
 
