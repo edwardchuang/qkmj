@@ -34,7 +34,7 @@ const CommandMapping commandMappings[] = {
 
 #define MAX_ARGS 40
 
-int arglenv[MAX_ARGS]; // 新增儲存參數長度的陣列
+extern int arglenv[MAX_ARGS]; // 新增儲存參數長度的陣列
 
 //  將輸入字串分割成 tokens
 void Tokenize(const char* strinput) {
