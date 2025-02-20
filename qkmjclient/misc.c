@@ -25,6 +25,7 @@ void mvwgetstring(WINDOW *win, int y, int x, int max_len,
                   char *str_buf, int mode)
 {
   int ch;
+  char ch_buf[2]; // Declare ch_buf
   int org_x = x; // Store original x coordinate
 
   keypad(win, TRUE); // Enable keypad input
@@ -36,7 +37,7 @@ void mvwgetstring(WINDOW *win, int y, int x, int max_len,
   x += strlen(str_buf); // Move cursor to end
 
   while (1) {
-    ch = getch();
+    ch = my_getch();
     switch (ch) {
     case KEY_BACKSPACE:
     case '\b': // Backspace
@@ -65,7 +66,6 @@ void mvwgetstring(WINDOW *win, int y, int x, int max_len,
       if (mode == 0) {
         mvwaddstr(win, y, x++, "*");
       } else {
-        char ch_buf[2]; // Declare ch_buf
         ch_buf[0] = ch;
         ch_buf[1] = '\0';
         mvwaddstr(win, y, x++, ch_buf);
