@@ -783,6 +783,7 @@ void convert_num(char *str, int number, int digit)
   int i;
   int tmp[10]; // 使用局部變數，避免記憶體洩漏
 
+  memset(tmp, 0, sizeof(tmp));
   for (i = digit - 1; i >= 0; i--) {
     tmp[i] = number % 10;
     number /= 10;

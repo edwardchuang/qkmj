@@ -1136,7 +1136,7 @@ void check_tai33(char sit, char comb)
 /* 混一色 */
 void check_tai34(char sit, char comb)
 {
-  int i, kind;
+  int i = 0, kind = 0;
 
   // 先設置台數，稍後判斷是否取消
   card_comb[comb].tai_score[34] = tai[34].score;
