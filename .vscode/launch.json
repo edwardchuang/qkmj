@@ -1,0 +1,35 @@
+{
+    // 使用 IntelliSense 以得知可用的屬性。
+    // 暫留以檢視現有屬性的描述。
+    // 如需詳細資訊，請瀏覽: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) attach mjgps",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "${workspaceFolder}/mjgps",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "(gdb) attach qkmj",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "${workspaceFolder}/qkmj",
+            "processId": "${command:pickProcess}", // Use VS Code's process picker
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "(lldb) run qkmj",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/qkmj",
+            "cwd": "${workspaceFolder}",
+            "args": ["0", "7001"],
+            "MIMode": "lldb"
+        }
+
+    ]
+}
