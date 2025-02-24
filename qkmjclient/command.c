@@ -66,7 +66,7 @@ void Tokenize(const char* strinput) {
       narg = 0;
       return;
     }
-    strncpy((char *)cmd_argv[narg], token, len + 1);
+    snprintf((char *)cmd_argv[narg], sizeof(cmd_argv[narg]), "%s", token);
     arglenv[narg] = len;
     narg++;
     token = strtok(NULL, delimiters);
@@ -160,7 +160,7 @@ void command_parser(const char* msg) {
     Tokenize(msg + 1); //  解析指令
     if (narg > 0) {
       CommandId cmd_id = command_mapper((char *)cmd_argv[0]);
-      handle_command(cmd_id, narg, (unsigned char **)cmd_argv);
+      handle_command(cmd_id, narg);
     } else {
       send_gps_line("無效指令"); //  處理無參數的指令
     }
@@ -170,7 +170,7 @@ void command_parser(const char* msg) {
 }
 
 //  處理個別指令的函數
-static void handle_command(CommandId cmd_id, int narg, unsigned char** argv) {
+static void handle_command(CommandId cmd_id, int narg) {
   char msg_buf[255]; //  使用更安全的字串處理方式
   int i;
 
@@ -216,7 +216,7 @@ static void handle_command(CommandId cmd_id, int narg, unsigned char** argv) {
         write_msg(gps_sockfd, "205");
         init_global_screen();
       }
-      snprintf(msg_buf, sizeof(msg_buf), "011%s", argv[1]);
+      snprintf(msg_buf, sizeof(msg_buf), "011%s", cmd_argv[1]);
       write_msg(gps_sockfd, msg_buf);
       break;
     case CMD_SERV:
@@ -254,13 +254,13 @@ static void handle_command(CommandId cmd_id, int narg, unsigned char** argv) {
     case CMD_WHO:
     case CMD_S_WHO:
       if (narg == 2) {
-        who((char *)argv[1]);
+        who((char *)cmd_argv[1]);
       } else {
         who("");
       }
       break;
     case CMD_NUM:
-      i = argv[1][0] - '0';
+      i = cmd_argv[1][0] - '0';
       if (i >= 1 && i <= 4) {
         PLAYER_NUM = i;
       }
@@ -302,14 +302,14 @@ static void handle_command(CommandId cmd_id, int narg, unsigned char** argv) {
       help();
       break;
     case CMD_NOTE:
-      snprintf(msg_buf, sizeof(msg_buf), "004%s", argv[1]);
+      snprintf(msg_buf, sizeof(msg_buf), "004%s", cmd_argv[1]);
       write_msg(gps_sockfd, msg_buf);
       break;
     case CMD_STAT:
       if (narg < 2) {
         snprintf(msg_buf, sizeof(msg_buf), "005%s", my_name);
       } else {
-        snprintf(msg_buf, sizeof(msg_buf), "005%s", argv[1]);
+        snprintf(msg_buf, sizeof(msg_buf), "005%s", cmd_argv[1]);
       }
       write_msg(gps_sockfd, msg_buf);
       break;
@@ -317,23 +317,23 @@ static void handle_command(CommandId cmd_id, int narg, unsigned char** argv) {
       // LOGIN 指令的處理 (需要根據原始程式碼補充)
       break;
     case CMD_BROADCAST:
-      snprintf(msg_buf, sizeof(msg_buf), "007%s", argv[1]);
+      snprintf(msg_buf, sizeof(msg_buf), "007%s", cmd_argv[1]);
       write_msg(gps_sockfd, msg_buf);
       break;
     case CMD_MSG:
       if (narg <= 2) break;
       if (in_join || in_serv) {
         for (i = 1; i <= 4; i++) {
-          if (table[i] && strncmp((char *)argv[1], player[table[i]].name, sizeof(player[table[i]].name)) == 0) {
-            snprintf(msg_buf, sizeof(msg_buf), "%s", argv[2]);
+          if (table[i] && strncmp((char *)cmd_argv[1], player[table[i]].name, sizeof(player[table[i]].name)) == 0) {
+            snprintf(msg_buf, sizeof(msg_buf), "%s", cmd_argv[2]);
             send_talk_line(msg_buf);
             goto finish_msg;
           }
         }
       }
-      snprintf(msg_buf, sizeof(msg_buf), "009%s", argv[1]);
+      snprintf(msg_buf, sizeof(msg_buf), "009%s", cmd_argv[1]);
       write_msg(gps_sockfd, msg_buf);
-      snprintf(msg_buf, sizeof(msg_buf), "-> *%s* %s", argv[1], argv[2]);
+      snprintf(msg_buf, sizeof(msg_buf), "-> *%s* %s", cmd_argv[1], cmd_argv[2]);
       msg_buf[talk_right] = 0;
       display_comment(msg_buf);
     finish_msg:;
@@ -349,7 +349,7 @@ static void handle_command(CommandId cmd_id, int narg, unsigned char** argv) {
         display_comment("你要找誰呢?");
         break;
       }
-      snprintf(msg_buf, sizeof(msg_buf), "021%s", argv[1]);
+      snprintf(msg_buf, sizeof(msg_buf), "021%s", cmd_argv[1]);
       write_msg(gps_sockfd, msg_buf);
       break;
     case CMD_EXEC:
@@ -362,7 +362,7 @@ static void handle_command(CommandId cmd_id, int narg, unsigned char** argv) {
         display_comment(msg_buf);
       } else {
         char ans_buf[255];
-        my_strupr(ans_buf, (char *)argv[1]);
+        my_strupr(ans_buf, (char *)cmd_argv[1]);
         if (strcmp(ans_buf, "ON") == 0) {
           set_beep = 1;
           display_comment("開啟聲音");
@@ -380,7 +380,7 @@ static void handle_command(CommandId cmd_id, int narg, unsigned char** argv) {
       break;
     case CMD_KILL:
       if (narg >= 2) {
-        snprintf(msg_buf, sizeof(msg_buf), "202%s", argv[1]);
+        snprintf(msg_buf, sizeof(msg_buf), "202%s", cmd_argv[1]);
         write_msg(gps_sockfd, msg_buf);
       }
       break;
@@ -389,13 +389,13 @@ static void handle_command(CommandId cmd_id, int narg, unsigned char** argv) {
         display_comment("你打算邀請誰?");
         break;
       }
-      snprintf(msg_buf, sizeof(msg_buf), "008%s", argv[1]);
+      snprintf(msg_buf, sizeof(msg_buf), "008%s", cmd_argv[1]);
       write_msg(gps_sockfd, msg_buf);
-      snprintf(msg_buf, sizeof(msg_buf), "邀請 %s 加入此桌", argv[1]);
+      snprintf(msg_buf, sizeof(msg_buf), "邀請 %s 加入此桌", cmd_argv[1]);
       display_comment(msg_buf);
       break;
     default:
-      snprintf(msg_buf, sizeof(msg_buf), "未知指令: %s", argv[0]);
+      snprintf(msg_buf, sizeof(msg_buf), "未知指令: %s", cmd_argv[0]);
       err(msg_buf);
       break;
   }

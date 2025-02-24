@@ -26,7 +26,7 @@ void my_strupr(char* upper, const char* org);
 static CommandId command_mapper(const char* cmd);
 void who(const char* name);
 static void help();
-static void handle_command(CommandId cmd_id, int narg, unsigned char** argv);
+static void handle_command(CommandId cmd_id, int narg);
 void command_parser(const char* msg);
 
 #endif
