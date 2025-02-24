@@ -19,3 +19,17 @@ config.status
 .dirstamp
 qkmj
 mjgps
+config.log
+config.status
+.dirstamp
+qkmj
+mjgps
+aclocal.m4
+compile
+config.guess
+config.sub
+depcomp
+install-sh
+Makefile.in
+**/Makefile.in
+missing
