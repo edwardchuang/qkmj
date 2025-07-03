@@ -322,21 +322,24 @@ static void handle_command(CommandId cmd_id, int narg) {
       break;
     case CMD_MSG:
       if (narg <= 2) break;
+      int msg_sent_to_table = 0; // Flag to indicate if message was sent to a player at the table
       if (in_join || in_serv) {
         for (i = 1; i <= 4; i++) {
           if (table[i] && strncmp((char *)cmd_argv[1], player[table[i]].name, sizeof(player[table[i]].name)) == 0) {
             snprintf(msg_buf, sizeof(msg_buf), "%s", cmd_argv[2]);
             send_talk_line(msg_buf);
-            goto finish_msg;
+            msg_sent_to_table = 1;
+            break; // Exit the loop once message is sent
           }
         }
       }
-      snprintf(msg_buf, sizeof(msg_buf), "009%s", cmd_argv[1]);
-      write_msg(gps_sockfd, msg_buf);
-      snprintf(msg_buf, sizeof(msg_buf), "-> *%s* %s", cmd_argv[1], cmd_argv[2]);
-      msg_buf[talk_right] = 0;
-      display_comment(msg_buf);
-    finish_msg:;
+      if (!msg_sent_to_table) { // Only execute if message was not sent to a player at the table
+        snprintf(msg_buf, sizeof(msg_buf), "009%s", cmd_argv[1]);
+        write_msg(gps_sockfd, msg_buf);
+        snprintf(msg_buf, sizeof(msg_buf), "-> *%s* %s", cmd_argv[1], cmd_argv[2]);
+        msg_buf[talk_right] = 0;
+        display_comment(msg_buf);
+      }
       break;
     case CMD_SHUTDOWN:
       write_msg(gps_sockfd, "500");
