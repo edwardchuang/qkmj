@@ -455,7 +455,7 @@ int check_user(int player_id) {
 
     while (fgets(msg_buf, sizeof(msg_buf) - 1, baduser_fp) != NULL) {
         msg_buf[strcspn(msg_buf, "\n")] = 0; //移除換行字元
-        if (strcmp(email, msg_buf) == 0 || strcmp(player[player_id].username, msg_buf) == 0) {
+        if (strncmp(email, msg_buf, sizeof(email)) == 0 || strncmp(player[player_id].username, msg_buf, sizeof(player[player_id].username)) == 0) {
             display_msg(player_id, "你已被限制進入");
             fclose(baduser_fp);
             return 0;
@@ -928,23 +928,36 @@ void broadcast(int player_id, const char *msg) {
 
 // 傳送訊息給特定玩家
 void send_msg(int player_id, const char *msg) {
-    char *str1, *str2;
+    char recipient_name[MAX_PLAYER_NAME_LENGTH]; // Assuming MAX_PLAYER_NAME_LENGTH is defined
+    char message_content[1000]; // Adjust size as needed
+    const char *space_pos = strchr(msg, ' ');
     int i;
-    char msg_buf[1000];
 
-    str1 = strtok(strdup(msg), " "); // 使用 strdup() 複製字串避免修改原始字串
-    str2 = (char *)msg + strlen(str1) + 1;
+    if (space_pos == NULL) {
+        write_msg(player[player_id].sockfd, "101訊息格式錯誤：請指定收件人\n");
+        return;
+    }
+
+    // Copy recipient name
+    size_t name_len = space_pos - msg;
+    if (name_len >= sizeof(recipient_name)) {
+        name_len = sizeof(recipient_name) - 1; // Truncate if too long
+    }
+    strncpy(recipient_name, msg, name_len);
+    recipient_name[name_len] = '\0';
+
+    // Copy message content
+    const char *actual_message = space_pos + 1;
+    snprintf(message_content, sizeof(message_content), "%s", actual_message);
+
     for (i = 1; i < MAX_PLAYER; i++) {
-        if (player[i].login == 2 && strncmp(player[i].name, str1, strlen(str1)) == 0) { //避免buffer overflow
-            snprintf(msg_buf, sizeof(msg_buf), "101*%s* %s\n", player[player_id].name, str2); // 使用 snprintf() 並且避免緩衝區溢位
-            write_msg(player[i].sockfd, msg_buf);
-						free(str1);
+        if (player[i].login == 2 && strncmp(player[i].name, recipient_name, sizeof(player[i].name)) == 0) {
+            snprintf(message_content, sizeof(message_content), "101*%s* %s\n", player[player_id].name, actual_message);
+            write_msg(player[i].sockfd, message_content);
             return;
         }
-				free(str1);
     }
     write_msg(player[player_id].sockfd, "101找不到這個人\n");
-		free(str1);
 }
 
 
@@ -1203,9 +1216,9 @@ static void handle_check_password_internal(int player_id, char* msg) {
         if (checkpasswd(record.password, msg + 3)) {
             int find_duplicated = 0;
             for (int i = 1; i < MAX_PLAYER; i++) {
-                if ((player[i].login == 2 || player[i].login == 3) && strcmp(
+                if ((player[i].login == 2 || player[i].login == 3) && strncmp(
                         player[i].name,
-                        player[player_id].name) == 0) {
+                        player[player_id].name, sizeof(player[i].name)) == 0) {
                     write_msg(player[player_id].sockfd, "006");
                     player[player_id].login = 3;
                     find_duplicated = 1;
@@ -1255,8 +1268,8 @@ static void handle_log_user_internal(int player_id, char* msg) {
     if (read_user_name(player[player_id].name) && player[player_id].login == 3) {
         *(msg + 11) = 0;
         for (int i = 1; i < MAX_PLAYER; i++) {
-            if ((player[i].login == 2 || player[i].login == 3) && (i != player_id) && strcmp(
-                    player[i].name, player[player_id].name)
+            if ((player[i].login == 2 || player[i].login == 3) && (i != player_id) && strncmp(
+                    player[i].name, player[player_id].name, sizeof(player[i].name))
                     == 0) {
                 close_id(i);
                 break;
