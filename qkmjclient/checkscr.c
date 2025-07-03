@@ -134,7 +134,7 @@ static void update_player_money(long change_money[]) {
 }
 
 // 顯示金額統計
-static void display_money_summary(long change_money[]) {
+static void display_money_summary(const long change_money[]) {
   clear_screen_area(THROW_Y, THROW_X, 8, 34);
   attron(A_BOLD);
   mvaddstr(THROW_Y + 1, THROW_X + 12, "金 額 統 計");
