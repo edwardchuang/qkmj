@@ -822,23 +822,23 @@ void show_cardmsg(int sit, char card)
 
   if (card) {
     // 使用snprintf來避免緩衝區溢位問題
-    snprintf(msg_buf, sizeof(msg_buf), "┌───────┐\n│");
+    snprintf(msg_buf, sizeof(msg_buf), "+-------+\n|");
 
     switch (pos) {
     case 0:
-      strcat(msg_buf, "玩");
+      strncat(msg_buf, "玩", sizeof(msg_buf) - strlen(msg_buf) - 1);
       break;
     case 1:
-      strcat(msg_buf, "下");
+      strncat(msg_buf, "下", sizeof(msg_buf) - strlen(msg_buf) - 1);
       break;
     case 2:
-      strcat(msg_buf, "對");
+      strncat(msg_buf, "對", sizeof(msg_buf) - strlen(msg_buf) - 1);
       break;
     case 3:
-      strcat(msg_buf, "上");
+      strncat(msg_buf, "上", sizeof(msg_buf) - strlen(msg_buf) - 1);
       break;
     }
-    strcat(msg_buf, "家打（    ）│\n└───────┘");
+    strncat(msg_buf, "\n+-------+", sizeof(msg_buf) - strlen(msg_buf) - 1);
 
     mvwaddstr(stdscr, 15, 58, msg_buf);
     show_card(card, 68, 16, 0);

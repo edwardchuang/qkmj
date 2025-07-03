@@ -105,7 +105,7 @@ void who(const char* name) {
   int i;
 
   if (name[0] != 0) {
-    sprintf(msg_buf, "006%s", name);
+    snprintf(msg_buf, sizeof(msg_buf), "006%s", name);
     write_msg(gps_sockfd, msg_buf);
     return;
   }
@@ -121,8 +121,8 @@ void who(const char* name) {
       msg_buf[0] = 0;
     }
     if (player[i].in_table) {
-      strcat(msg_buf, player[i].name);
-      strcat(msg_buf, "  ");
+      strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
+      strncat(msg_buf, "  ", sizeof(msg_buf) - strlen(msg_buf) - 1);
     }
   }
   if (msg_buf[0] != 0)

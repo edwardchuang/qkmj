@@ -120,7 +120,7 @@ int card_count=0;
 int card_point;
 int card_index;
 int gps_sockfd,serv_sockfd = -1,table_sockfd = -1;
-int in_serv,in_join;
+bool in_serv,in_join;
 char talk_buf[255]="\0";
 int talk_buf_count=0;
 char history[HISTORY_SIZE+1][255];
@@ -135,7 +135,7 @@ int play_mode;
 int screen_mode;
 unsigned char key_buf[255];
 char wait_hit[5];
-int waiting;
+bool waiting;
 unsigned char *str;
 int key_num;
 int input_mode;
@@ -156,7 +156,7 @@ struct pool_info pool[5];
 struct table_info info;
 struct timeval before,after;
 int table[5];
-int new_client;
+bool new_client;
 char new_client_name[30];
 long new_client_money;
 unsigned int new_client_id;
@@ -164,7 +164,7 @@ int player_num;
 WINDOW *commentwin, *inputwin,*global_win,*playing_win;
 int turn;
 int card_owner;
-int in_kang;
+bool in_kang;
 int current_id;
 int current_card;
 int in_play;
@@ -180,6 +180,8 @@ int next_player_request;
 int color=1;
 int cheat_mode=0;
 char table_card[6][17];
+
+bool in_kang;
 
 #define MAX_GPS_IP_LEN 50
 #define MAX_USERNAME_LEN 20
@@ -500,7 +502,7 @@ void display_pool(int sit) {
   // 組合牌池中的牌
   for (i = 0; i < pool[sit].num; i++) {
     snprintf(buf, sizeof(buf), "%2d", pool[sit].card[i]);
-    strcat(msg_buf, buf);
+    strncat(msg_buf, buf, sizeof(msg_buf) - strlen(msg_buf) - 1);
   }
   display_comment(msg_buf); // 顯示訊息
 }
@@ -696,7 +698,8 @@ void next_player() {
   // 如果輪到的玩家不是伺服器
   if (table[turn] != 1) {
     // 發送訊息給該玩家，告知輪到他
-    strcpy(msg_buf, "303");
+    strncpy(msg_buf, "303", sizeof(msg_buf) - 1);
+  msg_buf[sizeof(msg_buf) - 1] = '\0';
     write_msg(player[table[turn]].sockfd, msg_buf);
     show_newcard(turn, 1);
     return_cursor();

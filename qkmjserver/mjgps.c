@@ -1171,18 +1171,18 @@ void init_message_handlers() {
 // --- 內部函式實作 ---
 
 static void handle_get_userid_internal(int player_id, char* msg) {
-    msg[15] = 0;
-	strcpy(player[player_id].username, msg + 3);
+    strncpy(player[player_id].username, msg + 3, sizeof(player[player_id].username) - 1);
+    player[player_id].username[sizeof(player[player_id].username) - 1] = '\0';
 }
 
 static void handle_version_check_internal(int player_id, char* msg) {
-    *(msg + 6) = 0;
-	strcpy(player[player_id].version, msg + 3);
+    strncpy(player[player_id].version, msg + 3, sizeof(player[player_id].version) - 1);
+    player[player_id].version[sizeof(player[player_id].version) - 1] = '\0';
 }
 
 static void handle_user_login_internal(int player_id, char* msg) {
-    msg[13] = 0;
-    strcpy(player[player_id].name, msg + 3);
+    strncpy(player[player_id].name, msg + 3, sizeof(player[player_id].name) - 1);
+    player[player_id].name[sizeof(player[player_id].name) - 1] = '\0';
     for (int i = 0; i < strlen(msg) - 3; i++) {
         if (msg[3 + i] <= 32 && msg[3 + i] != 0) {
             write_msg(player[player_id].sockfd, "101Invalid username!");
@@ -1219,9 +1219,9 @@ static void handle_check_password_internal(int player_id, char* msg) {
             time(&record.last_login_time);
             record.last_login_from[0] = 0;
             if (player[player_id].username[0] != 0) {
-                sprintf(record.last_login_from, "%s@", player[player_id].username);
+                snprintf(record.last_login_from, sizeof(record.last_login_from), "%s@", player[player_id].username);
             }
-            strcat(record.last_login_from, lookup(&player[player_id].addr));
+            strncat(record.last_login_from, lookup(&player[player_id].addr), sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
             record.login_count++;
             write_record();
             if (check_user(player_id))
@@ -1246,7 +1246,8 @@ static void handle_create_account_internal(int player_id, char* msg) {
 static void handle_change_password_internal(int player_id, char* msg) {
     *(msg + 11) = 0;
     read_user_name(player[player_id].name);
-    strcpy(record.password, genpasswd(msg + 3));
+    strncpy(record.password, genpasswd(msg + 3), sizeof(record.password) - 1);
+    record.password[sizeof(record.password) - 1] = '\0';
     write_record();
 }
 
@@ -1264,11 +1265,11 @@ static void handle_log_user_internal(int player_id, char* msg) {
         time(&record.last_login_time);
         record.last_login_from[0] = 0;
         if (player[player_id].username[0] != 0) {
-            sprintf(record.last_login_from, "%s@",
+            snprintf(record.last_login_from, sizeof(record.last_login_from), "%s@",
                     player[player_id].username);
         }
-        strcat(record.last_login_from,
-                lookup(&player[player_id].addr));
+        strncat(record.last_login_from,
+                lookup(&player[player_id].addr), sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
         record.login_count++;
         write_record();
         if (check_user(player_id))

@@ -20,6 +20,7 @@
 #endif
 
 #include <netinet/in.h>
+#include <stdbool.h>
 #include "mjdef.h"
 #include "screen.h"
 #include "check.h"
@@ -73,7 +74,7 @@ extern int check_x, check_y;
 extern int eat_x, eat_y;
 extern int card_count;
 extern int gps_sockfd, serv_sockfd, table_sockfd;
-extern int in_serv, in_join;
+extern bool in_serv, in_join;
 extern char a[2];
 extern char talk_buf[255];
 extern int talk_buf_count;
@@ -89,7 +90,7 @@ extern int screen_mode;
 extern int play_mode;
 extern unsigned char key_buf[255];
 extern char wait_hit[5];
-extern int waiting;
+extern bool waiting;
 extern unsigned char* str;
 extern int key_num;
 extern int input_mode;
@@ -141,7 +142,7 @@ extern struct table_info {
 } info;
 extern struct timeval before, after;
 extern int table[5];
-extern int new_client;
+extern bool new_client;
 extern char new_client_name[30];
 extern long new_client_money;
 extern unsigned new_client_id;
@@ -149,7 +150,7 @@ extern int player_num;
 extern WINDOW* commentwin, *inputwin, *global_win, *playing_win;
 extern int turn;
 extern int card_owner;
-extern int in_kang;
+extern bool in_kang;
 extern int current_id;
 extern int current_card;
 extern int on_seat;
