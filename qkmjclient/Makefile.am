@@ -16,3 +16,5 @@ qkmj_SOURCES = qkmj.c \
     socket.h \
     mjdef.h \
     misc.h
+
+qkmj_LDADD = -lcjson

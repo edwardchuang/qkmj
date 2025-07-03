@@ -109,7 +109,7 @@ am_qkmj_OBJECTS = qkmj.$(OBJEXT) input.$(OBJEXT) screen.$(OBJEXT) \
 	check.$(OBJEXT) checkscr.$(OBJEXT) card.$(OBJEXT) \
 	chkmake.$(OBJEXT) misc.$(OBJEXT)
 qkmj_OBJECTS = $(am_qkmj_OBJECTS)
-qkmj_LDADD = $(LDADD)
+qkmj_DEPENDENCIES =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -285,6 +285,7 @@ qkmj_SOURCES = qkmj.c \
     mjdef.h \
     misc.h
 
+qkmj_LDADD = -lcjson
 all: all-am
 
 .SUFFIXES:
