@@ -17,7 +17,7 @@
 #if defined(HAVE_TERMIOS_H)
 #include <termios.h>
 #else
-#include <termio.h>
+#include <termios.h>
 #endif
 #include <fcntl.h>
 #include <sys/param.h>
@@ -46,7 +46,7 @@
 
 #define DEFAULT_RECORD_FILE HOMEDIR"/qkmj.rec"
 #define DEFAULT_MONEY 40000
-
+#define MAX_PLAYER_NAME_LENGTH 20
 
 struct player_record
 {
