@@ -33,3 +33,5 @@ install-sh
 Makefile.in
 **/Makefile.in
 missing
+build/
+firebase-debug.log
