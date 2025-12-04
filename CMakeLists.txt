@@ -64,6 +64,9 @@ if(CJSON_FOUND)
     endif()
 endif()
 
+pkg_check_modules(MONGOC REQUIRED IMPORTED_TARGET mongoc2)
+pkg_check_modules(BSON REQUIRED IMPORTED_TARGET bson2)
+
 # Math library
 find_library(MATH_LIB m)
 
@@ -75,11 +78,14 @@ endif()
 
 # --- mjgps Target ---
 add_executable(mjgps
+    qkmjserver/mongo.c
     qkmjserver/mjgps.c
 )
 
 target_link_libraries(mjgps
     PkgConfig::CJSON
+    PkgConfig::MONGOC
+    PkgConfig::BSON
     ${MATH_LIB}
     ${CRYPT_LIB}
 )
@@ -103,4 +109,16 @@ target_link_libraries(qkmj
     ${CURSES_LINK_LIB}
     PkgConfig::CJSON
     ${MATH_LIB}
+)
+
+# --- mongo_test Target ---
+add_executable(mongo_test
+    qkmjserver/mongo_test.c
+    qkmjserver/mongo.c
+)
+
+target_link_libraries(mongo_test
+    PkgConfig::CJSON
+    PkgConfig::MONGOC
+    PkgConfig::BSON
 )
