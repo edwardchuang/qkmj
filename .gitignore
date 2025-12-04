@@ -35,3 +35,6 @@ Makefile.in
 missing
 build/
 firebase-debug.log
+
+.gemini/
+gha-creds-*.json
