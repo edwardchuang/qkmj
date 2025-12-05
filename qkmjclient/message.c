@@ -198,7 +198,7 @@ static void process_msg_from_gps(int player_id, unsigned char *buf,
       case '0': {
         Tokenize((char *)buf + 4);
         send_gps_line("與該桌連線中...");
-        int ret = init_socket((char *)cmd_argv[1], atoi((char *)cmd_argv[2]),
+        int ret = init_socket((char *)cmd_argv[0], atoi((char *)cmd_argv[1]),
                                   &table_sockfd);
         FD_SET(table_sockfd, &afds);
         in_join = 1;

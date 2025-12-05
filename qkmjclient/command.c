@@ -60,7 +60,7 @@ void Tokenize(const char* strinput) {
   token = strtok(str, delimiters);
   while (token != NULL && narg < MAX_ARGS) {
     int len = strlen(token);
-    if (len >= sizeof((char *)cmd_argv[narg])) {
+    if (len >= sizeof(cmd_argv[narg])) {
       free(str);
       err("指令參數過長");
       narg = 0;
