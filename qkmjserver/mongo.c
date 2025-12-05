@@ -40,7 +40,7 @@ void mongo_connect(const char *uri_string) {
         return;
     }
 
-    mongoc_client_set_appname(client, "qkmj");
+    mongoc_client_set_appname(client, MONGO_APP_NAME);
 }
 
 /**
@@ -307,7 +307,7 @@ int64_t mongo_get_next_sequence(const char *db_name,
         return -1;
     }
 
-    collection = mongoc_client_get_collection(client, db_name, "counters");
+    collection = mongoc_client_get_collection(client, db_name, MONGO_COLLECTION_COUNTERS);
 
     query = BCON_NEW("_id", BCON_UTF8(sequence_name));
     update = BCON_NEW("$inc", "{", "seq", BCON_INT64(1), "}");

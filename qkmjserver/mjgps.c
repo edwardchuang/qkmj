@@ -2,6 +2,7 @@
  * Server 
  */
 #include "mjgps.h"
+#include "mongo.h"
 
 // 常數定義，使用 MACRO 避免 magic number
 #define ADMIN_USER  "mjgps"
@@ -29,44 +30,35 @@ struct rlimit fd_limit;
 
 
 // 錯誤處理函式，附加時間戳記
-int err(const char *errmsg) {
-    time_t now;
-    time(&now);
-    char timestamp[20];  // 時間戳記字串
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
+void log_to_mongo(const char *level, const char *message) {
+    bson_t *doc;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    
+    // Convert timeval to milliseconds for BSON date
+    int64_t timestamp_ms = (int64_t)tv.tv_sec * 1000 + (int64_t)tv.tv_usec / 1000;
 
-    if ((log_fp = fopen(LOG_FILE, "a")) == NULL) {
-        perror("無法開啟記錄檔"); // 使用 perror 提供更詳細的錯誤訊息
-        return -1;
+    doc = BCON_NEW(
+        "timestamp", BCON_DATE_TIME(timestamp_ms),
+        "level", BCON_UTF8(level),
+        "message", BCON_UTF8(message)
+    );
+
+    if (mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc) != 0) {
+        fprintf(stderr, "Failed to log to MongoDB: [%s] %s\n", level, message);
     }
+    
+    bson_destroy(doc);
+}
 
-    fprintf(stderr, "[%s] %s", timestamp, errmsg); // 輸出到 stderr
-    if (log_level == 0) {
-        fprintf(log_fp, "[%s] %s", timestamp, errmsg);
-    }
-
-    log_level = 0;
-    fclose(log_fp);
-    return -1; // 返回錯誤碼表示失敗
+void err(const char *errmsg) {
+  fprintf(stderr, "%s\n", errmsg);
+  log_to_mongo("ERROR", errmsg);
 }
 
 
-// 遊戲記錄函式，附加時間戳記
-int game_log(const char *gamemsg) {
-    time_t now;
-    time(&now);
-    char timestamp[20]; // 時間戳記字串
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
-
-
-    if ((log_fp = fopen(GAME_FILE, "a")) == NULL) {
-        perror("無法開啟遊戲記錄檔"); // 使用 perror 提供更詳細的錯誤訊息
-        return -1;
-    }
-
-    fprintf(log_fp, "[%s] %s", timestamp, gamemsg);
-    fclose(log_fp);
-    return 0; //  返回成功碼
+void game_log(const char *gamemsg) {
+  log_to_mongo("GAME", gamemsg);
 }
 
 
@@ -110,6 +102,9 @@ int read_msg(int fd, char *msg) {
         } else if (FD_ISSET(fd, &readfds)) {
           read_code = read(fd, msg + n, 1);
             if (read_code == -1) {
+                if (errno == EINTR) {
+                    continue; // Interrupted by signal, retry
+                }
                 if (errno != EWOULDBLOCK) {
                     snprintf(msg_buf, sizeof(msg_buf), "read_msg 讀取失敗，錯誤碼：%d", errno);
                     err(msg_buf);
@@ -330,82 +325,74 @@ void init_variable() {
 
 // 讀取使用者名稱
 int read_user_name(const char *name) {
-    struct player_record tmp_rec;
-    char msg_buf[1000];
+    bson_t *query;
+    bson_t *doc;
 
-    if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-        snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) Cannot open file!\n");
-        err(msg_buf);
-        return 0;
-    }
+    query = BCON_NEW("name", BCON_UTF8(name));
+    doc = mongo_find_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+    bson_destroy(query);
 
-    while (fread(&tmp_rec, sizeof(tmp_rec), 1, fp) == 1) { //檢查fread回傳值
-        if (strncmp(name, tmp_rec.name, sizeof(tmp_rec.name) -1) == 0) { //避免buffer overflow
-            record = tmp_rec;
-            fclose(fp);
-            return 1;
-        }
+    if (doc) {
+        bson_to_record(doc, &record);
+        bson_destroy(doc);
+        return 1;
     }
-    fclose(fp);
     return 0;
 }
 
 
 // 更新使用者名稱
 int read_user_name_update(const char *name, int player_id) {
-    struct player_record tmp_rec;
-    char msg_buf[1000];
+    bson_t *query;
+    bson_t *doc;
 
-    if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-        snprintf(msg_buf, sizeof(msg_buf), "(read_user_name_update) Cannot open file!\n");
-        err(msg_buf);
-        return 0;
-    }
+    query = BCON_NEW("name", BCON_UTF8(name));
+    doc = mongo_find_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+    bson_destroy(query);
 
-    while (fread(&tmp_rec, sizeof(tmp_rec), 1, fp) == 1) { //檢查fread回傳值
-        if (strncmp(name, tmp_rec.name, sizeof(tmp_rec.name) -1) == 0) {  //避免buffer overflow
-            record = tmp_rec;
-            if (player[player_id].id == record.id) { // double check
-                player[player_id].id = record.id;
-                player[player_id].money = record.money;
-            }
-            fclose(fp);
-            return 1;
+    if (doc) {
+        bson_to_record(doc, &record);
+        bson_destroy(doc);
+        if (player[player_id].id == record.id) { // double check
+            player[player_id].id = record.id;
+            player[player_id].money = record.money;
         }
+        return 1;
     }
-    fclose(fp);
     return 0;
 }
 
 
 // 讀取使用者 ID
 int read_user_id(unsigned int id) {
-    char msg_buf[1000];
+    bson_t *query;
+    bson_t *doc;
 
-    if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-        snprintf(msg_buf, sizeof(msg_buf), "(read_user_id) Cannot open file!\n");
-        err(msg_buf);
-        return 0;
-    }
+    query = BCON_NEW("user_id", BCON_INT64((int64_t)id));
+    doc = mongo_find_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+    bson_destroy(query);
 
-    fseek(fp, (long)sizeof(record) * id, SEEK_SET); // 使用 fseek() 移動檔案指標
-    if (fread(&record, sizeof(record), 1, fp) != 1) { //檢查fread回傳值
-      perror("fread failed");
+    if (doc) {
+        bson_to_record(doc, &record);
+        bson_destroy(doc);
+        return 1;
     }
-    fclose(fp);
-    return 1;
+    return 0;
 }
 
 
 // 新增使用者
 int add_user(int player_id, const char *name, const char *passwd) {
-    struct stat status;
-    char msg_buf[1000];
+    bson_t *doc;
+    int64_t new_id;
 
-    stat(RECORD_FILE, &status);
-    if (!read_user_name("")) {
-      record.id = status.st_size / sizeof(record);
+    // Generate next sequence ID
+    new_id = mongo_get_next_sequence(MONGO_DB_NAME, MONGO_SEQUENCE_USERID);
+    if (new_id < 0) {
+        err("Failed to generate user ID");
+        return 0;
     }
+    record.id = (unsigned int)new_id;
     
     strncpy(record.name, name, sizeof(record.name) -1); // 避免 buffer overflow
     record.name[sizeof(record.name) - 1] = '\0'; //確保null termination
@@ -426,8 +413,15 @@ int add_user(int player_id, const char *name, const char *passwd) {
     record.last_login_from[sizeof(record.last_login_from) - 1] = '\0'; //確保null termination
 
     if (check_user(player_id)) {
-        write_record();
-        return 1;
+        // Create BSON document and insert
+        doc = record_to_bson(&record);
+        if (mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, doc)) {
+            bson_destroy(doc);
+            return 1;
+        } else {
+            bson_destroy(doc);
+            return 0;
+        }
     } else {
         return 0;
     }
@@ -442,9 +436,9 @@ int check_user(int player_id) {
     FILE *baduser_fp;
 
     if ((baduser_fp = fopen(BADUSER_FILE, "r")) == NULL) {
-        snprintf(msg_buf, sizeof(msg_buf), "Cannot open file %s", BADUSER_FILE);
-        err(msg_buf);
-        return 1;
+        // snprintf(msg_buf, sizeof(msg_buf), "Cannot open file %s", BADUSER_FILE);
+        // err(msg_buf);
+        return 1; // Allow if file missing for now
     }
 
     strncpy(from, lookup(&(player[player_id].addr)), sizeof(from) -1); // 避免 buffer overflow
@@ -468,21 +462,21 @@ int check_user(int player_id) {
 
 // 寫入記錄
 void write_record() {
-    char msg_buf[1000];
+    bson_t *query;
+    bson_t *update;
+    bson_t *doc;
 
-    fp = fopen(RECORD_FILE, "wb");
-    if (fp == NULL) {
-        snprintf(msg_buf, sizeof(msg_buf), "(write_record) Cannot open file!");
-        err(msg_buf);
-        return;
+    query = BCON_NEW("user_id", BCON_INT64((int64_t)record.id));
+    doc = record_to_bson(&record);
+    update = BCON_NEW("$set", BCON_DOCUMENT(doc));
+    
+    if (!mongo_update_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query, update)) {
+        err("(write_record) Failed to update record!");
     }
 
-    fseek(fp, (long)sizeof(record) * record.id, SEEK_SET); // 使用 fseek() 移動檔案指標
-    if (fwrite(&record, sizeof(record), 1, fp) != 1) { //檢查fwrite回傳值
-      perror("fwrite failed");
-    }
-
-    fclose(fp);
+    bson_destroy(query);
+    bson_destroy(update);
+    bson_destroy(doc);
 }
 
 
@@ -547,20 +541,14 @@ void show_online_users(int player_id) {
     int total_num = 0;
     int online_num = 0;
     int i;
-    struct player_record tmp_rec;
-    char tmp_buf[1000];
+    bson_t *query;
 
     fd = player[player_id].sockfd;
 
-    if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-        snprintf(msg_buf, sizeof(msg_buf), "(current) cannot open file\n");
-        err(msg_buf);
-    } else {
-        while (fread(&tmp_rec, sizeof(tmp_rec), 1, fp) == 1) { //檢查fread回傳值
-            if (tmp_rec.name[0] != '\0') total_num++;
-        }
-        fclose(fp);
-    }
+    // Get total registered users count from DB
+    query = bson_new(); // Empty query to count all
+    total_num = (int)mongo_count_documents(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+    bson_destroy(query);
 
     for (i = 1; i < MAX_PLAYER; i++) {
         if (player[i].login == 2) online_num++;
@@ -616,6 +604,7 @@ void shutdown_server() {
         }
     }
 
+    mongo_disconnect();
     snprintf(msg_buf, sizeof(msg_buf), "QKMJ 伺服器已關閉\n"); // 使用 snprintf() 避免緩衝區溢位
     err(msg_buf);
     exit(0);
@@ -748,47 +737,37 @@ void list_stat(int fd, const char *name) {
     char msg_buf[1000];
     char msg_buf1[1000];
     char order_buf[30];
-    int i;
     int total_num;
     int order;
-    struct player_record tmp_rec;
+    bson_t *query;
 
-
-    total_num = 0;
-    order = 1;
     if (!read_user_name(name)) {
         write_msg(fd, "101找不到這個人!");
         return;
     }
-    snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name); // 使用 snprintf() 並且避免緩衝區溢位
+    snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name);
 
-
-    if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-        snprintf(msg_buf, sizeof(msg_buf), "(顯示狀態) 無法開啟檔案\n"); // 使用 snprintf() 並且避免緩衝區溢位
-        err(msg_buf);
-        return;
-    }
-    rewind(fp);
-    if (record.game_count >= 16) {
-        while (!feof(fp) && fread(&tmp_rec, sizeof(tmp_rec), 1, fp) == 1) { //檢查fread回傳值
-            if (tmp_rec.name[0] != 0 && tmp_rec.game_count >= 16) {
-                total_num++;
-                if (tmp_rec.money > record.money) {
-                    order++;
-                }
-            }
-        }
-    }
     if (record.game_count < 16) {
         strncpy(order_buf, "無", sizeof(order_buf)-1);
-				order_buf[sizeof(order_buf)-1] = '\0';
+        order_buf[sizeof(order_buf)-1] = '\0';
     } else {
-        snprintf(order_buf, sizeof(order_buf), "%d/%d", order, total_num); // 使用 snprintf() 並且避免緩衝區溢位
+        // Calculate rank: count users with more money
+        query = BCON_NEW("money", "{", "$gt", BCON_INT64(record.money), "}", 
+                         "game_count", "{", "$gte", BCON_INT32(16), "}");
+        order = (int)mongo_count_documents(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query) + 1;
+        bson_destroy(query);
+
+        // Calculate total qualified users
+        query = BCON_NEW("game_count", "{", "$gte", BCON_INT32(16), "}");
+        total_num = (int)mongo_count_documents(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+        bson_destroy(query);
+        
+        snprintf(order_buf, sizeof(order_buf), "%d/%d", order, total_num);
     }
-    snprintf(msg_buf1, sizeof(msg_buf1), "101◇金額:%ld 排名:%s 上線次數:%d 已玩局數:%d\n", record.money, order_buf, record.login_count, record.game_count); // 使用 snprintf() 並且避免緩衝區溢位
+
+    snprintf(msg_buf1, sizeof(msg_buf1), "101◇金額:%ld 排名:%s 上線次數:%d 已玩局數:%d\n", record.money, order_buf, record.login_count, record.game_count);
     write_msg(fd, msg_buf);
     write_msg(fd, msg_buf1);
-    fclose(fp);
 }
 
 
@@ -1595,6 +1574,8 @@ void close_connection(int player_id) {
 
 int main(int argc, char **argv) {
     int i;
+
+    mongo_connect("mongodb://localhost:27017");
 
     getrlimit(RLIMIT_NOFILE, &fd_limit);
     fd_limit.rlim_cur = fd_limit.rlim_max;

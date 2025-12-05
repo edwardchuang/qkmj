@@ -37,14 +37,9 @@
 #define CMD_MODE 2
 
 #define HOMEDIR "/tmp/qkmj"
-#define RECORD_FILE HOMEDIR"/qkmj.rec"
-#define INDEX_FILE HOMEDIR"/qkmj.inx"
-#define NEWS_FILE HOMEDIR"/news.txt"
-#define BADUSER_FILE HOMEDIR"/baduser.txt"
-#define LOG_FILE HOMEDIR"/qkmj.log"
-#define GAME_FILE HOMEDIR"/qkmj_game.log"
-
-#define DEFAULT_RECORD_FILE HOMEDIR"/qkmj.rec"
+#define GAME_FILE HOMEDIR"/qkmj.game"
+#define NEWS_FILE HOMEDIR"/qkmj.news"
+#define BADUSER_FILE HOMEDIR"/qkmj.bad"
 #define DEFAULT_MONEY 40000
 #define MAX_PLAYER_NAME_LENGTH 20
 
@@ -105,9 +100,17 @@ typedef struct {
     message_handler handler;
 } msg_handler_entry;
 
+#include "mongo.h"
+
+// Helper to convert MongoDB BSON to player_record struct
+void bson_to_record(const bson_t *doc, struct player_record *rec);
+
+// Helper to convert player_record struct to MongoDB BSON
+bson_t *record_to_bson(const struct player_record *rec);
+
 // 函式宣告
-int err(const char *errmsg);
-int game_log(const char *gamemsg);
+void err(const char *errmsg);
+void game_log(const char *gamemsg);
 int read_msg(int fd, char *msg);
 void write_msg(int fd, const char *msg);
 void display_msg(int player_id, const char *msg);

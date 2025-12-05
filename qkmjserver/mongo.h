@@ -11,7 +11,13 @@
 
 #include <bson/bson.h>
 #include <mongoc/mongoc.h>
-#include <stdbool.h> // For 'bool' type
+
+#define MONGO_DB_NAME "qkmj"
+#define MONGO_APP_NAME "qkmj"
+#define MONGO_COLLECTION_USERS "users"
+#define MONGO_COLLECTION_LOGS "logs"
+#define MONGO_COLLECTION_COUNTERS "counters"
+#define MONGO_SEQUENCE_USERID "userid"
 
 /**
  * @brief Initializes the MongoDB driver and establishes a connection.

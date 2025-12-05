@@ -4,6 +4,14 @@ project(qkmj C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_definitions(-DDEBUG)
+endif()
+
 # Find PkgConfig
 find_package(PkgConfig REQUIRED)
 
@@ -80,6 +88,7 @@ endif()
 add_executable(mjgps
     qkmjserver/mongo.c
     qkmjserver/mjgps.c
+    qkmjserver/mjgps_mongo_helpers.c
 )
 
 target_link_libraries(mjgps
@@ -121,4 +130,18 @@ target_link_libraries(mongo_test
     PkgConfig::CJSON
     PkgConfig::MONGOC
     PkgConfig::BSON
+)
+
+# --- mjrec Target ---
+add_executable(mjrec
+    qkmjserver/mjrec.c
+    qkmjserver/mongo.c
+    qkmjserver/mjgps_mongo_helpers.c
+)
+
+target_link_libraries(mjrec
+    PkgConfig::CJSON
+    PkgConfig::MONGOC
+    PkgConfig::BSON
+    ${CRYPT_LIB}
 )
