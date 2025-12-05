@@ -45,7 +45,7 @@ int convert_msg_id(const unsigned char *msg, int player_id) {
 void process_msg(int player_id, const unsigned char *id_buf,
                  int msg_type) {
   int msg_id;
-  unsigned char buf[MAX_MSG_LEN];
+  unsigned char buf[MAX_MSG_LEN + 4]; // Increase buffer size to prevent overflow
   char msg_buf[MAX_MSG_LEN]; //訊息緩衝區，用於顯示或傳輸訊息
 
   // 複製訊息，避免直接修改原始資料
