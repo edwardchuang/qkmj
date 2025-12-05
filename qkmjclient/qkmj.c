@@ -1151,6 +1151,11 @@ static int init_fd_sets() {
 
 // 程式進入點
 int main(int argc, char *argv[]) {
+#ifdef DEBUG
+  printf("Ready for debugger. PID: %d\nPress Enter to continue...", getpid());
+  getchar();
+#endif
+
   setlocale(LC_ALL, "");
   setenv("TERM", "xterm", 1);
 
