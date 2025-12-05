@@ -1116,9 +1116,11 @@ static void handle_change_password(int player_id, char* msg){
 static void handle_log_user(int player_id, char* msg){
     handle_log_user_internal(player_id, msg);
 }
+
+static void handle_client_connect_ack(int player_id, char* msg){
+    // Client connected confirmation from host. No-op for now to prevent disconnection.
+}
 // --- 訊息處理器函數實作 (結束) ---
-
-
 
 // 初始化訊息處理器
 void init_message_handlers() {
@@ -1148,6 +1150,7 @@ void init_message_handlers() {
     add_message_handler(103, handle_create_account);
     add_message_handler(104, handle_change_password);
     add_message_handler(105, handle_log_user);
+    add_message_handler(111, handle_client_connect_ack);
     add_message_handler(900, handle_game_record);
     add_message_handler(200, handle_leave_game);
     add_message_handler(202, handle_force_leave);
