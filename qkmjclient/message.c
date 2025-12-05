@@ -200,8 +200,16 @@ static void process_msg_from_gps(int player_id, unsigned char *buf,
         send_gps_line("與該桌連線中...");
         int ret = init_socket((char *)cmd_argv[0], atoi((char *)cmd_argv[1]),
                                   &table_sockfd);
-        FD_SET(table_sockfd, &afds);
-        in_join = 1;
+        if (ret == 0) {
+            FD_SET(table_sockfd, &afds);
+            in_join = 1;
+        } else {
+            char err_msg[256];
+            snprintf(err_msg, sizeof(err_msg), "無法連線到牌桌 (%s:%s)", cmd_argv[0], cmd_argv[1]);
+            display_comment(err_msg);
+            table_sockfd = -1;
+            in_join = 0;
+        }
         break;
       }
       case '1':
@@ -218,7 +226,7 @@ static void process_msg_from_gps(int player_id, unsigned char *buf,
 
     case 12: { // 開桌
       init_serv_socket();
-      snprintf(msg_buf, MAX_MSG_LEN, "012%d", SERV_PORT - 1);
+      snprintf(msg_buf, MAX_MSG_LEN, "012%d", SERV_PORT);
       write_msg(gps_sockfd, msg_buf);
       my_id = 1;
       in_serv = 1;
