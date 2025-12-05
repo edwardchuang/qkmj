@@ -204,14 +204,15 @@ int read_msg(int fd, char *msg)
     // Keep reading until we hit the null terminator or buffer limit.
     while (total_bytes_read < MAX_MSG_LENGTH - 1) {
       bytes_read = read(fd, char_buf, 1);
-      if (bytes_read <= 0) { 
-        if (bytes_read == 0) {
-            err("對方已關閉連線");
+      if (bytes_read < 0) {
+        if (errno == EINTR) {
+            continue; // Interrupted by signal, retry
         }
-        else {
-          err("讀取訊息失敗");
-        }
-        return 0; // Indicate an error or closed connection
+        err("讀取訊息失敗");
+        return 0; // Indicate an error
+      } else if (bytes_read == 0) { 
+        err("對方已關閉連線");
+        return 0; // Indicate closed connection
       }
 
       msg[total_bytes_read] = char_buf[0];
@@ -232,17 +233,25 @@ int read_msg(int fd, char *msg)
 int read_msg_id(int fd, char *msg)
 {
   ssize_t bytes_read;
+  size_t total_read = 0;
 
-  memset(msg, 0, 4);      // Initialize the buffer to prevent read-before-write security flaw
-  bytes_read = read(fd, msg, 3);
-  if (bytes_read != 3) {
-    if (bytes_read == 0) {
-      err("對方已關閉連線");
-    } else {
-      err("讀取訊息 ID 失敗");
-    }
-    return 0;  // Indicate an error
+  memset(msg, 0, 4);      // Initialize the buffer
+  
+  while (total_read < 3) {
+      bytes_read = read(fd, msg + total_read, 3 - total_read);
+      if (bytes_read < 0) {
+          if (errno == EINTR) {
+              continue;
+          }
+          err("讀取訊息 ID 失敗");
+          return 0;
+      } else if (bytes_read == 0) {
+          err("對方已關閉連線");
+          return 0;
+      }
+      total_read += bytes_read;
   }
+  
   msg[3] = '\0';  // Null-terminate for safety
   return 1;
 }
@@ -251,12 +260,21 @@ int read_msg_id(int fd, char *msg)
 int write_msg(int fd, const char *msg)
 {
   size_t len = strlen(msg) + 1; // Include null terminator
-  ssize_t bytes_written = write(fd, msg, len);
-  if (bytes_written < 0 || (size_t)bytes_written != len) {
-    err("寫入訊息失敗");
-    return -1; // Indicate an error
+  size_t total_written = 0;
+  ssize_t bytes_written;
+
+  while (total_written < len) {
+      bytes_written = write(fd, msg + total_written, len - total_written);
+      if (bytes_written < 0) {
+          if (errno == EINTR) {
+              continue;
+          }
+          err("寫入訊息失敗");
+          return -1;
+      }
+      total_written += bytes_written;
   }
-  return (int)bytes_written;
+  return (int)total_written;
 }
 
 // 廣播訊息
