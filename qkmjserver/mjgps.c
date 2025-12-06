@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <locale.h>
 #include "mjgps.h"
 
 /*
@@ -1260,6 +1261,7 @@ int checkpasswd(char *passwd, char *test) {
 }
 
 int main(int argc, char **argv) {
+	setlocale(LC_ALL, "");
 	int i;
 
 	/*
