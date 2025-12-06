@@ -20,11 +20,13 @@
 #include "qkmj.h"
 #include "misc.h"
 
-process_key()
+int my_getch();
+
+void process_key()
 {
   int i,j,key;
-  static m,n,current_eat;
-  static eat_pool[5];
+  static int m,n,current_eat;
+  static int eat_pool[5];
   char msg_buf[255];
   char card,card1;
 
@@ -459,7 +461,7 @@ process_key()
             talk_buf[i]=talk_buf[i+1];
           talk_buf[talk_buf_count--]='\0';
           strcpy(history[h_tail],talk_buf);
-          mvprintstr(inputwin,talk_y,talk_x,talk_buf+talk_x);
+          mvprintstr(inputwin,talk_y,talk_x,(char*)talk_buf+talk_x);
           printch(inputwin,' ');
           return_cursor();
           break;
@@ -526,7 +528,7 @@ process_key()
             for(i=talk_buf_count;i>talk_x;i--)
               talk_buf[i]=talk_buf[i-1];
             talk_buf[talk_x]=key;
-            mvprintstr(inputwin,talk_y,talk_x,talk_buf+talk_x);
+            mvprintstr(inputwin,talk_y,talk_x,(char*)talk_buf+talk_x);
             talk_x++;
             return_cursor();
           }
@@ -539,7 +541,7 @@ process_key()
   }
 }
 
-my_getch()
+int my_getch()
 {
 	int i;
 	static int l=0;

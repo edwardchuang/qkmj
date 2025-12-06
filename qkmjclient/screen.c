@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -8,6 +7,8 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <ctype.h>
+#include <unistd.h>
 
 #include "mjdef.h"
 #ifdef NON_WINDOWS //Linux
@@ -17,51 +18,40 @@
 #endif
 
 #include "qkmj.h"
-  
-set_color(int fore,int back)
+
+/* Prototypes - Removed as they are in qkmj.h */
+void draw_global_screen();
+void draw_playing_screen();
+
+void set_color(int fore,int back)
 {
   char msg_buf[80];
   wrefresh(stdscr);
   if(color)
   {
-    fprintf(stdout,"[%d;%dm",fore,back);
+    fprintf(stdout,"\033[%d;%dm",fore,back);
     fflush(stdout);
-/*
-    sprintf(msg_buf,"[%d;%dm",fore,back);
-    waddstr(stdscr,msg_buf);
-*/
   }
 }
 
-set_mode(mode)
-int mode;
+void set_mode(int mode)
 {
   char msg_buf[80];
   wrefresh(stdscr);
   if(color)
   {
-    printf("[%dm",mode);
+    printf("\033[%dm",mode);
     fflush(stdout);
-/*
-    sprintf(msg_buf,"\033%dm",mode);
-    waddstr(stdscr,msg_buf);
-*/
   }
 }
 
-mvprintstr(win,y,x,msg)
-WINDOW *win;
-int y;
-int x;
-char *msg;
+void mvprintstr(WINDOW *win, int y, int x, char *msg)
 {
   wmove(win,y,x);
   printstr(win,msg); 
 }
 
-printstr(win,str)
-WINDOW *win;
-char *str;
+void printstr(WINDOW *win, char *str)
 {
   int i,len;
   len=strlen(str);
@@ -69,27 +59,21 @@ char *str;
     printch(win,str[i]);
 }
 
-printch(win,ch)
-WINDOW *win;
-char ch;
+void printch(WINDOW *win, char ch)
 {
   char msg[3];
     msg[0]=ch;
     msg[1]='\0';
     waddstr(win,msg);
-} 
+}
  
-mvprintch(win,y,x,ch)
-WINDOW *win;
-int y,x;
-char ch;
+void mvprintch(WINDOW *win, int y, int x, char ch)
 {
   wmove(win,y,x);
   printch(win,ch);
 }
 
-clear_screen_area (ymin, xmin, height, width)
-int ymin, xmin, height, width;
+void clear_screen_area(int ymin, int xmin, int height, int width)
 {
 	int i;
   char line_buf[255];
@@ -101,7 +85,7 @@ int ymin, xmin, height, width;
   wrefresh(stdscr);
 }
 
-clear_input_line()
+void clear_input_line()
 {
   werase(inputwin);
   talk_x=0;
@@ -111,8 +95,7 @@ clear_input_line()
   wrefresh(inputwin);
 }
 
-wait_a_key(msg)
-char *msg;
+void wait_a_key(char *msg)
 {
   int ch;
   werase(inputwin);
@@ -126,23 +109,18 @@ char *msg;
   wrefresh(inputwin);
 }
 
-ask_question(question,answer,ans_len,type)
-char *question;
-char *answer;
-int ans_len;
-int type;
+void ask_question(char *question, char *answer, int ans_len, int type)
 {
   werase(inputwin);
   wmvaddstr(inputwin,0,0,question);
   wrefresh(inputwin);
-  mvwgetstring(inputwin,0,strlen(question),ans_len,answer,type);
+  mvwgetstring(inputwin,0,strlen(question),ans_len,(unsigned char*)answer,type);
   werase(inputwin);
   wmvaddstr(inputwin,0,0,talk_buf);
   wrefresh(inputwin);
 }
 
-draw_index(max_item)
-int max_item;
+void draw_index(int max_item)
 {
   int i;
   /* normal();  */
@@ -154,15 +132,13 @@ int max_item;
   return_cursor();
 }
 
-current_index(current)
-int current;
+void current_index(int current)
 {
   wmove(stdscr,INDEX_Y, INDEX_X+current*2);
   wrefresh(stdscr);
 }
 
-show_cardback(sit)
-char sit;
+void show_cardback(int sit)
 {
   int i;
 
@@ -192,8 +168,7 @@ char sit;
   return_cursor();
 }
 
-show_allcard(sit)
-char sit;
+void show_allcard(int sit)
 {
   int i;
   
@@ -223,8 +198,7 @@ char sit;
   return_cursor();
 }
 
-show_kang(sit)
-char sit;
+void show_kang(int sit)
 {
   int i;
 
@@ -256,9 +230,7 @@ char sit;
   }
 }
        
-show_newcard(sit,type)
-char sit;
-char type;
+void show_newcard(int sit, int type)
 /*  type 1 : 摸牌  */
 /*  type 2 : 摸入  */
 /*  type 3 : 丟出  */
@@ -352,7 +324,7 @@ char type;
 /* Show cards on the screen. */
 /* type   0: row             */
 /* type   1: column          */
-void show_card(char card,int x,int y,int type)
+void show_card(int card,int x,int y,int type)
 {
   char card1[3];
   char card2[3];
@@ -406,7 +378,7 @@ set_color(37,40);
 set_mode(0);
 }
 
-draw_title()
+void draw_title()
 {
   int x,y;
 
@@ -425,7 +397,7 @@ draw_title()
   wrefresh(stdscr);
 }
 
-init_playing_screen()
+void init_playing_screen()
 {
   info.wind=1;
   info.dealer=1;
@@ -449,7 +421,7 @@ init_playing_screen()
   wrefresh(inputwin);
 }
 
-init_global_screen()
+void init_global_screen()
 {
   char msg_buf[255];
   char ans_buf[255];
@@ -476,17 +448,23 @@ init_global_screen()
   return_cursor();
 }
   
-int wmvaddstr(win,y,x,str)
-WINDOW *win;
-int y;
-int x;
-char *str;
-{
-  wmove(win,y,x);
-  waddstr(win,str);
-}
+/* wmvaddstr implementation moved to misc.c or defined here as macro wrapper if not linked? */
+/* Actually I defined wmvaddstr in misc.c. 
+   But screen.c defines it too in original? 
+   Original read_file showed:
+   int wmvaddstr(win,y,x,str) ...
+   So I should remove it here if it's in misc.c, or keep it here and remove from misc.c.
+   Since screen.c handles screen drawing, it belongs here.
+   But misc.c used it. 
+   I added it to misc.c previously.
+   If I keep it here, I should delete from misc.c or rename.
+   Let's look at misc.c again. It had wmvaddstr wrapper.
+   So I can remove it from here if I link misc.c.
+   Wait, CMakeLists.txt links misc.c.
+   I'll remove wmvaddstr definition from screen.c and use prototype.
+*/
 
-draw_table()
+void draw_table()
 {
   int x,y;
 
@@ -509,13 +487,13 @@ draw_table()
   waddstr(stdscr,"□");
 }
 
-draw_global_screen()
+void draw_global_screen()
 {
   clear();
   draw_title(); 
 }
 
-draw_playing_screen()
+void draw_playing_screen()
 {
   int x,y;
   clear();
@@ -574,8 +552,7 @@ draw_playing_screen()
   wrefresh(inputwin);
 }
 
-find_point(pos)
-int pos;
+void find_point(int pos)
 {
   switch(pos)
   {
@@ -594,8 +571,7 @@ int pos;
   }
 }
 
-display_point(current_turn)
-int current_turn;
+void display_point(int current_turn)
 {
   static int last_turn=0;
   char msg_buf[255];
@@ -618,8 +594,7 @@ int current_turn;
   last_turn=current_turn;
 }
 
-display_time(sit)
-char sit;
+void display_time(int sit)
 {
   char msg_buf[255];
   char pos;
@@ -653,7 +628,7 @@ char sit;
   return_cursor();
 }
 
-display_info()
+void display_info()
 {
   int i;
 
@@ -701,10 +676,7 @@ display_info()
 
 int more_size=0, more_num=0;
 char more_buf[4096];
-int readln(fd,buf,end_flag)
-int fd ;
-char *buf ;
-int *end_flag;
+int readln(int fd, char *buf, int *end_flag)
 {
     int len, bytes, in_esc, ch;
 
@@ -749,8 +721,7 @@ int *end_flag;
     return bytes;
 }
 
-display_news(fd)
-int fd;
+void display_news(int fd)
 {
   char buf[256];
   int bytes;
@@ -784,7 +755,7 @@ wrefresh(news_win);
   redraw_screen();
 }
 
-display_comment(char *comment)
+void display_comment(char *comment)
 {
   waddstr(commentwin,"\n");
   wattrset(commentwin,COLOR_PAIR(1));
@@ -794,7 +765,7 @@ display_comment(char *comment)
   return_cursor();
 }
 
-send_talk_line(char *talk)  //User Talks
+void send_talk_line(char *talk)  //User Talks
 {
   char comment[255];
   char msg_buf[255];
@@ -814,8 +785,7 @@ send_talk_line(char *talk)  //User Talks
   }
 }
 
-send_gps_line(msg)
-char *msg;
+void send_gps_line(char *msg)
 {
   char comment[255];
 /*
@@ -826,8 +796,7 @@ strcpy(comment,msg);
   display_comment(comment);
 }
 
-intlog10(num)
-int num;
+int intlog10(int num)
 {
   int i;
 
@@ -841,10 +810,7 @@ int num;
   return(i);
 }
 
-convert_num(str,number,digit)
-char *str;
-int number;
-int digit;
+void convert_num(char *str, int number, int digit)
 {
   int i;
   int tmp[10];
@@ -857,11 +823,7 @@ int digit;
     strcpy(str+i*2,number_item[tmp[i]]);
 }
     
-show_num(y,x,number,digit) 
-int y;
-int x;
-int number;
-int digit;
+void show_num(int y, int x, int number, int digit)
 {
   int i;
   char msg_buf[255];
@@ -874,10 +836,7 @@ int digit;
   wrefresh(stdscr);
 }
 
-show_cardmsg(sit,card,type)
-int sit;
-char card;
-int type;
+void show_cardmsg(int sit, int card)
 {
   int pos;
 
@@ -910,7 +869,7 @@ int type;
   return_cursor();
 }
 
-redraw_screen()
+void redraw_screen()
 {
   int i,j;
 
@@ -945,13 +904,13 @@ redraw_screen()
 */
 }
 
-reset_cursor()
+void reset_cursor()
 {
   mvwaddstr(stdscr,23,75," ");
   wrefresh(stdscr);
 }
 
-return_cursor()
+void return_cursor()
 {
   switch(input_mode)
   {
@@ -975,4 +934,3 @@ return_cursor()
       break;
   }
 }
-

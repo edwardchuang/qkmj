@@ -1,11 +1,9 @@
-
-extern int Check_for_data();
-extern int init_serv_socket();
-extern int init_socket();
-extern int read_msg();
-extern int write_msg();
-extern int broadcast_msg();
-extern int close_join();
-extern int close_serv();
+extern int Check_for_data(int fd);
+extern void init_serv_socket();
+extern int init_socket(char *host, int port, int *sockfd);
+extern int read_msg(int fd, char *msg);
+extern void write_msg(int fd, char *msg);
+extern void broadcast_msg(int player_id, char *msg);
+extern void close_join();
+extern void close_serv();
 extern int leave();
-

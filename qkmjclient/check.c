@@ -21,19 +21,20 @@
 
 #include "qkmj.h"
 
+/* Prototypes for external functions - Now in qkmj.h, included above */
 
-clear_check_flag(sit)
-char sit;
+/* Prototypes for functions in this file - Now in qkmj.h */
+
+
+void clear_check_flag(int sit)
 {
-  int i,j;
+  int j;
 
   for(j=1;j<6;j++)
     check_flag[sit][j]=0;
 }
 
-int search_card(sit,card)
-char sit;
-char card;
+int search_card(int sit, int card)
 {
   int i;
  
@@ -42,16 +43,12 @@ char card;
   for(i=0;i<pool[sit].num;i++)
   {
     if(pool[sit].card[i]==card)
-      goto found;
+      return i;
   }
-  i=-1;
-  found:;
-  return(i);
+  return -1;
 }
 
-int check_kang(sit,card)
-char sit;
-char card;
+int check_kang(int sit, int card)
 {
   int i,kang;
 
@@ -74,9 +71,7 @@ char card;
   return(kang);
 }
 
-int check_pong(sit,card)
-char sit;
-char card;
+int check_pong(int sit, int card)
 {
   int i,pong;
 
@@ -93,12 +88,9 @@ char card;
   return(pong);
 }
 
-int check_eat(sit,card)
-char sit;
-char card;
+int check_eat(int sit, int card)
 {
   int i,j,eat;
-  char msg_buf[80];
   
   eat=0;
   i=next_turn(turn);
@@ -147,12 +139,8 @@ char card;
   return(eat);
 }
 
-check_card(sit,card)
-char sit;
-char card;
+void check_card(int sit, int card)
 {
-  char msg_buf[80];
-
   clear_check_flag(sit);
   check_flag[sit][1]=check_eat(sit,card);
   check_flag[sit][2]=check_pong(sit,card);
@@ -160,12 +148,8 @@ char card;
   check_flag[sit][4]=check_make(sit,card,0);
 }
 
-check_begin_flower(sit,card,position)  /* command for server */
-char sit;
-char card;
-char position;
+int check_begin_flower(int sit, int card, int position)  /* command for server */
 {
-  int i;
   char msg_buf[80];
 
   if(card<=58 && card>=51)
@@ -188,11 +172,8 @@ char position;
     return(0);
 }
 
-check_flower(sit,card)
-char sit;
-char card;
+int check_flower(int sit, int card)
 {
-  int i;
   char msg_buf[80];
 
   if(card<=58 && card>=51)
@@ -225,8 +206,7 @@ char card;
     return(0);  
 }
 
-write_check(check)  /* Finished checking! */
-char check;
+void write_check(int check)  /* Finished checking! */
 {
   char msg_buf[80];
 
@@ -242,7 +222,7 @@ char check;
   }
 }
 
-send_pool_card()
+void send_pool_card()
 {
   int j;
   char msg_buf[80];
@@ -268,7 +248,7 @@ send_pool_card()
   broadcast_msg(1,msg_buf);
 }
 
-compare_check()
+void compare_check()
 {
   int i,j;
   char msg_buf[80];
@@ -281,7 +261,7 @@ compare_check()
     i=next_turn(i);
     if(check_for[i]==MAKE)
     {
-      send_pool_card(i);
+      send_pool_card();
       sprintf(msg_buf,"522%c%c",i,current_card);
       broadcast_msg(1,msg_buf);
       process_make(i,current_card);
@@ -376,4 +356,3 @@ compare_check()
     check_for[i]=0;
   getting_card=0;
 }
-

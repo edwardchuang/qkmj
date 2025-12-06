@@ -1,2 +1,1 @@
-
-extern int process_key();
+extern void process_key();

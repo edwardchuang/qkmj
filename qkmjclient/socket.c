@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -23,10 +22,22 @@
 
 #include "qkmj.h"
 
+/* Prototypes */
+void err(char *errmsg);
+void send_gps_line(char *msg);
+void init_playing_screen();
+void opening();
+void open_deal();
+void init_global_screen();
+void display_comment(char *comment);
+void close_client(int player_id);
+int leave();
+void write_msg(int fd, char *msg);
+void broadcast_msg(int id, char *msg);
+
 struct passwd *userdata;
 
-int Check_for_data (fd)
-     int fd;
+int Check_for_data(int fd)
 /* Checks the socket descriptor fd to see if any incoming data has
    arrived.  If yes, then returns 1.  If no, then returns 0.
    If an error, returns -1 and stores the error message in socket_error.
@@ -52,7 +63,7 @@ int Check_for_data (fd)
 
 }
 
-init_serv_socket()
+void init_serv_socket()
 {
   struct sockaddr_in serv_addr;
          
@@ -74,13 +85,13 @@ init_serv_socket()
   FD_SET(serv_sockfd,&afds);
 }
 
-get_my_info()
+void get_my_info()
 {
   userdata=getpwuid(getuid());
   strcpy(my_username,userdata->pw_name);
 }
 
-init_socket(char *host,int portnum,int *sockfd)
+int init_socket(char *host, int portnum, int *sockfd)
 {
   struct sockaddr_in serv_addr;
 
@@ -106,9 +117,10 @@ init_socket(char *host,int portnum,int *sockfd)
   {
     return -1;
   }
+  return 0;
 }
 
-accept_new_client()
+void accept_new_client()
 {
   int alen;
   int i,player_id;
@@ -125,7 +137,7 @@ accept_new_client()
   alen=sizeof(player[player_id].addr);
 /* NOTICE: so here, player[player_id].sockfd must be wrong!! */
   player[player_id].sockfd=accept(serv_sockfd, (struct sockaddr *)
-                                  &player[player_id].addr, &alen);
+                                  &player[player_id].addr, (socklen_t *)&alen);
   FD_SET(player[player_id].sockfd,&afds);
   player[player_id].in_table=1;
   player_in_table++;
@@ -190,9 +202,7 @@ accept_new_client()
 */
 }
 
-int read_msg(fd,msg)
-int fd;
-char *msg;
+int read_msg(int fd, char *msg)
 {
   do
   {
@@ -202,9 +212,7 @@ char *msg;
   return 1;
 }
 
-int read_msg_id(fd,msg)
-int fd;
-char *msg;
+int read_msg_id(int fd, char *msg)
 {
   int i;
 
@@ -218,22 +226,22 @@ char *msg;
   return 1;
 }
       
-write_msg(int fd,char *msg)
+void write_msg(int fd, char *msg)
 {
   int n;
   n=strlen(msg);
   if(write(fd,msg,n)<0)
   {
-    return -1;
+    return;
   }
   if(write(fd,msg+n,1)<0)
   {
-    return -1;
+    return;
   }
 }
 
 /* Command for server */
-broadcast_msg(int id,char *msg)
+void broadcast_msg(int id, char *msg)
 {
   int i;
   for(i=2;i<MAX_PLAYER;i++){
@@ -243,7 +251,7 @@ broadcast_msg(int id,char *msg)
 }
 
 
-close_client(int player_id)
+void close_client(int player_id)
 {
   char msg_buf[255];
 
@@ -263,7 +271,7 @@ close_client(int player_id)
   table[player[player_id].sit]=0;
 }
 
-close_join()
+void close_join()
 {
   in_join=0;
   write_msg(table_sockfd,"200");
@@ -274,7 +282,7 @@ close_join()
 */
 }
 
-close_serv()
+void close_serv()
 {
   int i;
   in_serv=0;
@@ -292,7 +300,7 @@ close_serv()
   FD_CLR(serv_sockfd,&afds);
 }
 
-leave()    /* the ^C trap. */
+int leave()    /* the ^C trap. */
 {
   int i;
 
@@ -308,4 +316,3 @@ leave()    /* the ^C trap. */
   endwin();
   exit(0);
 }
-

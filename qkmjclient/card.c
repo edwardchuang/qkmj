@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <math.h>
+#include <time.h>
 
 #include "mjdef.h"
 #include "qkmj.h"
@@ -22,17 +23,14 @@ char all_card[150]={1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,
                     41,41,41,41,42,42,42,42,43,43,43,43,51,52,53,54,
                     55,56,57,58};
 
-generate_card()
-{
-  double drand48();
-  long time(),seed;
-  double rand_num;
-  int i,j,index,rand_int,range;
-  int matrix[150];
-  int tmp;
+int generate_random(int range);
 
-  range=144;
-  seed=time((long int *) 0);
+void generate_card()
+{
+  long seed;
+  int i,j,index,rand_int;
+
+  seed=time(NULL);
   srand48(seed);
   for(i=0;i<150;i++)
     mj[i]=0;
@@ -53,11 +51,9 @@ generate_card()
   }
 }
 
-generate_random(range)
-int range;
+int generate_random(int range)
 {
   double rand_num;
-  double drand48();
   int rand_int;
 
   rand_num=drand48();

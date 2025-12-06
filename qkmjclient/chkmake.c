@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -39,9 +38,68 @@ struct card_info_type{
 };
 struct card_info_type card_info[20];
 
-NODEPTR make_three();
-NODEPTR make_straight();
-NODEPTR make_pair();
+NODEPTR make_three(NODEPTR node);
+NODEPTR make_straight(NODEPTR node);
+NODEPTR make_pair(NODEPTR node);
+void full_check(int sit, int make_card);
+void check_tai(int sit, int comb, int make_card);
+
+/* Tai check prototypes */
+void check_tai0(int sit, int comb);
+void check_tai1(int sit, int comb);
+void check_tai2(int sit, int comb);
+void check_tai3(int sit, int comb);
+void check_tai4(int sit, int comb);
+void check_tai5(int sit, int comb);
+void check_tai6(int sit, int comb);
+void check_tai7(int sit, int comb);
+void check_tai8(int sit, int comb);
+void check_tai9(int sit, int comb);
+void check_tai10(int sit, int comb);
+void check_tai11(int sit, int comb);
+void check_tai12(int sit, int comb);
+void check_tai13(int sit, int comb);
+void check_tai14(int sit, int comb);
+void check_tai15(int sit, int comb);
+void check_tai16(int sit, int comb);
+void check_tai17(int sit, int comb);
+void check_tai18(int sit, int comb);
+void check_tai19(int sit, int comb);
+void check_tai20(int sit, int comb);
+void check_tai21(int sit, int comb);
+void check_tai22(int sit, int comb);
+void check_tai23(int sit, int comb);
+void check_tai24(int sit, int comb, int make_card);
+void check_tai25(int sit, int comb);
+void check_tai26(int sit, int comb);
+void check_tai27(int sit, int comb);
+void check_tai28(int sit, int comb);
+void check_tai29(int sit, int comb);
+void check_tai30(int sit, int comb);
+void check_tai31(int sit, int comb);
+void check_tai32(int sit, int comb);
+void check_tai33(int sit, int comb);
+void check_tai34(int sit, int comb);
+void check_tai35(int sit, int comb);
+void check_tai36(int sit, int comb);
+void check_tai37(int sit, int comb);
+void check_tai38(int sit, int comb);
+void check_tai39(int sit, int comb);
+void check_tai40(int sit, int comb);
+void check_tai41(int sit, int comb);
+void check_tai42(int sit, int comb);
+void check_tai43(int sit, int comb);
+void check_tai44(int sit, int comb);
+void check_tai45(int sit, int comb, int make_card);
+void check_tai46(int sit, int comb);
+void check_tai47(int sit, int comb);
+void check_tai48(int sit, int comb);
+void check_tai49(int sit, int comb);
+void check_tai50(int sit, int comb);
+void check_tai51(int sit, int comb);
+void check_tai52(int sit, int comb);
+
+
 char pool_buf[20];
 struct component_type{
   int type;
@@ -62,8 +120,7 @@ NODEPTR getnode()
   return(p);
 }
 
-NODEPTR maketree(node)
-NODEPTR node;
+NODEPTR maketree(NODEPTR node)
 {
   NODEPTR p;
 
@@ -78,8 +135,7 @@ NODEPTR node;
   return(p);
 }
 
-build_tree(node)
-NODEPTR node;
+void build_tree(NODEPTR node)
 {
   node->three=make_three(node);  /* It will check if it's end */
   if(!node->end)
@@ -92,8 +148,7 @@ NODEPTR node;
     node->pair=NULL;
 }
 
-mark_card(node)
-NODEPTR node;
+void mark_card(NODEPTR node)
 {
   int i,j;
 
@@ -139,8 +194,7 @@ int find_lead()
   return(lead);
 }
 
-NODEPTR make_three(node)
-NODEPTR node;
+NODEPTR make_three(NODEPTR node)
 {
   int i,j;
   int lead;
@@ -181,8 +235,7 @@ NODEPTR node;
   return(p);
 }
 
-NODEPTR make_straight(node)
-NODEPTR node;
+NODEPTR make_straight(NODEPTR node)
 {
   int i,j;
   int lead;
@@ -222,8 +275,7 @@ NODEPTR node;
   return(p);
 }
 
-NODEPTR make_pair(node)
-NODEPTR node;
+NODEPTR make_pair(NODEPTR node)
 {
   int i,j;
   int lead;
@@ -263,8 +315,7 @@ NODEPTR node;
 }
 
 /* Find a valid tree and copy it to the array */
-list_path(p)
-NODEPTR p;
+void list_path(NODEPTR p)
 {
   int i;
 
@@ -287,8 +338,7 @@ NODEPTR p;
     list_path(p->father);
 }
 
-pretrav(p)
-NODEPTR p;
+void pretrav(NODEPTR p)
 {
   if(p!=NULL)
   {
@@ -312,8 +362,7 @@ NODEPTR p;
   }
 }
 
-free_tree(p)
-NODEPTR p;
+void free_tree(NODEPTR p)
 {
   if(p->three)
     free_tree(p->three);
@@ -325,10 +374,7 @@ NODEPTR p;
 }
 
 
-int check_make(sit,card,method)
-char sit;
-char card;
-char method;  /* 0 for general check, 1 for complete check */
+int check_make(int sit, int card, int method)  /* 0 for general check, 1 for complete check */
 {
   NODEPTR p[6];  /* p[0]=萬 p[1]=筒 p[2]=索 p[3]=風牌 p[4]=三元牌 */
   int i,j,k,l,len,pair,make,tmp;
@@ -424,8 +470,7 @@ display_comment(msg_buf);
   return(make);
 }
 
-valid_type(type)
-int type;
+int valid_type(int type)
 {
   if(type==1 || type==2 || type==3)
     return(1);
@@ -434,9 +479,7 @@ int type;
 }
 
 /* Find the combination of the card with the highest score */
-full_check(sit,make_card)
-char sit;
-char make_card;
+void full_check(int sit, int make_card)
 {
   int i,j;
   int suit_count[6],set1,set2,card,count,score;
@@ -511,9 +554,7 @@ display_comment(msg_buf);
 }
 
 /* return the number of the card found */
-int exist_card(sit,card)
-char sit;
-char card;
+int exist_card(int sit, int card)
 {
   int i,j,exist=0;
 
@@ -537,10 +578,7 @@ char card;
   return(exist);
 }
 
-exist_3(sit,card,comb)
-char sit;
-char card;
-int comb;
+int exist_3(int sit, int card, int comb)
 {
   int i,set,exist=0;
 
@@ -560,10 +598,7 @@ int comb;
   return(exist);
 }
 
-exist_straight(sit,card,comb)
-char sit;
-char card;
-int comb;
+int exist_straight(int sit, int card, int comb)
 {
   int i,set,exist=0;
 
@@ -587,10 +622,7 @@ int comb;
   return(exist);
 }
 
-check_tai(sit,comb,make_card)
-char sit;
-char comb;
-char make_card;
+void check_tai(int sit, int comb, int make_card)
 {
   int i;
 
@@ -645,27 +677,21 @@ char make_card;
 }
 
 /* 莊家 */
-check_tai0(sit,comb)
-char sit;
-char comb;
+void check_tai0(int sit, int comb)
 {
   if(info.dealer==sit)
     card_comb[comb].tai_score[0]=tai[0].score;
 }
 
 /* 門清 */
-check_tai1(sit,comb)
-char sit;
-char comb;
+void check_tai1(int sit, int comb)
 {
   if(pool[sit].num==16)
     card_comb[comb].tai_score[1]=tai[1].score;
 }
 
 /* 自摸 */
-check_tai2(sit,comb)
-char sit;
-char comb;
+void check_tai2(int sit, int comb)
 {
   if(sit==card_owner)
     card_comb[comb].tai_score[2]=tai[2].score;
@@ -673,9 +699,7 @@ char comb;
 }
 
 /* 斷麼九 */
-check_tai3(sit,comb)
-char sit;
-char comb;
+void check_tai3(int sit, int comb)
 {
   if(!exist_card(sit,1) && !exist_card(sit,9) && !exist_card(sit,11) &&
      !exist_card(sit,19) && !exist_card(sit,21) && !exist_card(sit,29) &&
@@ -686,9 +710,7 @@ char comb;
 }
 
 /* 雙龍抱 */
-check_tai4(sit,comb)
-char sit;
-int comb;
+void check_tai4(int sit, int comb)
 {
   int i;
   int straight[30],double_straight_num=0;
@@ -723,43 +745,33 @@ int comb;
 }
 
 /* 杠上開花 */
-check_tai5(sit,comb)
-char sit;
-char comb;
+void check_tai5(int sit, int comb)
 {
   if(in_kang)
     card_comb[comb].tai_score[5]=tai[5].score;
 }
 
 /* 海底摸月 */
-check_tai6(sit,comb)
-char sit;
-char comb;
+void check_tai6(int sit, int comb)
 {
   if((144-card_point)==16 && sit==card_owner)
     card_comb[comb].tai_score[6]=tai[6].score;
 }
 
 /* 河底撈魚 */
-check_tai7(sit,comb)
-char sit;
-char comb;
+void check_tai7(int sit, int comb)
 {
   if((144-card_point)==16 && sit!=card_owner)
     card_comb[comb].tai_score[7]=tai[7].score;
 }
 
 /* 搶杠 */
-check_tai8(sit,comb)
-char sit;
-char comb;
+void check_tai8(int sit, int comb)
 {
 }
 
 /* 東風 */
-check_tai9(sit,comb)
-char sit;
-char comb;
+void check_tai9(int sit, int comb)
 {
   if(exist_card(sit,31)>=3)
   {
@@ -776,9 +788,7 @@ char comb;
 }
 
 /* 南風 */
-check_tai10(sit,comb)
-char sit;
-char comb;
+void check_tai10(int sit, int comb)
 {
   if(exist_card(sit,32)>=3)
   {
@@ -795,9 +805,7 @@ char comb;
 }
 
 /* 西風 */
-check_tai11(sit,comb)
-char sit;
-char comb;
+void check_tai11(int sit, int comb)
 {
   if(exist_card(sit,33)>=3)
   {
@@ -814,9 +822,7 @@ char comb;
 }
 
 /* 北風 */
-check_tai12(sit,comb)
-char sit;
-char comb;
+void check_tai12(int sit, int comb)
 {
   if(exist_card(sit,34)>=3)
   {
@@ -827,42 +833,34 @@ char comb;
   }
   if(card_comb[comb].tai_score[12]==tai[12].score*2)
   {
-    card_comb[20].tai_score[20]=tai[20].score;
+    card_comb[comb].tai_score[20]=tai[20].score;
     card_comb[comb].tai_score[12]=0;
   }
 }
 
 /* 紅中 */
-check_tai13(sit,comb)
-char sit;
-char comb;
+void check_tai13(int sit, int comb)
 {
   if(exist_card(sit,41)>=3)
     card_comb[comb].tai_score[13]=tai[13].score;
 }
 
 /* 白板 */
-check_tai14(sit,comb)
-char sit;
-char comb;
+void check_tai14(int sit, int comb)
 {
   if(exist_card(sit,42)>=3)
     card_comb[comb].tai_score[14]=tai[14].score;
 }
 
 /* 青發 */
-check_tai15(sit,comb)
-char sit;
-char comb;
+void check_tai15(int sit, int comb)
 {
   if(exist_card(sit,43)>=3)
     card_comb[comb].tai_score[15]=tai[15].score;
 }
 
 /* 花牌 */
-check_tai16(sit,comb)
-char sit;
-char comb;
+void check_tai16(int sit, int comb)
 {
   if(pool[sit].flower[pool[sit].door_wind-1])
     card_comb[comb].tai_score[16]+=tai[16].score;
@@ -871,37 +869,27 @@ char comb;
 }
 
 /* 東風東 */
-check_tai17(sit,comb)
-char sit;
-char comb;
+void check_tai17(int sit, int comb)
 {
 }
 
 /* 西風西 */
-check_tai18(sit,comb)
-char sit;
-char comb;
+void check_tai18(int sit, int comb)
 {
 }
 
 /* 南風南 */
-check_tai19(sit,comb)
-char sit;
-char comb;
+void check_tai19(int sit, int comb)
 {
 }
 
 /* 北風北 */
-check_tai20(sit,comb)
-char sit;
-char comb;
+void check_tai20(int sit, int comb)
 {
 }
 
 /* 春夏秋冬 */
-check_tai21(sit,comb)
-char sit;
-char comb;
+void check_tai21(int sit, int comb)
 {
   if(pool[sit].flower[0] && pool[sit].flower[1] && pool[sit].flower[2] &&
      pool[sit].flower[3])
@@ -912,9 +900,7 @@ char comb;
 }
 
 /* 梅蘭菊竹 */
-check_tai22(sit,comb)
-char sit;
-char comb;
+void check_tai22(int sit, int comb)
 {
   if(pool[sit].flower[4] && pool[sit].flower[5] && pool[sit].flower[6] &&
      pool[sit].flower[7])
@@ -925,19 +911,14 @@ char comb;
 }
 
 /* 全求人 */
-check_tai23(sit,comb)
-char sit;
-char comb;
+void check_tai23(int sit, int comb)
 {
   if(pool[sit].num==1 && sit!=card_owner)
     card_comb[comb].tai_score[23]=tai[23].score;
 }
 
 /* 平胡 */
-check_tai24(sit,comb,make_card)
-char sit;
-char comb;
-char make_card;
+void check_tai24(int sit, int comb, int make_card)
 {
   int i,j;
 
@@ -987,9 +968,7 @@ char make_card;
 }
 
 /* 混帶麼 */
-check_tai25(sit,comb)
-char sit;
-char comb;
+void check_tai25(int sit, int comb)
 {
   int i,exist19=0;
 
@@ -1028,9 +1007,7 @@ char comb;
 }
 
 /* 三色同順 */
-check_tai26(sit,comb)
-char sit;
-char comb;
+void check_tai26(int sit, int comb)
 {
   int i,num;
 
@@ -1070,9 +1047,7 @@ char comb;
 }
 
 /* 一條龍 */
-check_tai27(sit,comb)
-char sit;
-char comb;
+void check_tai27(int sit, int comb)
 {
   int i;
 
@@ -1090,29 +1065,22 @@ char comb;
 }
 
 /* 雙雙龍抱 */
-check_tai28(sit,comb)
-char sit;
-char comb;
+void check_tai28(int sit, int comb)
 {
 }
 
 /* 三暗刻 */
-check_tai29(sit,comb)
-char sit;
-char comb;
+void check_tai29(int sit, int comb)
 {
 }
 
 /* 三杠子 */
-check_tai30(sit,comb)
-char sit;
-char comb;
+void check_tai30(int sit, int comb)
 {
 }
 
 /* 三色同刻 */
-check_tai31(sit,comb)
-char sit,comb;
+void check_tai31(int sit, int comb)
 {
   int i,num;
 
@@ -1147,9 +1115,7 @@ char sit,comb;
 }
 
 /* 門清自摸 */
-check_tai32(sit,comb)
-char sit;
-char comb;
+void check_tai32(int sit, int comb)
 {
   if(pool[sit].num==16 && sit==card_owner)
   {
@@ -1160,9 +1126,7 @@ char comb;
 }
 
 /* 碰碰胡 */
-check_tai33(sit,comb)
-char sit;
-char comb;
+void check_tai33(int sit, int comb)
 {
   int i;
 
@@ -1183,9 +1147,7 @@ char comb;
 }
 
 /* 混一色 */
-check_tai34(sit,comb)
-char sit;
-char comb;
+void check_tai34(int sit, int comb)
 {
   int i,j,kind;
 
@@ -1223,9 +1185,7 @@ char comb;
 }
 
 /* 純帶麼 */
-check_tai35(sit,comb)
-char sit;
-char comb;
+void check_tai35(int sit, int comb)
 {
   int i;
 
@@ -1257,9 +1217,7 @@ char comb;
 }
 
 /* 混老頭 */
-check_tai36(sit,comb)
-char sit;
-char comb;
+void check_tai36(int sit, int comb)
 {
   int i,j,exist19=0;
 
@@ -1297,9 +1255,7 @@ char comb;
 }
 
 /* 小三元 */
-check_tai37(sit,comb)
-char sit;
-char comb;
+void check_tai37(int sit, int comb)
 {
   if(exist_card(sit,41)>=2 && exist_card(sit,42)>=2 && exist_card(sit,43)>=2)
   {
@@ -1311,16 +1267,12 @@ char comb;
 }
 
 /* 四暗刻 */
-check_tai38(sit,comb)
-char sit;
-char comb;
+void check_tai38(int sit, int comb)
 {
 }
 
 /* 四杠子 */
-check_tai39(sit,comb)
-char sit;
-char comb;
+void check_tai39(int sit, int comb)
 {
   int i,kang_count=0;
  
@@ -1337,9 +1289,7 @@ char comb;
 }
 
 /* 大三元 */
-check_tai40(sit,comb)
-char sit;
-char comb;
+void check_tai40(int sit, int comb)
 {
   if(exist_card(sit,41)>=3 && exist_card(sit,42)>=3 && exist_card(sit,43)>=3)
   {
@@ -1352,9 +1302,7 @@ char comb;
 }
 
 /* 小四喜 */
-check_tai41(sit,comb)
-char sit;
-char comb;
+void check_tai41(int sit, int comb)
 {
   if(exist_card(sit,31)>=2 && exist_card(sit,32)>=2 && exist_card(sit,33)>=2 &&
      exist_card(sit,34)>=2)
@@ -1372,9 +1320,7 @@ char comb;
 }
 
 /* 清一色 */
-check_tai42(sit,comb)
-char sit;
-char comb;
+void check_tai42(int sit, int comb)
 {
   int i,j,kind;
 
@@ -1404,9 +1350,7 @@ char comb;
 }
 
 /* 字一色 */
-check_tai43(sit,comb)
-char sit;
-char comb;
+void check_tai43(int sit, int comb)
 {
   int i,j;
 
@@ -1436,17 +1380,12 @@ char comb;
 }
 
 /* 七搶一 */
-check_tai44(sit,comb)
-char sit;
-char comb;
+void check_tai44(int sit, int comb)
 {
 }
 
 /* 五暗刻 */
-check_tai45(sit,comb,make_card)
-char sit;
-char comb;
-char make_card;
+void check_tai45(int sit, int comb, int make_card)
 {
   int i,three_card=0;
 char msg_buf[80];
@@ -1472,9 +1411,7 @@ char msg_buf[80];
 }
 
 /* 清老頭 */
-check_tai46(sit,comb)
-char sit;
-char comb;
+void check_tai46(int sit, int comb)
 {
   int i,j;
 
@@ -1504,9 +1441,7 @@ char comb;
 }
 
 /* 大四喜 */
-check_tai47(sit,comb)
-char sit;
-char comb;
+void check_tai47(int sit, int comb)
 {
   if(exist_card(sit,31)>=3 && exist_card(sit,32)>=3 && exist_card(sit,33)>=3 &&
      exist_card(sit,34)>=3)
@@ -1525,16 +1460,12 @@ char comb;
 }
 
 /* 八仙過海 */
-check_tai48(sit,comb)
-char sit;
-char comb;
+void check_tai48(int sit, int comb)
 {
 }
 
 /* 天胡 */
-check_tai49(sit,comb)
-char sit;
-char comb;
+void check_tai49(int sit, int comb)
 {
   char msg_buf[80];
   if(pool[sit].first_round && sit==info.dealer)
@@ -1542,28 +1473,22 @@ char comb;
 }
 
 /* 地胡 */
-check_tai50(sit,comb)
-char sit;
-char comb;
+void check_tai50(int sit, int comb)
 {
   if(pool[sit].first_round && sit==card_owner && sit!=info.dealer)
     card_comb[comb].tai_score[50]=tai[50].score;
 }
 
 /* 人胡 */
-check_tai51(sit,comb)
-char sit;
-char comb;
+void check_tai51(int sit, int comb)
 {
   if(pool[sit].first_round && sit!=card_owner && sit!=info.dealer)
     card_comb[comb].tai_score[51]=tai[51].score;
 }
 
 /* 連莊 */
-check_tai52(sit,comb)
-char sit;
-char comb;
+void check_tai52(int sit, int comb)
 {
   if(info.cont_dealer && info.dealer==sit)
     card_comb[comb].tai_score[52]=tai[52].score*info.cont_dealer;
-}  
+}

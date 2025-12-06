@@ -75,5 +75,39 @@ void close_id (int);
 void close_connection (int);
 void shutdown_server ();
 
+/* Additional Prototypes */
+int err(char *errmsg);
+int game_log(char *gamemsg);
+int read_msg(int fd, char *msg);
+void write_msg(int fd, char *msg);
+void display_msg(int player_id, char *msg);
+int Check_for_data(int fd);
+int convert_msg_id(int player_id, char *msg);
+void list_player(int fd);
+void list_table(int fd, int mode);
+void list_stat(int fd, char *name);
+void who(int fd, char *name);
+void lurker(int fd);
+void find_user(int fd, char *name);
+void broadcast(int player_id, char *msg);
+void send_msg(int player_id, char *msg);
+void invite(int player_id, char *name);
+void init_socket();
+void init_variable();
+int read_user_name(char *name);
+int read_user_name_update(char *name, int player_id);
+void read_user_id(unsigned int id);
+int add_user(int player_id, char *name, char *passwd);
+void print_news(int fd, char *name);
+void welcome_user(int player_id);
+void show_online_users(int player_id);
+void show_current_state(int player_id);
+void update_client_money(int player_id);
+int find_user_name(char *name);
+void gps_processing();
+void core_dump(int signo);
+void bus_err(int signo);
+void broken_pipe(int signo);
+void time_out(int signo);
 
 #endif

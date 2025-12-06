@@ -12,6 +12,9 @@
 #include "qkmj.h"
 #define NO_SUN_HP 1
 
+/* Prototypes */
+int my_getch();
+
 float thinktime()
 {
   float t;
@@ -29,25 +32,17 @@ float thinktime()
   return(t);
 }
 
-beep1()
+void beep1()
 {
   if(set_beep)
     beep();
 }
 
-beep()
-{
-  putchar('\007');
-  fflush(stdout);
+void wmvaddstr(WINDOW *win, int y, int x, char *str) {
+    mvwaddstr(win, y, x, str);
 }
 
-mvwgetstring(win,y,x,max_len,str_buf,mode)
-WINDOW *win;
-int y;
-int x;
-int max_len;
-unsigned char *str_buf;
-int mode;
+void mvwgetstring(WINDOW *win, int y, int x, int max_len, unsigned char *str_buf, int mode)
 {
   int ch;
   unsigned char ch_buf[2];
@@ -58,9 +53,9 @@ int mode;
   meta(win,TRUE);
   org_y=y;
   org_x=x;
-  wmvaddstr(win,y,x,str_buf);
+  wmvaddstr(win,y,x,(char*)str_buf);
   wrefresh(win);
-  x=org_x+strlen(str_buf);
+  x=org_x+strlen((char*)str_buf);
   while(1)
   {
     ch=my_getch();
@@ -107,23 +102,10 @@ int mode;
         {
           ch_buf[0]=ch;
           ch_buf[1]=0; 
-          mvwaddstr(win,y,x++,ch_buf);
+          mvwaddstr(win,y,x++,(char*)ch_buf);
         }
         wrefresh(win);
         break;
     }
   }
 }
-
-/*
-attron(mode)
-int mode;
-{
-  set_mode(mode);
-}
-attroff(mode)
-int mode;
-{
-  set_mode(0);
-}
-*/

@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -8,6 +7,8 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <ctype.h>
+#include <unistd.h>
 
 #include "mjdef.h"
 
@@ -19,11 +20,11 @@
 
 #include "qkmj.h"
 #include "misc.h"
+
    
 int tt;
 
-int convert_msg_id(msg)
-unsigned char *msg;
+int convert_msg_id(unsigned char *msg)
 {
    int i;
    char msg_buf[255];
@@ -32,16 +33,13 @@ unsigned char *msg;
      if(msg[i]<'0' || msg[i]>'9')
      {
        display_comment("Invalid message id");
-       sprintf(msg_buf,"From %d (%d) id=%d len=%d %s", tt,gps_sockfd,msg[i],strlen(msg),msg);
+       sprintf(msg_buf,"From %d (%d) id=%d len=%lu %s", tt,gps_sockfd,msg[i],(unsigned long)strlen((char*)msg),msg);
        display_comment(msg_buf);
       }
    return(msg[0]-'0')*100+(msg[1]-'0')*10+(msg[2]-'0');
 }
 
-process_msg(player_id,id_buf,msg_type)
-int player_id;
-unsigned char *id_buf;
-int msg_type;
+void process_msg(int player_id, unsigned char *id_buf, int msg_type)
 {
   int msg_id;
   unsigned char buf[255];
@@ -52,7 +50,7 @@ int msg_type;
   int alen;
 
   tt=player_id;
-  strcpy(buf,id_buf);
+  strcpy((char*)buf,(char*)id_buf);
   msg_id=convert_msg_id(id_buf);
 /*
   sprintf(msg_buf,"%d from %d %d",msg_id,player_id,msg_type);
@@ -61,12 +59,12 @@ int msg_type;
   {
     case(FROM_GPS):
         if(msg_id!=102)
-          read_msg(gps_sockfd,buf+3);
+          read_msg(gps_sockfd,(char*)buf+3);
         switch(msg_id)
         {
           case 2:
             if(my_pass[0]!=0)
-              strcpy(ans_buf,my_pass);
+              strcpy(ans_buf,(char*)my_pass);
             else
             {
               ans_buf[0]=0;
@@ -75,7 +73,7 @@ int msg_type;
             }
             sprintf(msg_buf,"102%s",ans_buf);
             write_msg(gps_sockfd,msg_buf);
-            strcpy(my_pass,ans_buf);
+            strcpy((char*)my_pass,ans_buf);
             break;
           case 3:
             pass_login=1;
@@ -97,7 +95,7 @@ int msg_type;
             ans_buf[10]=0;
             sprintf(msg_buf,"101%s",ans_buf);
             write_msg(gps_sockfd,msg_buf);
-            strcpy(my_name,ans_buf);
+            strcpy((char*)my_name,ans_buf);
             break;
           case 5:   /* creat a new account */
             ans_buf[0]=0;
@@ -116,7 +114,7 @@ int msg_type;
                 {
                   sprintf(msg_buf,"103%s",ans_buf);
                   write_msg(gps_sockfd,msg_buf);
-                  strcpy(my_pass,ans_buf);
+                  strcpy((char*)my_pass,ans_buf);
                   break;
                 }
                 else
@@ -140,7 +138,7 @@ int msg_type;
               ans_buf[10]=0;
               sprintf(msg_buf,"101%s",ans_buf);
               write_msg(gps_sockfd,msg_buf);
-              strcpy(my_name,ans_buf);
+              strcpy((char*)my_name,ans_buf);
             }
             break;
           case 6:
@@ -161,12 +159,12 @@ int msg_type;
             switch(buf[3])
             {
               case '0':
-                Tokenize(buf+4,1);
+                Tokenize((char*)buf+4);
                 //sprintf(msg_buf,"連往 %s port %s",cmd_argv[1],cmd_argv[2]);
                 //send_gps_line(msg_buf);
                 send_gps_line("與該桌連線中...");
                                
-                int ret = init_socket(cmd_argv[1],atoi(cmd_argv[2]),&table_sockfd);
+                int ret = init_socket((char*)cmd_argv[1],atoi((char*)cmd_argv[2]),&table_sockfd);
 
                 FD_SET(table_sockfd,&afds);
                 in_join=1;
@@ -190,7 +188,7 @@ int msg_type;
               player[1].sit=1;
               player[1].money=my_money;
               player[1].id=my_gps_id;
-              strcpy(player[1].name,my_name);
+              strcpy(player[1].name,(char*)my_name);
               my_sit=1;
               for(i=0;i<=4;i++)
                 table[i]=0;
@@ -201,22 +199,22 @@ int msg_type;
                 opening();
                 open_deal();
               }
-              strcpy(player[1].name,my_name);
+              strcpy(player[1].name,(char*)my_name);
               player[1].in_table=1;
               send_gps_line("您已建立新桌，目前人數1人，可使用 /who 查詢本桌清單");
               send_gps_line("如要關桌請輸入 /Leave (/L) 踢除使用者請用 /Kick ");
               send_gps_line("請用 /Note <附註> 設定附註，其他人查詢空桌時將可參考。"); 
           case 101:
-            send_gps_line(buf+3);
+            send_gps_line((char*)buf+3);
             break;
           case 102:
             display_news(gps_sockfd);
             break;
           case 120:
-            strcpy(msg_buf,buf+3);
+            strcpy(msg_buf,(char*)buf+3);
             *(msg_buf+5)=0;
             new_client_id=atoi(msg_buf);
-            new_client_money=atol(buf+8);
+            new_client_money=atol((char*)buf+8);
             if(!in_serv)
             {
               my_gps_id=new_client_id;
@@ -228,7 +226,7 @@ int msg_type;
             endwin();
             break;
           case 211:
-            strcpy(new_client_name,buf+3);
+            strcpy(new_client_name,(char*)buf+3);
             new_client=1;
             break;
           default:
@@ -237,22 +235,22 @@ int msg_type;
         }
         break;
     case(FROM_CLIENT):
-      read_msg(player[player_id].sockfd,buf+3);
+      read_msg(player[player_id].sockfd,(char*)buf+3);
               switch(msg_id)
               {
                 case 101:
-                  send_gps_line(buf+3);
-                  broadcast_msg(player_id,buf);
+                  send_gps_line((char*)buf+3);
+                  broadcast_msg(player_id,(char*)buf);
                   break;
                 case 102:
-                  display_comment(buf+3);
-                  broadcast_msg(player_id,buf);
+                  display_comment((char*)buf+3);
+                  broadcast_msg(player_id,(char*)buf);
                   break;
                 case 200://Other User Leave
                   close_client(player_id);
                   break;
                 case 290:
-                  broadcast_msg(player_id,buf);
+                  broadcast_msg(player_id,(char*)buf);
                   opening();
                   open_deal();
                   break;
@@ -330,7 +328,8 @@ int msg_type;
                   wait_hit[player[player_id].sit]=1;
                   break;
                 case 501:
-                  who(player[player_id].sockfd);
+                  who((char *)msg_buf); 
+                   who(player[player_id].name);
                   break;
                 case 510:
                   in_check[player[player_id].sit]=0;
@@ -347,11 +346,12 @@ int msg_type;
                 case 525:
                   send_card_request=1;
                   draw_flower(buf[3],buf[4]);
-                  broadcast_msg(player_id,buf);
+                  broadcast_msg(player_id,(char*)buf);
                   break;
                 case 530:  /* others epk a card */
                   gettimeofday(&before, (struct timezone *) 0);
                   turn=player[buf[3]].sit;
+                  card_owner=turn;
                   display_point(turn);
                   if(buf[4]==12)
                   {
@@ -380,7 +380,7 @@ int msg_type;
                   pool[turn].out_card_index++;
                   }
                   draw_epk(buf[3],buf[4],buf[5],buf[6],buf[7]);
-                  broadcast_msg(player_id,buf);
+                  broadcast_msg(player_id,(char*)buf);
                   return_cursor();
                   switch(buf[4])
                   {
@@ -425,14 +425,14 @@ int msg_type;
               }
               break;
     case (FROM_SERV):
-      read_msg(table_sockfd,buf+3);
+      read_msg(table_sockfd,(char*)buf+3);
           switch(msg_id)
           {
             case 101:
-              send_gps_line(buf+3);
+              send_gps_line((char*)buf+3);
               break;
             case 102:
-              display_comment(buf+3);
+              display_comment((char*)buf+3);
               break;
             case 199://LEAVE 開桌者離開牌桌
               write_msg(gps_sockfd,"205"); //通知 GPS Server
@@ -455,11 +455,11 @@ int msg_type;
               write_msg(gps_sockfd,"201");//更新一下目前線上人數跟內容
               break;
             case 201:  /* get the new comer's info */
-              strcpy(player[buf[3]].name,buf+6);
+              strcpy(player[buf[3]].name,(char*)buf+6);
               player[buf[3]].in_table = 1;
               player[buf[3]].sit = buf[4];
               player_in_table = buf[5];
-              if(strcmp(my_name,player[buf[3]].name)==0){
+              if(strcmp((char*)my_name,player[buf[3]].name)==0){
             	  sprintf(msg_buf,"您已加入此桌，目前人數 %d ",player_in_table);
               }else{
             	  sprintf(msg_buf,"%s 加入此桌，目前人數 %d ",player[buf[3]].name,player_in_table);
@@ -469,13 +469,13 @@ int msg_type;
                 table[player[buf[3]].sit]=buf[3];
               break;
             case 202:
-              strcpy(msg_buf,buf+4);
+              strcpy(msg_buf,(char*)buf+4);
               *(msg_buf+5)=0;
               player[buf[3]].id=atoi(msg_buf);
-              player[buf[3]].money=atol(buf+9);
+              player[buf[3]].money=atol((char*)buf+9);
               break;
             case 203:  /* get others info */
-              strcpy(player[buf[3]].name,buf+5);
+              strcpy(player[buf[3]].name,(char*)buf+5);
               player[buf[3]].sit=buf[4];
               player[buf[3]].in_table=1;
               table[buf[4]]=buf[3];
@@ -494,7 +494,7 @@ int msg_type;
             case 205:  /* NOTICE: need player_in_table++ ? */
                        /* NOTICE: did he get table[]???? */
               my_id=buf[3];
-              strcpy(player[my_id].name,buf+5);
+              strcpy(player[my_id].name,(char*)buf+5);
               my_sit=buf[4];
               player[my_id].sit=my_sit;
               player[my_id].in_table=1;
@@ -562,7 +562,7 @@ int msg_type;
               return_cursor();
               break;
             case 312:
-              pool[buf[3]].time=atof(buf+4);
+              pool[buf[3]].time=atof((char*)buf+4);
               display_time(buf[3]);
               break;
             case 314:  /* process new cardback */

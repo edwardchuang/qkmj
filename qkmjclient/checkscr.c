@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 #include "mjdef.h"
 
@@ -17,7 +19,37 @@
 
 #include "qkmj.h"
 
-init_check_mode() {
+/* Prototypes for external functions */
+void wmvaddstr(WINDOW *win, int y, int x, char *str);
+void reset_cursor();
+void beep1();
+void return_cursor();
+int check_make(int sit, int card, int mode);
+void set_color(int f, int b);
+void clear_screen_area(int y, int x, int h, int w);
+void set_mode(int mode);
+void show_allcard(int sit);
+void show_kang(int sit);
+void show_newcard(int sit, int type);
+void write_msg(int fd, char *msg);
+void wait_a_key(char *msg);
+void draw_index(int num);
+void display_point(int sit);
+void show_num(int x, int y, int num, int color);
+void throw_card(int card);
+void show_card(int card, int x, int y, int color);
+void sort_card(int mode);
+int search_card(int sit, int card);
+void broadcast_msg(int player_id, char *msg);
+
+/* Prototypes for functions in this file */
+void init_check_mode();
+void process_make(int sit, int card);
+void process_epk(int check);
+void draw_epk(int id, int kind, int card1, int card2, int card3);
+void draw_flower(int sit, int card);
+
+void init_check_mode() {
 	int i;
 
 	if (input_mode==TALK_MODE)
@@ -45,8 +77,7 @@ init_check_mode() {
 	return_cursor();
 }
 
-process_make(sit, card)
-	char sit;char card; {
+void process_make(int sit, int card) {
 	int i, j, k, max_sum, max_index, sitInd;
 	char msg_buf[80];
 	char result_record_buf[2000];
@@ -79,7 +110,7 @@ process_make(sit, card)
 	/* record start */
 	if (in_serv && sendlog == 1) {
 		sprintf(result_record_buf,
-				"900{card_owner:\"%s\",winer:\"%s\",cards:{",
+				"900{card_owner:\"%s\",winer:\"%s\",cards:{ ",
 				player[table[card_owner]].name, player[table[sit]].name);//Record
 		for (sitInd = 1; sitInd <= 4; ++sitInd) {
 			sprintf(result_buf, "\"%s\":{ind:\"%d\",card:[", player[table[sitInd]].name,sitInd);
@@ -102,12 +133,12 @@ process_make(sit, card)
 			
 			
 			if (sitInd != 4) {
-				strcat(result_record_buf, "},");
+				strcat(result_record_buf, "}, ");
 			}else{
 				strcat(result_record_buf, "}");
 			}
 		}
-		strcat(result_record_buf, "},tais:\"");
+		strcat(result_record_buf, "}, tais:\"");
 	}
 	/* record end */
 
@@ -149,7 +180,7 @@ process_make(sit, card)
 		/* record */
 		if (in_serv && sendlog == 1) {
 			sprintf(result_buf, "cont_win:%d,cont_tai:%d,", info.cont_dealer,
-					info.cont_dealer*2);
+						info.cont_dealer*2);
 			strcat(result_record_buf, result_buf);
 		}
 		/* record */
@@ -157,10 +188,10 @@ process_make(sit, card)
 		wmove(stdscr, THROW_Y+j, THROW_X+k);
 		if (info.cont_dealer<10)
 			wprintw(stdscr, "連%s拉%s  %2d 台", number_item[info.cont_dealer],
-					number_item[info.cont_dealer], info.cont_dealer*2);
+						number_item[info.cont_dealer], info.cont_dealer*2);
 		else
 			wprintw(stdscr, "連%2d拉%2d  %2d 台", info.cont_dealer,
-					info.cont_dealer, info.cont_dealer*2);
+						info.cont_dealer, info.cont_dealer*2);
 	}
 	set_color(31, 40);
 	wmove(stdscr, THROW_Y+6, THROW_X+26);
@@ -244,7 +275,7 @@ process_make(sit, card)
 		if (card_owner==info.dealer) {
 			change_money[card_owner]=-(info.base_value
 					+(card_comb[max_index].tai_sum+ 1+info.cont_dealer*2)
-							*info.tai_value);
+									*info.tai_value);
 		} else {
 			change_money[card_owner]=-(info.base_value
 					+card_comb[max_index].tai_sum* info.tai_value);
@@ -328,8 +359,7 @@ process_make(sit, card)
 	}
 }
 
-process_epk(check)
-	char check; {
+void process_epk(int check) {
 	char card1, card2, card3;
 	int i;
 	char msg_buf[80];
@@ -448,8 +478,7 @@ process_epk(check)
 }
 
 /*  Draw eat,pong or kang */
-draw_epk(id, kind, card1, card2, card3)
-	char id, kind, card1, card2, card3; {
+void draw_epk(int id, int kind, int card1, int card2, int card3) {
 	int sit, i;
 	char msg_buf[80];
 
@@ -554,8 +583,7 @@ draw_epk(id, kind, card1, card2, card3)
 		}
 }
 
-draw_flower(sit, card)
-	char sit;char card; {
+void draw_flower(int sit, int card) {
 	char msg_buf[80];
 
 	/*
