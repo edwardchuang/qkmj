@@ -1,41 +1,40 @@
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <pwd.h>
+#include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
+#include <sys/socket.h>
 #include <sys/time.h>
-#include <pwd.h>
-#include <netdb.h>
-#include <sys/time.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "mjdef.h"
 
-#ifdef NON_WINDOWS //Linux
+#ifdef NON_WINDOWS  // Linux
 #include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
+#else  // Cygwin
+#include "ncurses/ncurses.h"
 #endif
 
 #include "qkmj.h"
 
 /* Prototypes */
-void err(char *errmsg);
-void send_gps_line(char *msg);
+void err(char* errmsg);
+void send_gps_line(char* msg);
 void init_playing_screen();
 void opening();
 void open_deal();
 void init_global_screen();
-void display_comment(char *comment);
+void display_comment(char* comment);
 void close_client(int player_id);
 int leave();
-void write_msg(int fd, char *msg);
-void broadcast_msg(int id, char *msg);
+void write_msg(int fd, char* msg);
+void broadcast_msg(int id, char* msg);
 
-struct passwd *userdata;
+struct passwd* userdata;
 
 int Check_for_data(int fd)
 /* Checks the socket descriptor fd to see if any incoming data has
@@ -43,278 +42,251 @@ int Check_for_data(int fd)
    If an error, returns -1 and stores the error message in socket_error.
 */
 {
-  int status;                 /* return code from Select call. */
-  fd_set wait_set;     /* A set representing the connections that
-				 have been established. */
-  struct timeval tm;          /* A timelimit of zero for polling for new
-				 connections. */
+  int status;        /* return code from Select call. */
+  fd_set wait_set;   /* A set representing the connections that
+                               have been established. */
+  struct timeval tm; /* A timelimit of zero for polling for new
+                        connections. */
 
-  FD_ZERO (&wait_set);
-  FD_SET (fd, &wait_set);
+  FD_ZERO(&wait_set);
+  FD_SET(fd, &wait_set);
 
   tm.tv_sec = 0;
   tm.tv_usec = 500;
-  status = select (FD_SETSIZE, &wait_set, (fd_set *) 0, (fd_set *) 0, &tm);
+  status = select(FD_SETSIZE, &wait_set, (fd_set*)0, (fd_set*)0, &tm);
 
-/*  if (status < 0)
-    sprintf (socket_error, "Error in select: %s", sys_errlist[errno]); */
+  /*  if (status < 0)
+      sprintf (socket_error, "Error in select: %s", sys_errlist[errno]); */
 
   return (status);
-
 }
 
-void init_serv_socket()
-{
+void init_serv_socket() {
   struct sockaddr_in serv_addr;
-         
+
   /* open a TCP socket for internet stream socket */
-  if( (serv_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+  if ((serv_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     err("Server: cannot open stream socket");
-  
+
   /* bind our local address */
-  memset((char *)&serv_addr, 0, sizeof(serv_addr));
+  memset((char*)&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  do
-  {
+  do {
     serv_addr.sin_port = htons(SERV_PORT);
     SERV_PORT++;
-  }
-  while(bind(serv_sockfd, (struct sockaddr *) &serv_addr,sizeof(serv_addr))<0);
+  } while (bind(serv_sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) <
+           0);
   listen(serv_sockfd, 10);
-  FD_SET(serv_sockfd,&afds);
+  FD_SET(serv_sockfd, &afds);
 }
 
-void get_my_info()
-{
-  userdata=getpwuid(getuid());
-  strncpy(my_username,userdata->pw_name, sizeof(my_username) - 1);
+void get_my_info() {
+  userdata = getpwuid(getuid());
+  strncpy(my_username, userdata->pw_name, sizeof(my_username) - 1);
   my_username[sizeof(my_username) - 1] = '\0';
 }
 
-int init_socket(char *host, int portnum, int *sockfd)
-{
+int init_socket(char* host, int portnum, int* sockfd) {
   struct sockaddr_in serv_addr;
 
-  struct hostent *hp;
+  struct hostent* hp;
 
-  memset((char *) &serv_addr, 0, sizeof(serv_addr));
-  serv_addr.sin_family    = AF_INET;
+  memset((char*)&serv_addr, 0, sizeof(serv_addr));
+  serv_addr.sin_family = AF_INET;
 
-  if((hp = gethostbyname(host)) == NULL || hp->h_addrtype != AF_INET) { 
+  if ((hp = gethostbyname(host)) == NULL || hp->h_addrtype != AF_INET) {
     serv_addr.sin_addr.s_addr = inet_addr(host);
   } else {
     memmove(&serv_addr.sin_addr, hp->h_addr_list[0], hp->h_length);
   }
 
-  serv_addr.sin_port  = htons(portnum);
+  serv_addr.sin_port = htons(portnum);
 
-	/* open a TCP socket */
-  if( (*sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		err("client: cannot open stream socket");
+  /* open a TCP socket */
+  if ((*sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    err("client: cannot open stream socket");
 
-	/* connect to server */
-  if(connect(*sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-  {
+  /* connect to server */
+  if (connect(*sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
     return -1;
   }
   return 0;
 }
 
-void accept_new_client()
-{
+void accept_new_client() {
   int alen;
-  int i,player_id;
+  int i, player_id;
   char msg_buf[255];
 
-/* Find a free space */
-  for(i=2;i<MAX_PLAYER;i++)
-    if(!player[i].in_table) break;
-  if(i==MAX_PLAYER)
-    err("Too many players!");
-  player_id=i;
-/* NOTICE: here we don't know player[player_id].addr */
-/* it's ok! just get size. */
-  alen=sizeof(player[player_id].addr);
-/* NOTICE: so here, player[player_id].sockfd must be wrong!! */
-  player[player_id].sockfd=accept(serv_sockfd, (struct sockaddr *)
-                                  &player[player_id].addr, (socklen_t *)&alen);
-  FD_SET(player[player_id].sockfd,&afds);
-  player[player_id].in_table=1;
+  /* Find a free space */
+  for (i = 2; i < MAX_PLAYER; i++)
+    if (!player[i].in_table) break;
+  if (i == MAX_PLAYER) err("Too many players!");
+  player_id = i;
+  /* NOTICE: here we don't know player[player_id].addr */
+  /* it's ok! just get size. */
+  alen = sizeof(player[player_id].addr);
+  /* NOTICE: so here, player[player_id].sockfd must be wrong!! */
+  player[player_id].sockfd =
+      accept(serv_sockfd, (struct sockaddr*)&player[player_id].addr,
+             (socklen_t*)&alen);
+  FD_SET(player[player_id].sockfd, &afds);
+  player[player_id].in_table = 1;
   player_in_table++;
-/* assign a sit to the new comer */
-  if(player_in_table<=PLAYER_NUM)
-  {
-    for(i=1;i<=4;i++)
-    {
-      if(!table[i])
-      {
-        player[player_id].sit=i;
-        table[i]=player_id;
+  /* assign a sit to the new comer */
+  if (player_in_table <= PLAYER_NUM) {
+    for (i = 1; i <= 4; i++) {
+      if (!table[i]) {
+        player[player_id].sit = i;
+        table[i] = player_id;
         break;
       }
     }
   }
-  snprintf(msg_buf, sizeof(msg_buf), "%s 加入此桌，目前人數 %d ", new_client_name ,player_in_table);
+  snprintf(msg_buf, sizeof(msg_buf), "%s 加入此桌，目前人數 %d ",
+           new_client_name, player_in_table);
   send_gps_line(msg_buf);
-  strncpy(player[player_id].name, new_client_name, sizeof(player[player_id].name) - 1);
+  strncpy(player[player_id].name, new_client_name,
+          sizeof(player[player_id].name) - 1);
   player[player_id].name[sizeof(player[player_id].name) - 1] = '\0';
-  player[player_id].id=new_client_id;
-  player[player_id].money=new_client_money;
+  player[player_id].id = new_client_id;
+  player[player_id].money = new_client_money;
   /* Send the info of new comer to everyone */
-  snprintf(msg_buf, sizeof(msg_buf), "201%c%c%c%s", (char) player_id ,player[player_id].sit,player_in_table,
-          player[player_id].name);
-  broadcast_msg(1,msg_buf); /* NOTICE:including the new comer!!! */
-  msg_buf[2]='5';   /* Set msg_id to 205 */
+  snprintf(msg_buf, sizeof(msg_buf), "201%c%c%c%s", (char)player_id,
+           player[player_id].sit, player_in_table, player[player_id].name);
+  broadcast_msg(1, msg_buf); /* NOTICE:including the new comer!!! */
+  msg_buf[2] = '5';          /* Set msg_id to 205 */
   /* send to himself */
-/* NOTICE: player doesn't know his own table[i], right? */
-  write_msg(player[player_id].sockfd,msg_buf);
+  /* NOTICE: player doesn't know his own table[i], right? */
+  write_msg(player[player_id].sockfd, msg_buf);
   /* Send more info of new comer */
-  snprintf(msg_buf, sizeof(msg_buf), "202%c%5d%ld",player_id,new_client_id,new_client_money);
-  broadcast_msg(1,msg_buf);
-  new_client=0;
-  write_msg(gps_sockfd,"111");  /* Add one new player into the table */
+  snprintf(msg_buf, sizeof(msg_buf), "202%c%5d%ld", player_id, new_client_id,
+           new_client_money);
+  broadcast_msg(1, msg_buf);
+  new_client = 0;
+  write_msg(gps_sockfd, "111"); /* Add one new player into the table */
   /* Send all player info to the new player */
-  for(i=1;i<MAX_PLAYER;i++)
-  {
-    if(player[i].in_table && i!=player_id)
-    {
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != player_id) {
       /* Let the new comer know everyone */
-      snprintf(msg_buf, sizeof(msg_buf), "203%c%c%s",i,player[i].sit,player[i].name);
-      write_msg(player[player_id].sockfd,msg_buf);
-      snprintf(msg_buf, sizeof(msg_buf), "202%c%5d%ld",i,player[i].id,player[i].money);
-      write_msg(player[player_id].sockfd,msg_buf);
+      snprintf(msg_buf, sizeof(msg_buf), "203%c%c%s", i, player[i].sit,
+               player[i].name);
+      write_msg(player[player_id].sockfd, msg_buf);
+      snprintf(msg_buf, sizeof(msg_buf), "202%c%5d%ld", i, player[i].id,
+               player[i].money);
+      write_msg(player[player_id].sockfd, msg_buf);
     }
   }
   /* Check the number of player in table */
-  if(player_in_table==PLAYER_NUM)
-  {
+  if (player_in_table == PLAYER_NUM) {
     init_playing_screen();
-    broadcast_msg(1,"300");
+    broadcast_msg(1, "300");
     opening();
     open_deal();
   }
-  
+
   /* Send table info to the new player */
-/*
-  sprintf(msg_buf,"204");
-  for(i=1;i<=4;i++)
-    msg_buf[2+i]=(char) table[i]+'0';
-  write_msg(player[player_id].sockfd,msg_buf);
-*/
+  /*
+    sprintf(msg_buf,"204");
+    for(i=1;i<=4;i++)
+      msg_buf[2+i]=(char) table[i]+'0';
+    write_msg(player[player_id].sockfd,msg_buf);
+  */
 }
 
-int read_msg(int fd, char *msg)
-{
-  do
-  {
-    if(read(fd,msg,1)<=0)
-      return 0;
-  } while(*msg++ != '\0');
+int read_msg(int fd, char* msg) {
+  do {
+    if (read(fd, msg, 1) <= 0) return 0;
+  } while (*msg++ != '\0');
   return 1;
 }
 
-int read_msg_id(int fd, char *msg)
-{
+int read_msg_id(int fd, char* msg) {
   int i;
 
-  for(i=0;i<3;i++)
-  {
-    if(read(fd,msg,1)<=0)
-      return 0;
-    if(*msg++==0)
-      return 0;
+  for (i = 0; i < 3; i++) {
+    if (read(fd, msg, 1) <= 0) return 0;
+    if (*msg++ == 0) return 0;
   }
   return 1;
 }
-      
-void write_msg(int fd, char *msg)
-{
+
+void write_msg(int fd, char* msg) {
   int n;
-  n=strlen(msg);
-  if(write(fd,msg,n)<0)
-  {
+  n = strlen(msg);
+  if (write(fd, msg, n) < 0) {
     return;
   }
-  if(write(fd,msg+n,1)<0)
-  {
+  if (write(fd, msg + n, 1) < 0) {
     return;
   }
 }
 
 /* Command for server */
-void broadcast_msg(int id, char *msg)
-{
+void broadcast_msg(int id, char* msg) {
   int i;
-  for(i=2;i<MAX_PLAYER;i++){
-    if(player[i].in_table && i!=id)
-      write_msg(player[i].sockfd,msg);
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != id) write_msg(player[i].sockfd, msg);
   }
 }
 
-
-void close_client(int player_id)
-{
+void close_client(int player_id) {
   char msg_buf[255];
 
-  if(player_in_table==4)
-  {
+  if (player_in_table == 4) {
     init_global_screen();
-    input_mode=TALK_MODE;
+    input_mode = TALK_MODE;
   }
-  player_in_table -- ;
-  snprintf(msg_buf, sizeof(msg_buf), "206%c%c",player_id,player_in_table);
-  broadcast_msg(player_id,msg_buf);
-  snprintf(msg_buf, sizeof(msg_buf), "%s 離開此桌，目前人數剩下 %d 人",player[player_id].name,player_in_table);
+  player_in_table--;
+  snprintf(msg_buf, sizeof(msg_buf), "206%c%c", player_id, player_in_table);
+  broadcast_msg(player_id, msg_buf);
+  snprintf(msg_buf, sizeof(msg_buf), "%s 離開此桌，目前人數剩下 %d 人",
+           player[player_id].name, player_in_table);
   display_comment(msg_buf);
   close(player[player_id].sockfd);
-  FD_CLR(player[player_id].sockfd,&afds);
-  player[player_id].in_table=0;
-  table[player[player_id].sit]=0;
+  FD_CLR(player[player_id].sockfd, &afds);
+  player[player_id].in_table = 0;
+  table[player[player_id].sit] = 0;
 }
 
-void close_join()
-{
-  in_join=0;
-  write_msg(table_sockfd,"200");
-  close(table_sockfd); 
-  FD_CLR(table_sockfd,&afds);
-/*
-  shutdown(table_sockfd,2);
-*/
+void close_join() {
+  in_join = 0;
+  write_msg(table_sockfd, "200");
+  close(table_sockfd);
+  FD_CLR(table_sockfd, &afds);
+  /*
+    shutdown(table_sockfd,2);
+  */
 }
 
-void close_serv()
-{
+void close_serv() {
   int i;
-  in_serv=0;
-  for(i=2;i<MAX_PLAYER;i++) //Note that i start from 2
+  in_serv = 0;
+  for (i = 2; i < MAX_PLAYER; i++)  // Note that i start from 2
   {
-    if(player[i].in_table)
-    {
-      write_msg(player[i].sockfd,"199");
+    if (player[i].in_table) {
+      write_msg(player[i].sockfd, "199");
       close_client(i);
-/*
-      shutdown(player[i].sockfd,2);
-*/
+      /*
+            shutdown(player[i].sockfd,2);
+      */
     }
   }
-  FD_CLR(serv_sockfd,&afds);
+  FD_CLR(serv_sockfd, &afds);
 }
 
-int leave()    /* the ^C trap. */
+int leave() /* the ^C trap. */
 {
   int i;
 
-  write_msg(gps_sockfd,"200");
-/*
-  shutdown(gps_sockfd,2);
-*/ 
+  write_msg(gps_sockfd, "200");
+  /*
+    shutdown(gps_sockfd,2);
+  */
   close(gps_sockfd);
-  if(in_join)
-    close_join();
-  if(in_serv)
-    close_serv();
+  if (in_join) close_join();
+  if (in_serv) close_serv();
   endwin();
   exit(0);
 }

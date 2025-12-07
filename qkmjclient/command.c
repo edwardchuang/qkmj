@@ -1,23 +1,21 @@
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <ctype.h>
+#include <netinet/in.h>
+#include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <signal.h>
+#include <sys/socket.h>
 #include <sys/time.h>
-#include <ctype.h>
+#include <sys/types.h>
 
 #include "mjdef.h"
 
-
-#ifdef NON_WINDOWS //Linux
+#ifdef NON_WINDOWS  // Linux
 #include "curses.h"
-#else //Cygwin
-#include  "ncurses/ncurses.h"
+#else  // Cygwin
+#include "ncurses/ncurses.h"
 #endif
-
 
 #include "qkmj.h"
 
@@ -60,111 +58,95 @@
 #define S_TABLE 37
 #define S_QUIT 38
 
-int enable_kick=1;
-int enable_exec=0;
-char commands[100][10]
-={"","TABLE","LIST","PLAYER","JOIN","SERV","QUIT","EXIT","WHO","SIT","NUM",
-  "NEW","SHOW","LEAVE","HELP","NOTE","STAT","LOGIN","PASSWD","preserve1",
-  "BROADCAST","KICK","KILL","INVITE","MSG","SHUTDOWN","LURKER","FIND","BEEP",
-  "EXEC","FREE", "P", "J", "H", "W", "S", "L", "T", "Q"};
+int enable_kick = 1;
+int enable_exec = 0;
+char commands[100][10] = {
+    "",     "TABLE", "LIST",   "PLAYER", "JOIN",     "SERV",      "QUIT",
+    "EXIT", "WHO",   "SIT",    "NUM",    "NEW",      "SHOW",      "LEAVE",
+    "HELP", "NOTE",  "STAT",   "LOGIN",  "PASSWD",   "preserve1", "BROADCAST",
+    "KICK", "KILL",  "INVITE", "MSG",    "SHUTDOWN", "LURKER",    "FIND",
+    "BEEP", "EXEC",  "FREE",   "P",      "J",        "H",         "W",
+    "S",    "L",     "T",      "Q"};
 
-void Tokenize(char *strinput)
-{
+void Tokenize(char* strinput) {
   int k1, klast, Ltok, k1old;
-  char *token;
+  char* token;
   char str[255];
-  narg=1;
-  strcpy(str, strinput); // str is 255
+  narg = 1;
+  strcpy(str, strinput);  // str is 255
   // If strinput > 255, buffer overflow.
   strncpy(str, strinput, sizeof(str) - 1);
   str[sizeof(str) - 1] = '\0';
-  token=strtok(str, " \n\t\r");
-  if(token==NULL)
-  {
-    narg=0;
+  token = strtok(str, " \n\t\r");
+  if (token == NULL) {
+    narg = 0;
     return;
   }
-  Ltok=strlen(token);
+  Ltok = strlen(token);
   strncpy((char*)cmd_argv[narg], token, sizeof(cmd_argv[narg]) - 1);
   cmd_argv[narg][sizeof(cmd_argv[narg]) - 1] = '\0';
-  arglenv[narg]=Ltok;
-  while(1)
-  {
-    token=strtok(NULL, " \n\t\r");
-    if(token==NULL)
-      break;
+  arglenv[narg] = Ltok;
+  while (1) {
+    token = strtok(NULL, " \n\t\r");
+    if (token == NULL) break;
     narg++;
-    Ltok=strlen(token);
+    Ltok = strlen(token);
     strncpy((char*)cmd_argv[narg], token, sizeof(cmd_argv[narg]) - 1);
     cmd_argv[narg][sizeof(cmd_argv[narg]) - 1] = '\0';
-    arglenv[narg]=Ltok;
+    arglenv[narg] = Ltok;
   }
 }
 
-void my_strupr(char* upper,char* org)
-{
-  int i,len;
-  len=strlen(org);
-  for(i=0;i<len;i++)
-    upper[i]=toupper(org[i]);
-  upper[len]='\0';
+void my_strupr(char* upper, char* org) {
+  int i, len;
+  len = strlen(org);
+  for (i = 0; i < len; i++) upper[i] = toupper(org[i]);
+  upper[len] = '\0';
 }
 
-int command_mapper(char *cmd)
-{
+int command_mapper(char* cmd) {
   char cmd_upper[255];
   int i;
 
-  my_strupr(cmd_upper,cmd);
-  i=1;
-  while(commands[i][0]!='\0')
-  {
-    if( strcmp(cmd_upper,commands[i]) == 0)
-      return(i);
+  my_strupr(cmd_upper, cmd);
+  i = 1;
+  while (commands[i][0] != '\0') {
+    if (strcmp(cmd_upper, commands[i]) == 0) return (i);
     i++;
   }
-  return(0);
-
+  return (0);
 }
 
-void who(char *name)
-{
+void who(char* name) {
   char msg_buf[255];
   int i;
 
-  if(name[0]!=0)
-  {
-    snprintf(msg_buf, sizeof(msg_buf), "006%s",name);
-    write_msg(gps_sockfd,msg_buf);
+  if (name[0] != 0) {
+    snprintf(msg_buf, sizeof(msg_buf), "006%s", name);
+    write_msg(gps_sockfd, msg_buf);
     return;
   }
-  if(!in_join && !in_serv)
-  {
+  if (!in_join && !in_serv) {
     display_comment("你要查看那一桌?");
     return;
   }
   display_comment("----------------   此桌使用者   ------------------");
-  msg_buf[0]=0;
-  for(i=1;i<MAX_PLAYER;i++)
-  {
-    if(strlen(msg_buf)>49)
-    {
+  msg_buf[0] = 0;
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (strlen(msg_buf) > 49) {
       display_comment(msg_buf);
-      msg_buf[0]=0;
+      msg_buf[0] = 0;
     }
-    if(player[i].in_table)
-    {
-      strncat(msg_buf,player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
-      strncat(msg_buf,"  ", sizeof(msg_buf) - strlen(msg_buf) - 1);
+    if (player[i].in_table) {
+      strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
+      strncat(msg_buf, "  ", sizeof(msg_buf) - strlen(msg_buf) - 1);
     }
   }
-  if(msg_buf[0]!=0)
-    display_comment(msg_buf); 
+  if (msg_buf[0] != 0) display_comment(msg_buf);
   display_comment("--------------------------------------------------");
 }
 
-void help()
-{
+void help() {
   send_gps_line("-----------------   使用說明   -------------------");
   send_gps_line("/HELP          /H   查看使用說明");
   send_gps_line("/TABLE         /T   查看所有的桌");
@@ -187,8 +169,7 @@ void help()
   send_gps_line("--------------------------------------------------");
 }
 
-void command_parser(char *msg)
-{
+void command_parser(char* msg) {
   int i;
   int cmd_id;
   char sit;
@@ -197,82 +178,75 @@ void command_parser(char *msg)
   char ans_buf[255];
   char ans_buf1[255];
 
-  if(msg[0]=='/')
-  {
-    Tokenize(msg+1);
-    cmd_id=command_mapper((char*)cmd_argv[1]);
-    switch(cmd_id)
-    {
+  if (msg[0] == '/') {
+    Tokenize(msg + 1);
+    cmd_id = command_mapper((char*)cmd_argv[1]);
+    switch (cmd_id) {
       case 0:
         send_gps_line("沒有這個指令");
         break;
       case TABLE:
       case S_TABLE:
-        write_msg(gps_sockfd,"003");
+        write_msg(gps_sockfd, "003");
         break;
       case FREE:
-        write_msg(gps_sockfd,"013");
+        write_msg(gps_sockfd, "013");
         break;
       case LIST:
       case PLAYER:
       case S_PLAYER:
-        write_msg(gps_sockfd,"002");
+        write_msg(gps_sockfd, "002");
         break;
       case JOIN:
       case S_JOIN:
-        if(!pass_login)
-        {
+        if (!pass_login) {
           display_comment("請先 login 一個名稱");
           break;
         }
-        if(in_join || in_serv)
-        {
+        if (in_join || in_serv) {
           display_comment("請先離開目前桌，才能加入別桌。(/Leave)");
           break;
         }
         clear_variable();
-        if(in_join)
-        {
+        if (in_join) {
           close_join();
-          write_msg(gps_sockfd,"205");
+          write_msg(gps_sockfd, "205");
           init_global_screen();
         }
-        if(in_serv)
-        {
+        if (in_serv) {
           close_serv();
-          write_msg(gps_sockfd,"205");
+          write_msg(gps_sockfd, "205");
           init_global_screen();
         }
-        snprintf(msg_buf, sizeof(msg_buf), "011%s",(char*)cmd_argv[2]);
-        write_msg(gps_sockfd,msg_buf);
+        snprintf(msg_buf, sizeof(msg_buf), "011%s", (char*)cmd_argv[2]);
+        write_msg(gps_sockfd, msg_buf);
         /* Now wait for GPS's answer */
         break;
       case SERV:
       case S_SERV:
-        if(!pass_login)
-        {
+        if (!pass_login) {
           display_comment("請先 login 一個名稱");
           break;
         }
-        if(in_join || in_serv)
-        {
+        if (in_join || in_serv) {
           display_comment("請先離開此桌");
           break;
         }
         clear_variable();
-        if(in_join) //TODO: 確認這裡應該是不會跑到的程式碼吧？
+        if (in_join)  // TODO: 確認這裡應該是不會跑到的程式碼吧？
         {
           close_join();
-          write_msg(gps_sockfd,"205");
+          write_msg(gps_sockfd, "205");
           init_global_screen();
         }
-        if(in_serv) //TODO: 確認這裡應該是不會跑到的程式碼吧？
+        if (in_serv)  // TODO: 確認這裡應該是不會跑到的程式碼吧？
         {
           close_serv();
-          write_msg(gps_sockfd,"205");
+          write_msg(gps_sockfd, "205");
           init_global_screen();
         }
-        write_msg(gps_sockfd,"014");//檢查開桌條件，將開桌的部份另外放到 message 去執行
+        write_msg(gps_sockfd,
+                  "014");  // 檢查開桌條件，將開桌的部份另外放到 message 去執行
         break;
       case QUIT:
       case S_QUIT:
@@ -280,118 +254,110 @@ void command_parser(char *msg)
         leave();
         break;
       case SHOW:
-/*
-        sprintf(msg_buf,"%%d",pool[cmd_argv[2][0]-'0'].card[atoi(cmd_argv[3])]);
-       display_comment(msg_buf);
-show_allcard(cmd_argv[2][0]-'0');
-*/
+        /*
+                sprintf(msg_buf,"%%d",pool[cmd_argv[2][0]-'0'].card[atoi(cmd_argv[3])]);
+               display_comment(msg_buf);
+        show_allcard(cmd_argv[2][0]-'0');
+        */
         break;
       case WHO:
       case S_WHO:
-        if(narg==2)
+        if (narg == 2)
           who((char*)cmd_argv[2]);
         else
           who("");
         break;
       case NUM:
-        i=cmd_argv[2][0]-'0';
-        if(i>=1 && i<=4)
-          PLAYER_NUM=i;
+        i = cmd_argv[2][0] - '0';
+        if (i >= 1 && i <= 4) PLAYER_NUM = i;
         break;
       case NEW:
-        if(in_serv)
-        {
-          broadcast_msg(1,"290");
+        if (in_serv) {
+          broadcast_msg(1, "290");
           opening();
           open_deal();
-        }
-        else
-        {
-          write_msg(table_sockfd,"290");
+        } else {
+          write_msg(table_sockfd, "290");
           opening();
         }
         break;
       case LEAVE:
       case S_LEAVE:
-        if(in_join)
-        {
-          in_join=0;
+        if (in_join) {
+          in_join = 0;
           close_join();
-          write_msg(gps_sockfd,"205");
+          write_msg(gps_sockfd, "205");
           init_global_screen();
-          write_msg(gps_sockfd,"201");//更新一下目前線上人數跟內容
+          write_msg(gps_sockfd, "201");  // 更新一下目前線上人數跟內容
           display_comment("您已離開牌桌");
           display_comment("-------------------");
         }
-        if(in_serv)
-        {
-          in_serv=0;
+        if (in_serv) {
+          in_serv = 0;
           close_serv();
-          write_msg(gps_sockfd,"205");
+          write_msg(gps_sockfd, "205");
           init_global_screen();
-          write_msg(gps_sockfd,"201");//更新一下目前線上人數跟內容
+          write_msg(gps_sockfd, "201");  // 更新一下目前線上人數跟內容
           display_comment("您已關閉牌桌");
           display_comment("-------------------");
         }
-        input_mode=TALK_MODE;
-        break; 
+        input_mode = TALK_MODE;
+        break;
       case HELP:
       case S_HELP:
         help();
         break;
       case NOTE:
-        snprintf(msg_buf, sizeof(msg_buf), "004%s",msg+6);
-        write_msg(gps_sockfd,msg_buf);
+        snprintf(msg_buf, sizeof(msg_buf), "004%s", msg + 6);
+        write_msg(gps_sockfd, msg_buf);
         break;
-      case STAT: // /STAT
-        if(narg<2)
-          strncpy((char*)cmd_argv[2],(char*)my_name, sizeof(cmd_argv[2]) - 1);
-          cmd_argv[2][sizeof(cmd_argv[2]) - 1] = '\0';
-        snprintf(msg_buf, sizeof(msg_buf), "005%s",cmd_argv[2]);
-        write_msg(gps_sockfd,msg_buf);
+      case STAT:  // /STAT
+        if (narg < 2)
+          strncpy((char*)cmd_argv[2], (char*)my_name, sizeof(cmd_argv[2]) - 1);
+        cmd_argv[2][sizeof(cmd_argv[2]) - 1] = '\0';
+        snprintf(msg_buf, sizeof(msg_buf), "005%s", cmd_argv[2]);
+        write_msg(gps_sockfd, msg_buf);
         break;
       case LOGIN:
         break;
       case BROADCAST:
-        snprintf(msg_buf, sizeof(msg_buf), "007%s",msg+11);
-        write_msg(gps_sockfd,msg_buf);
+        snprintf(msg_buf, sizeof(msg_buf), "007%s", msg + 11);
+        write_msg(gps_sockfd, msg_buf);
         break;
       case MSG:
-        if(narg<=2)
-          break;
-        if(in_join || in_serv)
-        {
-          for(i=1;i<=4;i++)
-          {
-            if(table[i] && strcmp((char*)cmd_argv[2],player[table[i]].name)==0)
-            {
-              snprintf(msg_buf, sizeof(msg_buf), "%s",msg+5+strlen((char*)cmd_argv[2])+1);
+        if (narg <= 2) break;
+        if (in_join || in_serv) {
+          for (i = 1; i <= 4; i++) {
+            if (table[i] &&
+                strcmp((char*)cmd_argv[2], player[table[i]].name) == 0) {
+              snprintf(msg_buf, sizeof(msg_buf), "%s",
+                       msg + 5 + strlen((char*)cmd_argv[2]) + 1);
               send_talk_line(msg_buf);
               goto finish_msg;
             }
           }
         }
-        snprintf(msg_buf, sizeof(msg_buf), "009%s",msg+5);
-        write_msg(gps_sockfd,msg_buf);
-        snprintf(msg_buf, sizeof(msg_buf), "-> *%s* %s",(char*)cmd_argv[2],msg+5+strlen((char*)cmd_argv[2])+1);
-        msg_buf[talk_right]=0;
+        snprintf(msg_buf, sizeof(msg_buf), "009%s", msg + 5);
+        write_msg(gps_sockfd, msg_buf);
+        snprintf(msg_buf, sizeof(msg_buf), "-> *%s* %s", (char*)cmd_argv[2],
+                 msg + 5 + strlen((char*)cmd_argv[2]) + 1);
+        msg_buf[talk_right] = 0;
         display_comment(msg_buf);
-        finish_msg:;
+      finish_msg:;
         break;
       case SHUTDOWN:
-        write_msg(gps_sockfd,"500");
+        write_msg(gps_sockfd, "500");
         break;
       case LURKER:
-        write_msg(gps_sockfd,"010");
+        write_msg(gps_sockfd, "010");
         break;
       case FIND:
-        if(narg<2)
-        {
+        if (narg < 2) {
           display_comment("你要找誰呢?");
           break;
         }
-        snprintf(msg_buf, sizeof(msg_buf), "021%s",cmd_argv[2]);
-        write_msg(gps_sockfd,msg_buf);
+        snprintf(msg_buf, sizeof(msg_buf), "021%s", cmd_argv[2]);
+        write_msg(gps_sockfd, msg_buf);
         break;
       case EXEC:
         /*if(!enable_exec)
@@ -407,107 +373,90 @@ show_allcard(cmd_argv[2][0]-'0');
         redraw_screen();*/
         break;
       case BEEP:
-        if(narg<2)
-        {
-          snprintf(msg_buf, sizeof(msg_buf), "目前聲音設定為%s",(set_beep==1) ? "開啟":"關閉");
+        if (narg < 2) {
+          snprintf(msg_buf, sizeof(msg_buf), "目前聲音設定為%s",
+                   (set_beep == 1) ? "開啟" : "關閉");
           display_comment(msg_buf);
-        }
-        else
-        {
-          my_strupr(ans_buf,(char*)cmd_argv[2]);
-          if(strcmp(ans_buf,"ON")==0)
-          {
-            set_beep=1;
+        } else {
+          my_strupr(ans_buf, (char*)cmd_argv[2]);
+          if (strcmp(ans_buf, "ON") == 0) {
+            set_beep = 1;
             display_comment("開啟聲音");
           }
-          if(strcmp(ans_buf,"OFF")==0)
-          {
-            set_beep=0;
+          if (strcmp(ans_buf, "OFF") == 0) {
+            set_beep = 0;
             display_comment("關閉聲音");
           }
         }
         break;
       case PASSWD:
-        ans_buf[0]=0;
-        ask_question("請輸入你原來的密碼：",ans_buf,8,0);
-        ans_buf[8]=0;
-        if(strcmp((char*)my_pass,ans_buf)!=0)
-        {
+        ans_buf[0] = 0;
+        ask_question("請輸入你原來的密碼：", ans_buf, 8, 0);
+        ans_buf[8] = 0;
+        if (strcmp((char*)my_pass, ans_buf) != 0) {
           wait_a_key("密碼錯誤,更改失敗!");
           break;
         }
-        ans_buf[0]=0;
-        ask_question("請輸入你要更改的密碼：",ans_buf,8,0);
-        ans_buf1[0]=0;
-        ask_question("請再輸入一次確認：",ans_buf1,8,0);
-        ans_buf[8]=0;
-        ans_buf1[8]=0;
-        if(strcmp(ans_buf,ans_buf1)==0)
-        {
-          snprintf(msg_buf, sizeof(msg_buf), "104%s",ans_buf);
-          write_msg(gps_sockfd,msg_buf);
-          strncpy((char*)my_pass,ans_buf, sizeof(my_pass) - 1);
+        ans_buf[0] = 0;
+        ask_question("請輸入你要更改的密碼：", ans_buf, 8, 0);
+        ans_buf1[0] = 0;
+        ask_question("請再輸入一次確認：", ans_buf1, 8, 0);
+        ans_buf[8] = 0;
+        ans_buf1[8] = 0;
+        if (strcmp(ans_buf, ans_buf1) == 0) {
+          snprintf(msg_buf, sizeof(msg_buf), "104%s", ans_buf);
+          write_msg(gps_sockfd, msg_buf);
+          strncpy((char*)my_pass, ans_buf, sizeof(my_pass) - 1);
           my_pass[sizeof(my_pass) - 1] = '\0';
           wait_a_key("密碼已更改!");
-        }
-        else
-        {
+        } else {
           wait_a_key("兩次密碼不同,更改失敗!");
         }
         break;
       case KICK:
-        if(!enable_kick)
-          break;
-        if(in_serv)
-        {
-          if(narg<2)
-          {
+        if (!enable_kick) break;
+        if (in_serv) {
+          if (narg < 2) {
             display_comment("要把誰踢出去呢?");
-          }
-          else
-          {
-            if(strcmp((char*)my_name,(char*)cmd_argv[2])==0)
-            {
+          } else {
+            if (strcmp((char*)my_name, (char*)cmd_argv[2]) == 0) {
               display_comment("抱歉, 自己不能踢自己");
               break;
             }
-            for(i=2;i<MAX_PLAYER;i++)
-            {
-              if(player[i].in_table && strcmp(player[i].name,(char*)cmd_argv[2])==0)
-              {
-                snprintf(msg_buf, sizeof(msg_buf), "101%s 被踢出此桌",cmd_argv[2]);
-                display_comment(msg_buf+3);
-                broadcast_msg(1,msg_buf);
-                write_msg(player[i].sockfd,"200");
+            for (i = 2; i < MAX_PLAYER; i++) {
+              if (player[i].in_table &&
+                  strcmp(player[i].name, (char*)cmd_argv[2]) == 0) {
+                snprintf(msg_buf, sizeof(msg_buf), "101%s 被踢出此桌",
+                         cmd_argv[2]);
+                display_comment(msg_buf + 3);
+                broadcast_msg(1, msg_buf);
+                write_msg(player[i].sockfd, "200");
                 close_client(i);
                 goto finish_kick;
               }
             }
             display_comment("此桌沒有這個人");
           }
-        }
-        else
-        {
+        } else {
           display_comment("此命令只有桌長可用");
         }
-        finish_kick:;
+      finish_kick:;
         break;
       case KILL:
-        if(narg>=2)
-        {
-          snprintf(msg_buf, sizeof(msg_buf), "202%s",(char*)cmd_argv[2]);
-          write_msg(gps_sockfd,msg_buf);
+        if (narg >= 2) {
+          snprintf(msg_buf, sizeof(msg_buf), "202%s", (char*)cmd_argv[2]);
+          write_msg(gps_sockfd, msg_buf);
         }
         break;
       case INVITE:
-        if(narg<2)
-        {
+        if (narg < 2) {
           display_comment("你打算邀請誰?");
           break;
         }
-        snprintf(msg_buf, sizeof(msg_buf), "008%s",(char*)cmd_argv[2]);
-        write_msg(gps_sockfd,msg_buf);
-        snprintf(msg_buf, sizeof(msg_buf), "邀請 %s 加入此桌",(char*)cmd_argv[2]);
+        snprintf(msg_buf, sizeof(msg_buf), "008%s", (char*)cmd_argv[2]);
+        write_msg(gps_sockfd, msg_buf);
+        snprintf(msg_buf, sizeof(msg_buf), "邀請 %s 加入此桌",
+                 (char*)cmd_argv[2]);
         display_comment(msg_buf);
         break;
       default:
@@ -515,7 +464,6 @@ show_allcard(cmd_argv[2][0]-'0');
         display_comment(msg);
         break;
     }
-  }
-  else
+  } else
     send_talk_line(msg);
 }

@@ -1,31 +1,32 @@
 /*
- * Server 
+ * Server
  */
-#include <stdio.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/time.h>
-#include <sys/stat.h>
-#include <sys/resource.h>
-#include <string.h>
-#include <netdb.h>
-#include <sys/errno.h>
-#include <fcntl.h>
-#include <sys/param.h>
-#include <sys/file.h>
-#include <pwd.h>
-#include <ctype.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <time.h>
-#include <locale.h>
 #include "mjgps.h"
 
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <fcntl.h>
+#include <locale.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <pwd.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/errno.h>
+#include <sys/file.h>
+#include <sys/param.h>
+#include <sys/resource.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
+
 /*
- * Global variables 
+ * Global variables
  */
 int timeup = 0;
 extern int errno;
@@ -34,11 +35,12 @@ int login_limit;
 char gps_ip[20];
 int gps_port;
 int log_level;
-char number_map[20][5] = { "０", "１", "２", "３", "４", "５", "６", "７", "８", "９" };
+char number_map[20][5] = {"０", "１", "２", "３", "４",
+                          "５", "６", "７", "８", "９"};
 
-#define ADMIN_USER  "mjgps"
+#define ADMIN_USER "mjgps"
 
-#define MIN_JOIN_MONEY 0  //use -999999 if you allow user to join for debt
+#define MIN_JOIN_MONEY 0  // use -999999 if you allow user to join for debt
 
 int gps_sockfd;
 
@@ -56,97 +58,94 @@ struct ask_mode_info ask;
 
 struct rlimit fd_limit;
 
-int err(char *errmsg) {
-	 if ((log_fp = fopen (LOG_FILE, "a")) == NULL)
-	 {
-	 printf ("Cannot open logfile\n");
-	 return -1;
-	 }
-	 printf ("%s", errmsg);
+int err(char* errmsg) {
+  if ((log_fp = fopen(LOG_FILE, "a")) == NULL) {
+    printf("Cannot open logfile\n");
+    return -1;
+  }
+  printf("%s", errmsg);
 
-	 if (log_level == 0)
-	 fprintf (log_fp, "%s", errmsg);
+  if (log_level == 0) fprintf(log_fp, "%s", errmsg);
 
-	 log_level = 0;
-	 fclose (log_fp);
-     return 0;
+  log_level = 0;
+  fclose(log_fp);
+  return 0;
 }
 
-int game_log(char *gamemsg) { 
-	 if ((log_fp = fopen (GAME_FILE, "a")) == NULL)
-	 {
-		 printf ("Cannot open GAME_FILE\n");
-		 return -1;
-	 }
-	 fprintf (log_fp, "%s", gamemsg);
+int game_log(char* gamemsg) {
+  if ((log_fp = fopen(GAME_FILE, "a")) == NULL) {
+    printf("Cannot open GAME_FILE\n");
+    return -1;
+  }
+  fprintf(log_fp, "%s", gamemsg);
 
-	 fclose (log_fp);
-     return 0;
+  fclose(log_fp);
+  return 0;
 }
 
+int read_msg(int fd, char* msg) {
+  int n;
+  char msg_buf[1000];
+  int read_code;
+  int log = 0;
 
-int read_msg(int fd, char *msg) {
-	int n;
-	char msg_buf[1000];
-	int read_code;
-	int log = 0 ;
-	
-	n = 0;
-	if (Check_for_data(fd) == 0) {
-		err("WRONG READ\n");
-		return 2;
-	}
-	timeup = 0;
-	alarm(5);
-	do {
-		recheck: ;
-		read_code = read(fd, msg, 1);
-		if (read_code == -1) {
-			if (errno != EWOULDBLOCK) {
-				snprintf(msg_buf, sizeof(msg_buf), "fail in read_msg,errno = %d",errno);
-				err(msg_buf);
-				alarm(0);
-				return 0;
-			} else if (timeup) {
-				alarm(0);
-				err("TIME UP!\n");
-				return 0;
-			} else
-				goto recheck;
-		} else if (read_code == 0) {
-			alarm(0);
-			return 0;
-		} else {
-			n++;
-		}
-		if( n > 8000 ){
-			alarm(0);
-			return 0;
-		}
-	} while (*msg++ != '\0');
-	alarm(0);
-	return 1;
+  n = 0;
+  if (Check_for_data(fd) == 0) {
+    err("WRONG READ\n");
+    return 2;
+  }
+  timeup = 0;
+  alarm(5);
+  do {
+  recheck:;
+    read_code = read(fd, msg, 1);
+    if (read_code == -1) {
+      if (errno != EWOULDBLOCK) {
+        snprintf(msg_buf, sizeof(msg_buf), "fail in read_msg,errno = %d",
+                 errno);
+        err(msg_buf);
+        alarm(0);
+        return 0;
+      } else if (timeup) {
+        alarm(0);
+        err("TIME UP!\n");
+        return 0;
+      } else
+        goto recheck;
+    } else if (read_code == 0) {
+      alarm(0);
+      return 0;
+    } else {
+      n++;
+    }
+    if (n > 8000) {
+      alarm(0);
+      return 0;
+    }
+  } while (*msg++ != '\0');
+  alarm(0);
+  return 1;
 }
 
-void write_msg(int fd, char *msg) {
-	int n;
+void write_msg(int fd, char* msg) {
+  int n;
 
-	n = strlen(msg);
-	if (write(fd, msg, n) < 0) {
-		close(fd);
-		FD_CLR(fd, &afds);
-	}
-	if (write(fd, msg + n, 1) < 0) {
-		close(fd);
-		FD_CLR(fd, &afds);
-	}
+  n = strlen(msg);
+  if (write(fd, msg, n) < 0) {
+    close(fd);
+    FD_CLR(fd, &afds);
+  }
+  if (write(fd, msg + n, 1) < 0) {
+    close(fd);
+    FD_CLR(fd, &afds);
+  }
 }
 
-void display_msg(int player_id, char *msg) {
-	char msg_buf[1000];
+void display_msg(int player_id, char* msg) {
+  char msg_buf[1000];
 
-	snprintf(msg_buf, sizeof(msg_buf), "101%s", msg);
-	write_msg(player[player_id].sockfd, msg_buf);
+  snprintf(msg_buf, sizeof(msg_buf), "101%s", msg);
+  write_msg(player[player_id].sockfd, msg_buf);
 }
 
 int Check_for_data(int fd)
@@ -156,1158 +155,1158 @@ int Check_for_data(int fd)
  * If an error, returns -1 and stores the error message in socket_error.
  */
 {
-	int status; /* return code from Select call. */
-	fd_set wait_set; /* A set representing the connections that
-	 * have been established. 
-	 */
-	struct timeval tm; /* A timelimit of zero for polling for new
-	 * connections. 
-	 */
+  int status;        /* return code from Select call. */
+  fd_set wait_set;   /* A set representing the connections that
+                      * have been established.
+                      */
+  struct timeval tm; /* A timelimit of zero for polling for new
+                      * connections.
+                      */
 
-	FD_ZERO(&wait_set);
-	FD_SET(fd, &wait_set);
+  FD_ZERO(&wait_set);
+  FD_SET(fd, &wait_set);
 
-	tm.tv_sec = 0;
-	tm.tv_usec = 0;
-	status = select(FD_SETSIZE, &wait_set, (fd_set *) 0, (fd_set *) 0, &tm);
+  tm.tv_sec = 0;
+  tm.tv_usec = 0;
+  status = select(FD_SETSIZE, &wait_set, (fd_set*)0, (fd_set*)0, &tm);
 
-	/*
-	 * if (status < 0)
-	 * sprintf (socket_error, "Error in select: %s", sys_errlist[errno]); 
-	 */
+  /*
+   * if (status < 0)
+   * sprintf (socket_error, "Error in select: %s", sys_errlist[errno]);
+   */
 
-	return (status);
+  return (status);
 }
 
-int convert_msg_id(int player_id, char *msg) {
-	int i;
-	char msg_buf[1000];
+int convert_msg_id(int player_id, char* msg) {
+  int i;
+  char msg_buf[1000];
 
-	if (strlen(msg) < 3) {
-		snprintf(msg_buf, sizeof(msg_buf), "Error msg: %s", msg);
-		err(msg_buf);
-		return 0;
-	}
-	for (i = 0; i < 3; i++)
-		if (msg[i] < '0' || msg[i] > '9') {
-			snprintf(msg_buf, sizeof(msg_buf), "%d", msg[i]);
-			err(msg_buf);
-		}
-	return (msg[0] - '0') * 100 + (msg[1] - '0') * 10 + (msg[2] - '0');
+  if (strlen(msg) < 3) {
+    snprintf(msg_buf, sizeof(msg_buf), "Error msg: %s", msg);
+    err(msg_buf);
+    return 0;
+  }
+  for (i = 0; i < 3; i++)
+    if (msg[i] < '0' || msg[i] > '9') {
+      snprintf(msg_buf, sizeof(msg_buf), "%d", msg[i]);
+      err(msg_buf);
+    }
+  return (msg[0] - '0') * 100 + (msg[1] - '0') * 10 + (msg[2] - '0');
 }
 
 void list_player(int fd) {
-	int i;
-	char msg_buf[1000];
-	int total_num = 0;
+  int i;
+  char msg_buf[1000];
+  int total_num = 0;
 
-	write_msg(fd, "101-------------    目前上線使用者    ---------------");
-	strcpy(msg_buf, "101");
-	for (i = 1; i < MAX_PLAYER; i++) {
-		if (player[i].login == 2) {
-			total_num++;
-			if ((strlen(msg_buf) + strlen(player[i].name)) > 50) {
-				write_msg(fd, msg_buf);
-				strcpy(msg_buf, "101");
-			}
-			strcat(msg_buf, player[i].name);
-			strcat(msg_buf, "  ");
-		}
-	}
-	write_msg(fd, "101--------------------------------------------------");
-		snprintf(msg_buf, sizeof(msg_buf), "101共 %d 人", total_num);
-		write_msg(fd, msg_buf);}
+  write_msg(fd, "101-------------    目前上線使用者    --------------- ");
+  strcpy(msg_buf, "101");
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (player[i].login == 2) {
+      total_num++;
+      if ((strlen(msg_buf) + strlen(player[i].name)) > 50) {
+        write_msg(fd, msg_buf);
+        strcpy(msg_buf, "101");
+      }
+      strcat(msg_buf, player[i].name);
+      strcat(msg_buf, "  ");
+    }
+  }
+  write_msg(fd, "101--------------------------------------------------");
+  snprintf(msg_buf, sizeof(msg_buf), "101共 %d 人", total_num);
+  write_msg(fd, msg_buf);
+}
 
 void list_table(int fd, int mode) {
-	int i;
-	char msg_buf[1000];
-	int total_num = 0;
+  int i;
+  char msg_buf[1000];
+  int total_num = 0;
 
-	write_msg(fd, "101   桌長       人數  附註");
-	write_msg(fd, "101--------------------------------------------------");
-	for (i = 1; i < MAX_PLAYER; i++) {
-		if (player[i].login && player[i].serv > 0) {
-			if (player[i].serv > 4) {
-				if (player[i].serv == 5)
-					err("SERV=5\n");
-				else {
-					err("LIST TABLE ERROR!");
-					snprintf(msg_buf, sizeof(msg_buf), "serv=%d\n", player[i].serv);
-					close_id(i);
-					err(msg_buf);
-				}
-			}
-			if (mode == 2 && player[i].serv >= 4)
-				continue;
-			total_num++;
-			snprintf(msg_buf, sizeof(msg_buf), "101   %-10s %-4s  %s", player[i].name,
-					number_map[player[i].serv], player[i].note);
-			write_msg(fd, msg_buf);
-		}
-	}
-	write_msg(fd, "101--------------------------------------------------");
-	snprintf(msg_buf, sizeof(msg_buf), "101共 %d 桌", total_num);
-	write_msg(fd, msg_buf);
+  write_msg(fd, "101   桌長       人數  附註");
+  write_msg(fd, "101--------------------------------------------------");
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (player[i].login && player[i].serv > 0) {
+      if (player[i].serv > 4) {
+        if (player[i].serv == 5)
+          err("SERV=5\n");
+        else {
+          err("LIST TABLE ERROR!");
+          snprintf(msg_buf, sizeof(msg_buf), "serv=%d\n", player[i].serv);
+          close_id(i);
+          err(msg_buf);
+        }
+      }
+      if (mode == 2 && player[i].serv >= 4) continue;
+      total_num++;
+      snprintf(msg_buf, sizeof(msg_buf), "101   %-10s %-4s  %s", player[i].name,
+               number_map[player[i].serv], player[i].note);
+      write_msg(fd, msg_buf);
+    }
+  }
+  write_msg(fd, "101--------------------------------------------------");
+  snprintf(msg_buf, sizeof(msg_buf), "101共 %d 桌", total_num);
+  write_msg(fd, msg_buf);
 }
 
-void list_stat(int fd, char *name) {
-	char msg_buf[1000];
-	char msg_buf1[1000];
-	char order_buf[30];
-	int i;
-	int total_num;
-	int order;
-	struct player_record tmp_rec;
+void list_stat(int fd, char* name) {
+  char msg_buf[1000];
+  char msg_buf1[1000];
+  char order_buf[30];
+  int i;
+  int total_num;
+  int order;
+  struct player_record tmp_rec;
 
-	total_num = 0;
-	order = 1;
-	if (!read_user_name(name)) {
-		write_msg(fd, "101找不到這個人!");
-		return;
-	}
-	//sprintf(msg_buf, "101◇名稱:%s  %s", record.name, record.last_login_from);
-	snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name);
-	if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-		snprintf(msg_buf, sizeof(msg_buf), "(stat) Cannot open file\n");
-		err(msg_buf);
-		return;
-	}
-	rewind(fp);
-	if (record.game_count >= 16)
-		while (!feof(fp) && fread(&tmp_rec, sizeof (tmp_rec), 1, fp)) {
-			if (tmp_rec.name[0] != 0 && tmp_rec.game_count >= 16) {
-				total_num++;
-				if (tmp_rec.money > record.money)
-					order++;
-			}
-		}
-	if (record.game_count < 16)
-		strcpy(order_buf, "無");
-	else
-		snprintf(order_buf, sizeof(order_buf), "%d/%d", order, total_num);
-	snprintf(msg_buf1, sizeof(msg_buf1), "101◇金額:%ld 排名:%s 上線次數:%d 已玩局數:%d", record.money,
-			order_buf, record.login_count, record.game_count);
-	write_msg(fd, msg_buf);
-	write_msg(fd, msg_buf1);
-	fclose(fp);
+  total_num = 0;
+  order = 1;
+  if (!read_user_name(name)) {
+    write_msg(fd, "101找不到這個人!");
+    return;
+  }
+  // sprintf(msg_buf, "101◇名稱:%s  %s", record.name, record.last_login_from);
+  snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name);
+  if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
+    snprintf(msg_buf, sizeof(msg_buf), "(stat) Cannot open file\n");
+    err(msg_buf);
+    return;
+  }
+  rewind(fp);
+  if (record.game_count >= 16)
+    while (!feof(fp) && fread(&tmp_rec, sizeof(tmp_rec), 1, fp)) {
+      if (tmp_rec.name[0] != 0 && tmp_rec.game_count >= 16) {
+        total_num++;
+        if (tmp_rec.money > record.money) order++;
+      }
+    }
+  if (record.game_count < 16)
+    strcpy(order_buf, "無");
+  else
+    snprintf(order_buf, sizeof(order_buf), "%d/%d", order, total_num);
+  snprintf(msg_buf1, sizeof(msg_buf1),
+           "101◇金額:%ld 排名:%s 上線次數:%d 已玩局數:%d", record.money,
+           order_buf, record.login_count, record.game_count);
+  write_msg(fd, msg_buf);
+  write_msg(fd, msg_buf1);
+  fclose(fp);
 }
 
-void who(int fd, char *name){
-	char msg_buf[1000];
-	int i;
-	int serv_id;
+void who(int fd, char* name) {
+  char msg_buf[1000];
+  int i;
+  int serv_id;
 
-	for (i = 1; i < MAX_PLAYER; i++){
-		if (player[i].login && player[i].serv){
-			if (strcmp(player[i].name, name) == 0) {
-				serv_id = i;
-				goto found_serv;
-			}
-		}
-	}
-	write_msg(fd, "101找不到此桌");
-	return;
-	found_serv: ;
-	snprintf(msg_buf, sizeof(msg_buf), "101%s  ", player[serv_id].name);
-	write_msg(fd, "101----------------   此桌使用者   ------------------");
-	for (i = 1; i < MAX_PLAYER; i++){
-		if (player[i].join == serv_id) {
-			if ((strlen(msg_buf) + strlen(player[i].name)) > 53) {
-				write_msg(fd, msg_buf);
-				strcpy(msg_buf, "101");
-			}
-			strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
-			strncat(msg_buf, "   ", sizeof(msg_buf) - strlen(msg_buf) - 1);
-		}
-	}
-	if (strlen(msg_buf) > 4){
-		write_msg(fd, msg_buf);
-	}
-	write_msg(fd, "101--------------------------------------------------");
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (player[i].login && player[i].serv) {
+      if (strcmp(player[i].name, name) == 0) {
+        serv_id = i;
+        goto found_serv;
+      }
+    }
+  }
+  write_msg(fd, "101找不到此桌");
+  return;
+found_serv:;
+  snprintf(msg_buf, sizeof(msg_buf), "101%s  ", player[serv_id].name);
+  write_msg(fd, "101----------------   此桌使用者   ------------------");
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (player[i].join == serv_id) {
+      if ((strlen(msg_buf) + strlen(player[i].name)) > 53) {
+        write_msg(fd, msg_buf);
+        strcpy(msg_buf, "101");
+      }
+      strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
+      strncat(msg_buf, "   ", sizeof(msg_buf) - strlen(msg_buf) - 1);
+    }
+  }
+  if (strlen(msg_buf) > 4) {
+    write_msg(fd, msg_buf);
+  }
+  write_msg(fd, "101--------------------------------------------------");
 }
 
 void lurker(int fd) {
-	int i, total_num = 0;
-	char msg_buf[1000];
+  int i, total_num = 0;
+  char msg_buf[1000];
 
-	strcpy(msg_buf, "101");
-	write_msg(fd, "101-------------   目前□置之使用者   ---------------");
-	for (i = 1; i < MAX_PLAYER; i++)
-		if (player[i].login == 2
-				&& (player[i].join == 0 && player[i].serv == 0)) {
-			total_num++;
-			if ((strlen(msg_buf) + strlen(player[i].name)) > 53) {
-				write_msg(fd, msg_buf);
-				strcpy(msg_buf, "101");
-			}
-			strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
-			strncat(msg_buf, "  ", sizeof(msg_buf) - strlen(msg_buf) - 1);
-		}
-	if (strlen(msg_buf) > 4)
-		write_msg(fd, msg_buf);
-	write_msg(fd, "101--------------------------------------------------");
-	snprintf(msg_buf, sizeof(msg_buf), "101共 %d 人", total_num);
-	write_msg(fd, msg_buf);
+  strcpy(msg_buf, "101");
+  write_msg(fd, "101-------------   目前□置之使用者   --------------- ");
+  for (i = 1; i < MAX_PLAYER; i++)
+    if (player[i].login == 2 && (player[i].join == 0 && player[i].serv == 0)) {
+      total_num++;
+      if ((strlen(msg_buf) + strlen(player[i].name)) > 53) {
+        write_msg(fd, msg_buf);
+        strcpy(msg_buf, "101");
+      }
+      strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
+      strncat(msg_buf, "  ", sizeof(msg_buf) - strlen(msg_buf) - 1);
+    }
+  if (strlen(msg_buf) > 4) write_msg(fd, msg_buf);
+  write_msg(fd, "101--------------------------------------------------");
+  snprintf(msg_buf, sizeof(msg_buf), "101共 %d 人", total_num);
+  write_msg(fd, msg_buf);
 }
 
-void find_user(int fd, char *name) {
-	int i;
-	char msg_buf[1000];
-	int id;
-	char last_login_time[80];
+void find_user(int fd, char* name) {
+  int i;
+  char msg_buf[1000];
+  int id;
+  char last_login_time[80];
 
-	id = find_user_name(name);
-	if (id > 0) {
-		if (player[id].login == 2) {
-			if (player[id].join == 0 && player[id].serv == 0) {
-				snprintf(msg_buf, sizeof(msg_buf), "101◇%s □置中", name);
-				write_msg(fd, msg_buf);
-			}
-			if (player[id].join) {
-				snprintf(msg_buf, sizeof(msg_buf), "101◇%s 在 %s 桌內", name,
-						player[player[id].join].name);
-				write_msg(fd, msg_buf);
-			}
-			if (player[id].serv) {
-				snprintf(msg_buf, sizeof(msg_buf), "101◇%s 在 %s 桌內", name, player[id].name);
-				write_msg(fd, msg_buf);
-			}
-			return;
-		}
-	}
-	if (!read_user_name(name)) {
-		snprintf(msg_buf, sizeof(msg_buf), "101◇沒有 %s 這個人", name);
-		write_msg(fd, msg_buf);
-	} else {
-		snprintf(msg_buf, sizeof(msg_buf), "101◇%s 不在線上", name);
-		write_msg(fd, msg_buf);
-		strcpy(last_login_time, ctime(&record.last_login_time));
-		last_login_time[strlen (last_login_time) - 1] = 0;
-		snprintf(msg_buf, sizeof(msg_buf), "101◇上次連線時間: %s", last_login_time);
-		write_msg(fd, msg_buf);
-	}
+  id = find_user_name(name);
+  if (id > 0) {
+    if (player[id].login == 2) {
+      if (player[id].join == 0 && player[id].serv == 0) {
+        snprintf(msg_buf, sizeof(msg_buf), "101◇%s □置中", name);
+        write_msg(fd, msg_buf);
+      }
+      if (player[id].join) {
+        snprintf(msg_buf, sizeof(msg_buf), "101◇%s 在 %s 桌內", name,
+                 player[player[id].join].name);
+        write_msg(fd, msg_buf);
+      }
+      if (player[id].serv) {
+        snprintf(msg_buf, sizeof(msg_buf), "101◇%s 在 %s 桌內", name,
+                 player[id].name);
+        write_msg(fd, msg_buf);
+      }
+      return;
+    }
+  }
+  if (!read_user_name(name)) {
+    snprintf(msg_buf, sizeof(msg_buf), "101◇沒有 %s 這個人", name);
+    write_msg(fd, msg_buf);
+  } else {
+    snprintf(msg_buf, sizeof(msg_buf), "101◇%s 不在線上", name);
+    write_msg(fd, msg_buf);
+    strcpy(last_login_time, ctime(&record.last_login_time));
+    last_login_time[strlen(last_login_time) - 1] = 0;
+    snprintf(msg_buf, sizeof(msg_buf), "101◇上次連線時間: %s", last_login_time);
+    write_msg(fd, msg_buf);
+  }
 }
 
-void broadcast(int player_id, char *msg) {
-	int i;
-	char msg_buf[1000];
+void broadcast(int player_id, char* msg) {
+  int i;
+  char msg_buf[1000];
 
-	if (strcmp(player[player_id].name, ADMIN_USER) != 0)
-		return;
-	for (i = 1; i < MAX_PLAYER; i++){
-		if (player[i].login == 2) {
-			snprintf(msg_buf, sizeof(msg_buf), "101%s", msg);
-			write_msg(player[i].sockfd, msg_buf);
-		}
-	}
+  if (strcmp(player[player_id].name, ADMIN_USER) != 0) return;
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (player[i].login == 2) {
+      snprintf(msg_buf, sizeof(msg_buf), "101%s", msg);
+      write_msg(player[i].sockfd, msg_buf);
+    }
+  }
 }
 
-void send_msg(int player_id, char *msg) {
-	char *str1, *str2;
-	int i;
-	char msg_buf[1000];
+void send_msg(int player_id, char* msg) {
+  char *str1, *str2;
+  int i;
+  char msg_buf[1000];
 
-	str1 = strtok(msg, " ");
-	str2 = msg + strlen(str1) + 1;
-	for (i = 1; i < MAX_PLAYER; i++)
-		if (player[i].login == 2 && strcmp(player[i].name, str1) == 0) {
-			snprintf(msg_buf, sizeof(msg_buf), "101*%s* %s", player[player_id].name, str2);
-			write_msg(player[i].sockfd, msg_buf);
-			return;
-		}
-	write_msg(player[player_id].sockfd, "101找不到這個人");
+  str1 = strtok(msg, " ");
+  str2 = msg + strlen(str1) + 1;
+  for (i = 1; i < MAX_PLAYER; i++)
+    if (player[i].login == 2 && strcmp(player[i].name, str1) == 0) {
+      snprintf(msg_buf, sizeof(msg_buf), "101*%s* %s", player[player_id].name,
+               str2);
+      write_msg(player[i].sockfd, msg_buf);
+      return;
+    }
+  write_msg(player[player_id].sockfd, "101找不到這個人");
 }
 
-void invite(int player_id, char *name) {
-	int i;
-	char msg_buf[1000];
+void invite(int player_id, char* name) {
+  int i;
+  char msg_buf[1000];
 
-	for (i = 1; i < MAX_PLAYER; i++)
-		if (player[i].login == 2 && strcmp(player[i].name, name) == 0) {
-			snprintf(msg_buf, sizeof(msg_buf), "101%s 邀請你加入 %s", player[player_id].name,
-					(player[player_id].join == 0) ? player[player_id].name
-							: player[player[player_id].join].name);
-			write_msg(player[i].sockfd, msg_buf);
-			return;
-		}
-	write_msg(player[player_id].sockfd, "101找不到這個人");
+  for (i = 1; i < MAX_PLAYER; i++)
+    if (player[i].login == 2 && strcmp(player[i].name, name) == 0) {
+      snprintf(msg_buf, sizeof(msg_buf), "101%s 邀請你加入 %s",
+               player[player_id].name,
+               (player[player_id].join == 0)
+                   ? player[player_id].name
+                   : player[player[player_id].join].name);
+      write_msg(player[i].sockfd, msg_buf);
+      return;
+    }
+  write_msg(player[player_id].sockfd, "101找不到這個人");
 }
 
 void init_socket() {
-	struct sockaddr_in serv_addr;
-	int on = 1;
+  struct sockaddr_in serv_addr;
+  int on = 1;
 
-	/*
-	 * open a TCP socket for internet stream socket 
-	 */
-	if ((gps_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		err("Server: cannot open stream socket");
+  /*
+   * open a TCP socket for internet stream socket
+   */
+  if ((gps_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    err("Server: cannot open stream socket");
 
-	/*
-	 * bind our local address 
-	 */
-	memset((char *) &serv_addr, 0, sizeof (serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serv_addr.sin_port = htons(gps_port);
-	setsockopt(gps_sockfd, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof (on));
-	if (bind(gps_sockfd, (struct sockaddr *) &serv_addr, sizeof (serv_addr))
-			< 0) {
-		printf("server: cannot bind local address\n");
-		exit(1);
-	}
-	listen(gps_sockfd, 10);
-	printf("Listen for client...\n");
+  /*
+   * bind our local address
+   */
+  memset((char*)&serv_addr, 0, sizeof(serv_addr));
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  serv_addr.sin_port = htons(gps_port);
+  setsockopt(gps_sockfd, SOL_SOCKET, SO_REUSEADDR, (char*)&on, sizeof(on));
+  if (bind(gps_sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+    printf("server: cannot bind local address\n");
+    exit(1);
+  }
+  listen(gps_sockfd, 10);
+  printf("Listen for client...\n");
 }
 
-char * lookup(struct sockaddr_in *cli_addrp) {
-	struct hostent *hp;
-	char *hostname;
+char* lookup(struct sockaddr_in* cli_addrp) {
+  struct hostent* hp;
+  char* hostname;
 
-	hp = gethostbyaddr((char *) &cli_addrp->sin_addr, sizeof(struct in_addr),
-			cli_addrp->sin_family);
+  hp = gethostbyaddr((char*)&cli_addrp->sin_addr, sizeof(struct in_addr),
+                     cli_addrp->sin_family);
 
-	if (hp)
-		hostname = (char *) hp->h_name;
-	else
-		hostname = inet_ntoa(cli_addrp->sin_addr);
-	return hostname;
+  if (hp)
+    hostname = (char*)hp->h_name;
+  else
+    hostname = inet_ntoa(cli_addrp->sin_addr);
+  return hostname;
 }
 
 void init_variable() {
-	int i;
+  int i;
 
-	login_limit = LOGIN_LIMIT;
-	for (i = 0; i < MAX_PLAYER; i++) {
-		player[i].login = 0;
-		player[i].serv = 0;
-		player[i].money = 0;
-		player[i].join = 0;
-		player[i].type = 16;
-		player[i].note[0] = 0;
-		player[i].username[0] = 0;
-	}
+  login_limit = LOGIN_LIMIT;
+  for (i = 0; i < MAX_PLAYER; i++) {
+    player[i].login = 0;
+    player[i].serv = 0;
+    player[i].money = 0;
+    player[i].join = 0;
+    player[i].type = 16;
+    player[i].note[0] = 0;
+    player[i].username[0] = 0;
+  }
 }
 
-int read_user_name(char *name) {
-	struct player_record tmp_rec;
-	char msg_buf[1000];
+int read_user_name(char* name) {
+  struct player_record tmp_rec;
+  char msg_buf[1000];
 
-	if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
-		snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) Cannot open file!\n");
-		err(msg_buf);
-		return 0;
-	}
-	rewind(fp);
-	while (!feof(fp) && fread(&tmp_rec, sizeof (tmp_rec), 1, fp)) {
-		if (strcmp(name, tmp_rec.name) == 0) {
-			record = tmp_rec;
-			fclose(fp);
-			return 1;
-		}
-	}
-	fclose(fp);
-	return 0;
+  if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
+    snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) Cannot open file!\n");
+    err(msg_buf);
+    return 0;
+  }
+  rewind(fp);
+  while (!feof(fp) && fread(&tmp_rec, sizeof(tmp_rec), 1, fp)) {
+    if (strcmp(name, tmp_rec.name) == 0) {
+      record = tmp_rec;
+      fclose(fp);
+      return 1;
+    }
+  }
+  fclose(fp);
+  return 0;
 }
-int read_user_name_update(char *name,int player_id){
-	struct player_record tmp_rec;
-	char msg_buf[1000];
+int read_user_name_update(char* name, int player_id) {
+  struct player_record tmp_rec;
+  char msg_buf[1000];
 
-	if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
-		snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) Cannot open file!\n");
-		err(msg_buf);
-		return 0;
-	}
-	rewind(fp);
-	while (!feof(fp) && fread(&tmp_rec, sizeof (tmp_rec), 1, fp)) {
-		if (strcmp(name, tmp_rec.name) == 0) {
-			record = tmp_rec;
-			if ( player[player_id].id == record.id){ //double check
-				player[player_id].id = record.id;
-				player[player_id].money = record.money;
-			}
-			fclose(fp);
-			return 1;
-		}
-	}
-	fclose(fp);
-	return 0;
+  if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
+    snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) Cannot open file!\n");
+    err(msg_buf);
+    return 0;
+  }
+  rewind(fp);
+  while (!feof(fp) && fread(&tmp_rec, sizeof(tmp_rec), 1, fp)) {
+    if (strcmp(name, tmp_rec.name) == 0) {
+      record = tmp_rec;
+      if (player[player_id].id == record.id) {  // double check
+        player[player_id].id = record.id;
+        player[player_id].money = record.money;
+      }
+      fclose(fp);
+      return 1;
+    }
+  }
+  fclose(fp);
+  return 0;
 }
 
 void read_user_id(unsigned int id) {
-	char msg_buf[1000];
+  char msg_buf[1000];
 
-	if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
-		snprintf(msg_buf, sizeof(msg_buf), "(read_user_id) Cannot open file!\n");
-		err(msg_buf);
-		return;
-	}
-	rewind(fp);
-	fseek(fp, sizeof (record) * id, 0);
-	fread(&record, sizeof (record), 1, fp);
-	fclose(fp);
+  if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
+    snprintf(msg_buf, sizeof(msg_buf), "(read_user_id) Cannot open file!\n");
+    err(msg_buf);
+    return;
+  }
+  rewind(fp);
+  fseek(fp, sizeof(record) * id, 0);
+  fread(&record, sizeof(record), 1, fp);
+  fclose(fp);
 }
 
-int add_user(int player_id, char *name, char *passwd) {
-	struct stat status;
+int add_user(int player_id, char* name, char* passwd) {
+  struct stat status;
 
-	stat(RECORD_FILE, &status);
-	if (!read_user_name(""))
-		record.id = status.st_size / sizeof (record);
-	strncpy(record.name, name, sizeof(record.name) - 1);
-	record.name[sizeof(record.name) - 1] = '\0';
-	strncpy(record.password, genpasswd(passwd), sizeof(record.password) - 1);
-	record.password[sizeof(record.password) - 1] = '\0';
-	record.money = DEFAULT_MONEY;
-	record.level = 0;
-	record.login_count = 1;
-	record.game_count = 0;
-	time(&record.regist_time);
-	record.last_login_time = record.regist_time;
-	record.last_login_from[0] = 0;
-	if (player[player_id].username[0] != 0) {
-		snprintf(record.last_login_from, sizeof(record.last_login_from), "%s@", player[player_id].username);
-	}
-	strncat(record.last_login_from, lookup(&(player[player_id].addr)), sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
-	if (check_user(player_id)) {
-		write_record();
-		return 1;
-	} else
-		return 0;
+  stat(RECORD_FILE, &status);
+  if (!read_user_name("")) record.id = status.st_size / sizeof(record);
+  strncpy(record.name, name, sizeof(record.name) - 1);
+  record.name[sizeof(record.name) - 1] = '\0';
+  strncpy(record.password, genpasswd(passwd), sizeof(record.password) - 1);
+  record.password[sizeof(record.password) - 1] = '\0';
+  record.money = DEFAULT_MONEY;
+  record.level = 0;
+  record.login_count = 1;
+  record.game_count = 0;
+  time(&record.regist_time);
+  record.last_login_time = record.regist_time;
+  record.last_login_from[0] = 0;
+  if (player[player_id].username[0] != 0) {
+    snprintf(record.last_login_from, sizeof(record.last_login_from), "%s@",
+             player[player_id].username);
+  }
+  strncat(record.last_login_from, lookup(&(player[player_id].addr)),
+          sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
+  if (check_user(player_id)) {
+    write_record();
+    return 1;
+  } else
+    return 0;
 }
 
 int check_user(int player_id) {
-	char msg_buf[1000];
-	char from[80];
-	char email[80];
-	FILE *baduser_fp;
+  char msg_buf[1000];
+  char from[80];
+  char email[80];
+  FILE* baduser_fp;
 
-	if ((baduser_fp = fopen(BADUSER_FILE, "r")) == NULL) {
-		snprintf(msg_buf, sizeof(msg_buf), "Cannot open file %s", BADUSER_FILE);
-		err(msg_buf);
-		return 1;
-	}
-	strncpy(from, lookup(&(player[player_id].addr)), sizeof(from) - 1);
-	from[sizeof(from) - 1] = '\0';
-	snprintf(email, sizeof(email), "%s@", player[player_id].username);
-	strncat(email, from, sizeof(email) - strlen(email) - 1);
+  if ((baduser_fp = fopen(BADUSER_FILE, "r")) == NULL) {
+    snprintf(msg_buf, sizeof(msg_buf), "Cannot open file %s", BADUSER_FILE);
+    err(msg_buf);
+    return 1;
+  }
+  strncpy(from, lookup(&(player[player_id].addr)), sizeof(from) - 1);
+  from[sizeof(from) - 1] = '\0';
+  snprintf(email, sizeof(email), "%s@", player[player_id].username);
+  strncat(email, from, sizeof(email) - strlen(email) - 1);
 
-	while (fgets(msg_buf, 80, baduser_fp) != NULL) {
-		msg_buf[strlen (msg_buf) - 1] = 0;
-		if (strcmp(email, msg_buf) == 0 || strcmp(player[player_id].username,
-				msg_buf) == 0) {
-			display_msg(player_id,
-					"你已被限制進入");
-			fclose(baduser_fp);
-			return 0;
-		}
-	}
-	fclose(baduser_fp);
-	return 1;
+  while (fgets(msg_buf, 80, baduser_fp) != NULL) {
+    msg_buf[strlen(msg_buf) - 1] = 0;
+    if (strcmp(email, msg_buf) == 0 ||
+        strcmp(player[player_id].username, msg_buf) == 0) {
+      display_msg(player_id, "你已被限制進入");
+      fclose(baduser_fp);
+      return 0;
+    }
+  }
+  fclose(baduser_fp);
+  return 1;
 }
 
 void write_record() {
-	char msg_buf[1000];
+  char msg_buf[1000];
 
-	if ((fp = fopen(RECORD_FILE, "r+b")) == NULL) {
-		snprintf(msg_buf, sizeof(msg_buf), "(write_record) Cannot open file!");
-		err(msg_buf);
-		return;
-	}
-	fseek(fp, sizeof (record) * record.id, 0);
-	fwrite(&record, sizeof (record), 1, fp);
-	fclose(fp);
+  if ((fp = fopen(RECORD_FILE, "r+b")) == NULL) {
+    snprintf(msg_buf, sizeof(msg_buf), "(write_record) Cannot open file!");
+    err(msg_buf);
+    return;
+  }
+  fseek(fp, sizeof(record) * record.id, 0);
+  fwrite(&record, sizeof(record), 1, fp);
+  fclose(fp);
 }
 
-void print_news(int fd, char *name) {
-	FILE *news_fp;
-	char msg[255];
-	char msg_buf[1000];
+void print_news(int fd, char* name) {
+  FILE* news_fp;
+  char msg[255];
+  char msg_buf[1000];
 
-	if ((news_fp = fopen(name, "r")) == NULL) {
-		snprintf(msg_buf, sizeof(msg_buf), "Cannot open file %s\n", NEWS_FILE);
-		err(msg_buf);
-		return;
-	}
-	while (fgets(msg, 80, news_fp) != NULL) {
-		msg[strlen (msg) - 1] = 0;
-		strcpy(msg_buf, "101");
-		strncat(msg_buf, msg, sizeof(msg_buf) - strlen(msg_buf) - 1);
-		write_msg(fd, msg_buf);
-	}
-	fclose(news_fp);
+  if ((news_fp = fopen(name, "r")) == NULL) {
+    snprintf(msg_buf, sizeof(msg_buf), "Cannot open file %s\n", NEWS_FILE);
+    err(msg_buf);
+    return;
+  }
+  while (fgets(msg, 80, news_fp) != NULL) {
+    msg[strlen(msg) - 1] = 0;
+    strcpy(msg_buf, "101");
+    strncat(msg_buf, msg, sizeof(msg_buf) - strlen(msg_buf) - 1);
+    write_msg(fd, msg_buf);
+  }
+  fclose(news_fp);
 }
 
 void welcome_user(int player_id) {
-	char msg_buf[1000];
-	int fd;
-	int i;
-	struct player_record tmp_rec;
+  char msg_buf[1000];
+  int fd;
+  int i;
+  struct player_record tmp_rec;
 
-	fd = player[player_id].sockfd;
-	if (strcmp(player[player_id].version, "093") < 0
-			|| player[player_id].version[0] == 0) {
-		write_msg(player[player_id].sockfd, "101請使用 QKMJ Ver 0.93 Beta 以上版本上線");
-		write_msg(player[player_id].sockfd, "010");
-		return;
-	}
-	snprintf(msg_buf, sizeof(msg_buf), "101★★★★★　歡迎 %s 來到ＱＫ麻將  ★★★★★", player[player_id].name);
-	write_msg(player[player_id].sockfd, msg_buf);
-	print_news(player[player_id].sockfd, NEWS_FILE);
-	/*
-	 if (record.money < 15000 && record.game_count >= 16)
-	 {
-	 record.money = 15000;
-	 write_msg (fd, "101運氣不太好是嗎? 將你的金額提升為 15000, 好好加油!");
-	 write_record ();
-	 }
-	 */
-	player[player_id].id = record.id;
-	player[player_id].money = record.money;
-	player[player_id].login = 2;
-	player[player_id].note[0] = 0;
-	show_online_users(player_id);
-	list_stat(player[player_id].sockfd, player[player_id].name);
-	write_msg(player[player_id].sockfd, "003");
-	snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id, player[player_id].money);
-	write_msg(player[player_id].sockfd, msg_buf);
-	player[player_id].input_mode = CMD_MODE;
+  fd = player[player_id].sockfd;
+  if (strcmp(player[player_id].version, "093") < 0 ||
+      player[player_id].version[0] == 0) {
+    write_msg(player[player_id].sockfd,
+              "101請使用 QKMJ Ver 0.93 Beta 以上版本上線");
+    write_msg(player[player_id].sockfd, "010");
+    return;
+  }
+  snprintf(msg_buf, sizeof(msg_buf), "101★★★★★　歡迎 %s 來到ＱＫ麻將  ★★★★★",
+           player[player_id].name);
+  write_msg(player[player_id].sockfd, msg_buf);
+  print_news(player[player_id].sockfd, NEWS_FILE);
+  /*
+   if (record.money < 15000 && record.game_count >= 16)
+   {
+   record.money = 15000;
+   write_msg (fd, "101運氣不太好是嗎? 將你的金額提升為 15000, 好好加油!");
+   write_record ();
+   }
+   */
+  player[player_id].id = record.id;
+  player[player_id].money = record.money;
+  player[player_id].login = 2;
+  player[player_id].note[0] = 0;
+  show_online_users(player_id);
+  list_stat(player[player_id].sockfd, player[player_id].name);
+  write_msg(player[player_id].sockfd, "003");
+  snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id,
+           player[player_id].money);
+  write_msg(player[player_id].sockfd, msg_buf);
+  player[player_id].input_mode = CMD_MODE;
 }
 
-void show_online_users(int player_id){
-	char msg_buf[1000];
-	int fd;
-	int total_num = 0;
-	int online_num = 0;
-	int i;
-	struct player_record tmp_rec;
+void show_online_users(int player_id) {
+  char msg_buf[1000];
+  int fd;
+  int total_num = 0;
+  int online_num = 0;
+  int i;
+  struct player_record tmp_rec;
 
-	fd = player[player_id].sockfd;
-	if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-		snprintf(msg_buf, sizeof(msg_buf), "(current) cannot open file\n");
-		err(msg_buf);
-	} else {
-		rewind(fp);
-		while (!feof(fp) && fread(&tmp_rec, sizeof (tmp_rec), 1, fp)) {
-			if (tmp_rec.name[0] != 0)
-				total_num++;
-		}
-		fclose(fp);
-	}
-	for (i = 1; i < MAX_PLAYER; i++) {
-		if (player[i].login == 2)
-			online_num++;
-	}
-	snprintf(msg_buf, sizeof(msg_buf), "101◇目前上線人數: %d 人       注冊人數: %d 人", online_num, total_num);
-	write_msg(player[player_id].sockfd, msg_buf);
+  fd = player[player_id].sockfd;
+  if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
+    snprintf(msg_buf, sizeof(msg_buf), "(current) cannot open file\n");
+    err(msg_buf);
+  } else {
+    rewind(fp);
+    while (!feof(fp) && fread(&tmp_rec, sizeof(tmp_rec), 1, fp)) {
+      if (tmp_rec.name[0] != 0) total_num++;
+    }
+    fclose(fp);
+  }
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (player[i].login == 2) online_num++;
+  }
+  snprintf(msg_buf, sizeof(msg_buf),
+           "101◇目前上線人數: %d 人       注冊人數: %d 人", online_num,
+           total_num);
+  write_msg(player[player_id].sockfd, msg_buf);
 }
 void show_current_state(int player_id) {
-	char msg_buf[1000];
-	int fd;
-	int i;
+  char msg_buf[1000];
+  int fd;
+  int i;
 
-	show_online_users(player_id);	
-	list_stat(player[player_id].sockfd, player[player_id].name);
-	write_msg(player[player_id].sockfd, "003");
-	snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id, player[player_id].money);
-	write_msg(player[player_id].sockfd, msg_buf);
+  show_online_users(player_id);
+  list_stat(player[player_id].sockfd, player[player_id].name);
+  write_msg(player[player_id].sockfd, "003");
+  snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id,
+           player[player_id].money);
+  write_msg(player[player_id].sockfd, msg_buf);
 }
 
-void update_client_money(int player_id){
-	char msg_buf[1000];
-	snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id, player[player_id].money);
-	write_msg(player[player_id].sockfd, msg_buf);
+void update_client_money(int player_id) {
+  char msg_buf[1000];
+  snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id,
+           player[player_id].money);
+  write_msg(player[player_id].sockfd, msg_buf);
 }
 
+int find_user_name(char* name) {
+  int i;
 
-int find_user_name(char *name) {
-	int i;
-
-	for (i = 1; i < MAX_PLAYER; i++) {
-		if (strcmp(player[i].name, name) == 0)
-			return i;
-	}
-	return -1;
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (strcmp(player[i].name, name) == 0) return i;
+  }
+  return -1;
 }
 
 void gps_processing() {
-	int alen;
-	int fd, nfds;
-	int player_id;
-	int player_num = 0;
-	int i, j;
-	int msg_id;
-	int read_code;
-	char tmp_buf[80];
-	char msg_buf[1000];
-	unsigned char buf[256];
-	struct timeval timeout;
-	struct hostent *hp;
-	int id;
-	struct timeval tm;
-	long current_time;
-	struct tm *tim;
+  int alen;
+  int fd, nfds;
+  int player_id;
+  int player_num = 0;
+  int i, j;
+  int msg_id;
+  int read_code;
+  char tmp_buf[80];
+  char msg_buf[1000];
+  unsigned char buf[256];
+  struct timeval timeout;
+  struct hostent* hp;
+  int id;
+  struct timeval tm;
+  long current_time;
+  struct tm* tim;
 
-	log_level = 0;
-	nfds = getdtablesize();
-	nfds = 256;
-	printf("%d\n", nfds);
-	FD_ZERO(&afds);
-	FD_SET(gps_sockfd, &afds);
-	memmove((char *) &rfds, (char *) &afds, sizeof (rfds));
-	tm.tv_sec = 0;
-	tm.tv_usec = 0;
-	/*
-	 * Waiting for connections 
-	 */
-	for (;;) {
-		memmove((char *) &rfds, (char *) &afds, sizeof (rfds));
-		if (select(nfds, &rfds, (fd_set *) 0, (fd_set *) 0, 0) < 0) {
-			snprintf(msg_buf, sizeof(msg_buf), "select: %d %s\n", errno, strerror(errno));
-			err(msg_buf);
-			continue;
-		}
-		if (FD_ISSET(gps_sockfd, &rfds)) {
-			for (player_num = 1; player_num < MAX_PLAYER; player_num++)
-				if (!player[player_num].login)
-					break;
-			if (player_num == MAX_PLAYER - 1)
-				err("Too many users");
-			player_id = player_num;
-			alen = sizeof (player[player_num].addr);
-			player[player_id].sockfd = accept(gps_sockfd,
-					(struct sockaddr *) &player[player_num].addr, (socklen_t *)&alen);
-			FD_SET(player[player_id].sockfd, &afds);
-			fcntl(player[player_id].sockfd, F_SETFL, FNDELAY);
-			player[player_id].login = 1;
-			strncpy(climark, lookup(&(player[player_id].addr)), sizeof(climark) - 1);
-			climark[sizeof(climark) - 1] = '\0';
-			snprintf(msg_buf, sizeof(msg_buf), "Connectted with %s\n", climark);
-			err(msg_buf);
+  log_level = 0;
+  nfds = getdtablesize();
+  nfds = 256;
+  printf("%d\n", nfds);
+  FD_ZERO(&afds);
+  FD_SET(gps_sockfd, &afds);
+  memmove((char*)&rfds, (char*)&afds, sizeof(rfds));
+  tm.tv_sec = 0;
+  tm.tv_usec = 0;
+  /*
+   * Waiting for connections
+   */
+  for (;;) {
+    memmove((char*)&rfds, (char*)&afds, sizeof(rfds));
+    if (select(nfds, &rfds, (fd_set*)0, (fd_set*)0, 0) < 0) {
+      snprintf(msg_buf, sizeof(msg_buf), "select: %d %s\n", errno,
+               strerror(errno));
+      err(msg_buf);
+      continue;
+    }
+    if (FD_ISSET(gps_sockfd, &rfds)) {
+      for (player_num = 1; player_num < MAX_PLAYER; player_num++)
+        if (!player[player_num].login) break;
+      if (player_num == MAX_PLAYER - 1) err("Too many users");
+      player_id = player_num;
+      alen = sizeof(player[player_num].addr);
+      player[player_id].sockfd =
+          accept(gps_sockfd, (struct sockaddr*)&player[player_num].addr,
+                 (socklen_t*)&alen);
+      FD_SET(player[player_id].sockfd, &afds);
+      fcntl(player[player_id].sockfd, F_SETFL, FNDELAY);
+      player[player_id].login = 1;
+      strncpy(climark, lookup(&(player[player_id].addr)), sizeof(climark) - 1);
+      climark[sizeof(climark) - 1] = '\0';
+      snprintf(msg_buf, sizeof(msg_buf), "Connectted with %s\n", climark);
+      err(msg_buf);
 
-			time(&current_time);
-			tim = localtime(&current_time);
-			/*
-			 * if(tim->tm_hour>=2 && tim->tm_hour<6)
-			 * {
-			 * for(i=1;i<MAX_PLAYER;i++)
-			 * {
-			 * if(player[i].login)
-			 * {
-			 * print_news(player[i].sockfd,"opentime.lst");
-			 * close_id(i);
-			 * }
-			 * }
-			 * }
-			 */
-			if (player_id > login_limit) {
-				if (strcmp(climark, "ccsun34") != 0) {
-					write_msg(player[player_id].sockfd,
-							"101對不起,目前使用人數超過上限, 請稍後再進來.");
-					print_news(player[player_id].sockfd, "server.lst");
-					close_id(player_id);
-				}
-			}
-		}
-		for (player_id = 1; player_id < MAX_PLAYER; player_id++) {
-			if (player[player_id].login) {
-				if (FD_ISSET(player[player_id].sockfd, &rfds)) {
-					/* 
-					 * Processing the player's information 
-					 */
-					read_code = read_msg(player[player_id].sockfd, (char*)buf);
-					if (!read_code) {
-						err(("cant read code!"));
-						close_id(player_id);
-					} else if (read_code == 1) {
-						msg_id = convert_msg_id(player_id, (char*)buf);
-						switch (msg_id) {
-						case 99: /*
-						 * get username 
-						 */
-							buf[15] = 0;
-							strncpy(player[player_id].username, (char*)buf + 3, sizeof(player[player_id].username) - 1);
-							player[player_id].username[sizeof(player[player_id].username) - 1] = '\0';
-							break;
-						case 100: /*
-						 * check version 
-						 */
-							*(buf + 6) = 0;
-							strncpy(player[player_id].version, (char*)buf + 3, sizeof(player[player_id].version) - 1);
-							player[player_id].version[sizeof(player[player_id].version) - 1] = '\0';
-							break;
-						case 101: /*
-						 * user login 
-						 */
-							buf[13] = 0;
-							strncpy(player[player_id].name, (char*)buf + 3, sizeof(player[player_id].name) - 1);
-							player[player_id].name[sizeof(player[player_id].name) - 1] = '\0';
-							for (i = 0; i < strlen((char*)buf) - 3; i++) {
-								if (buf[3 + i] <= 32 && buf[3 + i] != 0) {
-									write_msg(player[player_id].sockfd,
-											"101Invalid username!");
-									close_id(player_id);
-									break;
-								}
-							}
-							if (read_user_name(player[player_id].name)) {
-								write_msg(player[player_id].sockfd, "002");
-							} else {
-								write_msg(player[player_id].sockfd, "005");
-							}
-							break;
-						case 102:
-							/*
-							 * Check password 
-							 */
-							if (read_user_name(player[player_id].name)) {
-								*(buf + 11) = 0;
-								if (checkpasswd(record.password, (char*)buf + 3)) {
-									int find_duplicated = 0;
-									for (i = 1; i < MAX_PLAYER; i++) {
-										if ((player[i].login == 2 || player[i].login == 3) && strcmp(
-												player[i].name,
-												player[player_id].name) == 0) {
-											write_msg(player[player_id].sockfd,
-													"006");
-											player[player_id].login = 3;
-											find_duplicated = 1;
-											break;
-										}
-									}
-									if (find_duplicated){
-										break;
-									}
-									
-									time(&record.last_login_time);
-									record.last_login_from[0] = 0;
-									if (player[player_id].username[0] != 0) {
-										snprintf(record.last_login_from, sizeof(record.last_login_from), "%s@",
-												player[player_id].username);
-									}
-									strncat(record.last_login_from,
-											lookup(&player[player_id].addr), sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
-									record.login_count++;
-									write_record();
-									if (check_user(player_id))
-										welcome_user(player_id);
-									else
-										close_id(player_id);
-								} else {
-									write_msg(player[player_id].sockfd, "004");
-								}
-							}
-							break;
-						case 103: /*
-						 * Create new account 
-						 */
-							*(buf + 11) = 0;
-							if (!add_user(player_id, player[player_id].name,
-									(char*)buf + 3)) {
-								close_id(player_id);
-								break;
-							}
-							welcome_user(player_id);
-							break;
-						case 104: /*
-						 * Change password 
-						 */
-							*(buf + 11) = 0;
-							read_user_name(player[player_id].name);
-							strncpy(record.password, genpasswd((char*)buf + 3), sizeof(record.password) - 1);
-							record.password[sizeof(record.password) - 1] = '\0';
-							write_record();
-							break;
-						case 105:
-							if (read_user_name(player[player_id].name) && player[player_id].login == 3) {
-								*(buf + 11) = 0;
-								for (i = 1; i < MAX_PLAYER; i++) {
-									if ((player[i].login == 2 || player[i].login == 3) && (i != player_id) && strcmp(
-											player[i].name, player[player_id].name)
-											== 0) {
-										close_id(i);
-										break;
-									}
-								}
-								time(&record.last_login_time);
-								record.last_login_from[0] = 0;
-								if (player[player_id].username[0] != 0) {
-									snprintf(record.last_login_from, sizeof(record.last_login_from), "%s@",
-											player[player_id].username);
-								}
-								strncat(record.last_login_from,
-										lookup(&player[player_id].addr), sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
-								record.login_count++;
-								write_record();
-								if (check_user(player_id))
-									welcome_user(player_id);
-								else
-									close_id(player_id);
-							}
-							break;
-						case 2:
-							list_player(player[player_id].sockfd);
-							break;
-						case 3:
-							list_table(player[player_id].sockfd, 1);
-							break;
-						case 4:
-							strncpy(player[player_id].note, (char*)buf + 3, sizeof(player[player_id].note) - 1);
-							player[player_id].note[sizeof(player[player_id].note) - 1] = '\0';
-							break;
-						case 5:
-							show_online_users(player_id);
-							list_stat(player[player_id].sockfd, (char*)buf + 3);
-							
-							break;
-						case 6:
-							who(player[player_id].sockfd, (char*)buf + 3);
-							break;
-						case 7://廣播，GM 功能。
-							broadcast(player_id, (char*)buf + 3);
-							break;
-						case 8:
-							invite(player_id, (char*)buf + 3);
-							break;
-						case 9:
-							send_msg(player_id, (char*)buf + 3);
-							break;
-						case 10:
-							lurker(player[player_id].sockfd);
-							break;
-						case 11:	//JOIN
-							/*
-							 * Check for table server  
-							 */
-							if(!read_user_name_update(player[player_id].name,player_id)){
-								snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
-								write_msg(player[player_id].sockfd,msg_buf);
-								break;
-							}						
-							update_client_money(player_id);
-							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								snprintf(msg_buf, sizeof(msg_buf), "101您的賭幣（%ld）不足，必須超過 %d 元才能加入牌桌",
-										player[player_id].money , MIN_JOIN_MONEY);
-								write_msg(player[player_id].sockfd,msg_buf);
-								break;
-							}
-							for (i = 1; i < MAX_PLAYER; i++) {
-								if (player[i].login == 2 && player[i].serv) {
-									/*
-									 * Find the name of table server 
-									 */
-									if (strcmp(player[i].name, (char*)buf + 3) == 0) {
-										if (player[i].serv >= 4) {
-											write_msg(player[player_id].sockfd,
-													"101此桌人數已滿!");
-											goto full;
-										}
-										snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld",
-												player[player_id].id,
-												player[player_id].money);
-										write_msg(player[i].sockfd, msg_buf);
-										snprintf(msg_buf, sizeof(msg_buf), "211%s",
-												player[player_id].name);
-										write_msg(player[i].sockfd, msg_buf);
-										snprintf(
-												msg_buf,
-												sizeof(msg_buf),
-												"0110%s %d",
-												inet_ntoa(player[i].addr.sin_addr),
-												player[i].port);
-										write_msg(player[player_id].sockfd,
-												msg_buf);
-										player[player_id].join = i;
-										player[player_id].serv = 0;
-										player[i].serv++;
-										break;
-									}
-								}
-							}
-							if (i == MAX_PLAYER)
-								write_msg(player[player_id].sockfd, "0111");
-							full: ;
-							break;
-						case 12:
-							if(!read_user_name_update(player[player_id].name,player_id)){
-								snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
-								write_msg(player[player_id].sockfd,msg_buf);
-								break;
-							}
-							update_client_money(player_id);
-							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								snprintf(msg_buf, sizeof(msg_buf), "101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
-										player[player_id].money , MIN_JOIN_MONEY);
-								write_msg(player[player_id].sockfd,msg_buf);
-								break;
-							}
-							player[player_id].port = atoi((char*)buf + 3);
-							if (player[player_id].join) {
-								if (player[player[player_id].join].serv > 0)
-									player[player[player_id].join].serv--;
-								player[player_id].join = 0;
-							}
-							/*
-							 * clear all client 
-							 */
-							for (i = 1; i < MAX_PLAYER; i++) {
-								if (player[i].join == player_id)
-									player[i].join = 0;
-							}
-							player[player_id].serv = 1;
-							break;
-						case 13:
-							list_table(player[player_id].sockfd, 2);
-							break;
-						case 14://檢查開桌資格
-							if(!read_user_name_update(player[player_id].name,player_id)){
-								snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
-								write_msg(player[player_id].sockfd,msg_buf);
-								break;
-							}							
-							update_client_money(player_id);
-							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								snprintf(msg_buf, sizeof(msg_buf), "101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
-										player[player_id].money , MIN_JOIN_MONEY);
-								write_msg(player[player_id].sockfd,msg_buf);
-								break;
-							}
-							write_msg(player[player_id].sockfd,"012");//確認開桌
-							break;
-						case 20://WIN GAME
-							strncpy(msg_buf, (char*)buf + 3, sizeof(msg_buf) - 1);
-							msg_buf[sizeof(msg_buf) - 1] = '\0';
-							*(msg_buf + 5) = 0;
-							id = atoi(msg_buf);
-							read_user_id(id);
-							record.money = atol((char*)buf + 8);
-							record.game_count++;
-							write_record();
-							for (i = 1; i < MAX_PLAYER; i++) {
-								if (player[i].login == 2 && player[i].id == id) {
-									player[i].money = record.money;
-									break;
-								}
-							}
-							break;
-						case 21: /*
-						 * FIND 
-						 */
-							find_user(player[player_id].sockfd, (char*)buf + 3);
-							break;
-						case 900: //Game record
-							err("get game record\n");
-							game_log((char*)buf + 3);
-							err("get game record end\n");
-							break;
-						case 111:
-							/*
-							 * player[player_id].serv++;
-							 */
-							break;
-						case 200://使用者離開遊戲(/LEAVE)
-							close_id(player_id);
-							break;
-						case 202:
-							if (strcmp(player[player_id].name, ADMIN_USER) != 0)
-								break;
-							id = find_user_name((char*)buf + 3);
-							if (id >= 0) {
-								write_msg(player[id].sockfd, "200");
-								close_id(id);
-							}
-							break;
-						case 205://LEAVE 離開牌桌
-							if (player[player_id].serv) {
-								/*
-								 * clear all client 
-								 */
-								for (i = 1; i < MAX_PLAYER; i++) {
-									if (player[i].join == player_id)
-										player[i].join = 0;
-								}
-								player[player_id].serv = 0;
-								player[player_id].join = 0;
-							} else if (player[player_id].join) {
-								if (player[player[player_id].join].serv > 0)
-									player[player[player_id].join].serv--;
-								player[player_id].join = 0;
-							}
-							break;
-						case 201: //顯示目前狀態
-							show_current_state(player_id);
-						case 500:
-							if (strcmp(player[player_id].name, ADMIN_USER) == 0)
-								shutdown_server();
-							break;
-						default:
-							snprintf(msg_buf, sizeof(msg_buf),
-									"### cmd=%d player_id=%d sockfd=%d ###\n",
-									msg_id, player_id, player[player_id].sockfd);
-							err(msg_buf);
-							close_connection(player_id);
-							snprintf(msg_buf, sizeof(msg_buf),
-									"Connection to %s error, closed it\n",
-									lookup(&(player[player_id].addr)));
-							err(msg_buf);
-							break;
-						}
-						buf[0] = '\0';
-					}
-				}
-			}
-		}
-	}
+      time(&current_time);
+      tim = localtime(&current_time);
+      /*
+       * if(tim->tm_hour>=2 && tim->tm_hour<6)
+       * {
+       * for(i=1;i<MAX_PLAYER;i++)
+       * {
+       * if(player[i].login)
+       * {
+       * print_news(player[i].sockfd,"opentime.lst");
+       * close_id(i);
+       * }
+       * }
+       * }
+       */
+      if (player_id > login_limit) {
+        if (strcmp(climark, "ccsun34") != 0) {
+          write_msg(player[player_id].sockfd,
+                    "101對不起,目前使用人數超過上限, 請稍後再進來.");
+          print_news(player[player_id].sockfd, "server.lst");
+          close_id(player_id);
+        }
+      }
+    }
+    for (player_id = 1; player_id < MAX_PLAYER; player_id++) {
+      if (player[player_id].login) {
+        if (FD_ISSET(player[player_id].sockfd, &rfds)) {
+          /*
+           * Processing the player's information
+           */
+          read_code = read_msg(player[player_id].sockfd, (char*)buf);
+          if (!read_code) {
+            err(("cant read code!"));
+            close_id(player_id);
+          } else if (read_code == 1) {
+            msg_id = convert_msg_id(player_id, (char*)buf);
+            switch (msg_id) {
+              case 99: /*
+                        * get username
+                        */
+                buf[15] = 0;
+                strncpy(player[player_id].username, (char*)buf + 3,
+                        sizeof(player[player_id].username) - 1);
+                player[player_id]
+                    .username[sizeof(player[player_id].username) - 1] = '\0';
+                break;
+              case 100: /*
+                         * check version
+                         */
+                *(buf + 6) = 0;
+                strncpy(player[player_id].version, (char*)buf + 3,
+                        sizeof(player[player_id].version) - 1);
+                player[player_id]
+                    .version[sizeof(player[player_id].version) - 1] = '\0';
+                break;
+              case 101: /*
+                         * user login
+                         */
+                buf[13] = 0;
+                strncpy(player[player_id].name, (char*)buf + 3,
+                        sizeof(player[player_id].name) - 1);
+                player[player_id].name[sizeof(player[player_id].name) - 1] =
+                    '\0';
+                for (i = 0; i < strlen((char*)buf) - 3; i++) {
+                  if (buf[3 + i] <= 32 && buf[3 + i] != 0) {
+                    write_msg(player[player_id].sockfd, "101Invalid username!");
+                    close_id(player_id);
+                    break;
+                  }
+                }
+                if (read_user_name(player[player_id].name)) {
+                  write_msg(player[player_id].sockfd, "002");
+                } else {
+                  write_msg(player[player_id].sockfd, "005");
+                }
+                break;
+              case 102:
+                /*
+                 * Check password
+                 */
+                if (read_user_name(player[player_id].name)) {
+                  *(buf + 11) = 0;
+                  if (checkpasswd(record.password, (char*)buf + 3)) {
+                    int find_duplicated = 0;
+                    for (i = 1; i < MAX_PLAYER; i++) {
+                      if ((player[i].login == 2 || player[i].login == 3) &&
+                          strcmp(player[i].name, player[player_id].name) == 0) {
+                        write_msg(player[player_id].sockfd, "006");
+                        player[player_id].login = 3;
+                        find_duplicated = 1;
+                        break;
+                      }
+                    }
+                    if (find_duplicated) {
+                      break;
+                    }
+
+                    time(&record.last_login_time);
+                    record.last_login_from[0] = 0;
+                    if (player[player_id].username[0] != 0) {
+                      snprintf(record.last_login_from,
+                               sizeof(record.last_login_from), "%s@",
+                               player[player_id].username);
+                    }
+                    strncat(record.last_login_from,
+                            lookup(&player[player_id].addr),
+                            sizeof(record.last_login_from) -
+                                strlen(record.last_login_from) - 1);
+                    record.login_count++;
+                    write_record();
+                    if (check_user(player_id))
+                      welcome_user(player_id);
+                    else
+                      close_id(player_id);
+                  } else {
+                    write_msg(player[player_id].sockfd, "004");
+                  }
+                }
+                break;
+              case 103: /*
+                         * Create new account
+                         */
+                *(buf + 11) = 0;
+                if (!add_user(player_id, player[player_id].name,
+                              (char*)buf + 3)) {
+                  close_id(player_id);
+                  break;
+                }
+                welcome_user(player_id);
+                break;
+              case 104: /*
+                         * Change password
+                         */
+                *(buf + 11) = 0;
+                read_user_name(player[player_id].name);
+                strncpy(record.password, genpasswd((char*)buf + 3),
+                        sizeof(record.password) - 1);
+                record.password[sizeof(record.password) - 1] = '\0';
+                write_record();
+                break;
+              case 105:
+                if (read_user_name(player[player_id].name) &&
+                    player[player_id].login == 3) {
+                  *(buf + 11) = 0;
+                  for (i = 1; i < MAX_PLAYER; i++) {
+                    if ((player[i].login == 2 || player[i].login == 3) &&
+                        (i != player_id) &&
+                        strcmp(player[i].name, player[player_id].name) == 0) {
+                      close_id(i);
+                      break;
+                    }
+                  }
+                  time(&record.last_login_time);
+                  record.last_login_from[0] = 0;
+                  if (player[player_id].username[0] != 0) {
+                    snprintf(record.last_login_from,
+                             sizeof(record.last_login_from), "%s@",
+                             player[player_id].username);
+                  }
+                  strncat(record.last_login_from,
+                          lookup(&player[player_id].addr),
+                          sizeof(record.last_login_from) -
+                              strlen(record.last_login_from) - 1);
+                  record.login_count++;
+                  write_record();
+                  if (check_user(player_id))
+                    welcome_user(player_id);
+                  else
+                    close_id(player_id);
+                }
+                break;
+              case 2:
+                list_player(player[player_id].sockfd);
+                break;
+              case 3:
+                list_table(player[player_id].sockfd, 1);
+                break;
+              case 4:
+                strncpy(player[player_id].note, (char*)buf + 3,
+                        sizeof(player[player_id].note) - 1);
+                player[player_id].note[sizeof(player[player_id].note) - 1] =
+                    '\0';
+                break;
+              case 5:
+                show_online_users(player_id);
+                list_stat(player[player_id].sockfd, (char*)buf + 3);
+
+                break;
+              case 6:
+                who(player[player_id].sockfd, (char*)buf + 3);
+                break;
+              case 7:  // 廣播，GM 功能。
+                broadcast(player_id, (char*)buf + 3);
+                break;
+              case 8:
+                invite(player_id, (char*)buf + 3);
+                break;
+              case 9:
+                send_msg(player_id, (char*)buf + 3);
+                break;
+              case 10:
+                lurker(player[player_id].sockfd);
+                break;
+              case 11:  // JOIN
+                /*
+                 * Check for table server
+                 */
+                if (!read_user_name_update(player[player_id].name, player_id)) {
+                  snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
+                  write_msg(player[player_id].sockfd, msg_buf);
+                  break;
+                }
+                update_client_money(player_id);
+                if (player[player_id].money <= MIN_JOIN_MONEY) {
+                  snprintf(msg_buf, sizeof(msg_buf),
+                           "101您的賭幣（%ld）不足，必須超過 %d 元才能加入牌桌",
+                           player[player_id].money, MIN_JOIN_MONEY);
+                  write_msg(player[player_id].sockfd, msg_buf);
+                  break;
+                }
+                for (i = 1; i < MAX_PLAYER; i++) {
+                  if (player[i].login == 2 && player[i].serv) {
+                    /*
+                     * Find the name of table server
+                     */
+                    if (strcmp(player[i].name, (char*)buf + 3) == 0) {
+                      if (player[i].serv >= 4) {
+                        write_msg(player[player_id].sockfd, "101此桌人數已滿!");
+                        goto full;
+                      }
+                      snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld",
+                               player[player_id].id, player[player_id].money);
+                      write_msg(player[i].sockfd, msg_buf);
+                      snprintf(msg_buf, sizeof(msg_buf), "211%s",
+                               player[player_id].name);
+                      write_msg(player[i].sockfd, msg_buf);
+                      snprintf(msg_buf, sizeof(msg_buf), "0110%s %d",
+                               inet_ntoa(player[i].addr.sin_addr),
+                               player[i].port);
+                      write_msg(player[player_id].sockfd, msg_buf);
+                      player[player_id].join = i;
+                      player[player_id].serv = 0;
+                      player[i].serv++;
+                      break;
+                    }
+                  }
+                }
+                if (i == MAX_PLAYER)
+                  write_msg(player[player_id].sockfd, "0111");
+              full:;
+                break;
+              case 12:
+                if (!read_user_name_update(player[player_id].name, player_id)) {
+                  snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
+                  write_msg(player[player_id].sockfd, msg_buf);
+                  break;
+                }
+                update_client_money(player_id);
+                if (player[player_id].money <= MIN_JOIN_MONEY) {
+                  snprintf(msg_buf, sizeof(msg_buf),
+                           "101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
+                           player[player_id].money, MIN_JOIN_MONEY);
+                  write_msg(player[player_id].sockfd, msg_buf);
+                  break;
+                }
+                player[player_id].port = atoi((char*)buf + 3);
+                if (player[player_id].join) {
+                  if (player[player[player_id].join].serv > 0)
+                    player[player[player_id].join].serv--;
+                  player[player_id].join = 0;
+                }
+                /*
+                 * clear all client
+                 */
+                for (i = 1; i < MAX_PLAYER; i++) {
+                  if (player[i].join == player_id) player[i].join = 0;
+                }
+                player[player_id].serv = 1;
+                break;
+              case 13:
+                list_table(player[player_id].sockfd, 2);
+                break;
+              case 14:  // 檢查開桌資格
+                if (!read_user_name_update(player[player_id].name, player_id)) {
+                  snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
+                  write_msg(player[player_id].sockfd, msg_buf);
+                  break;
+                }
+                update_client_money(player_id);
+                if (player[player_id].money <= MIN_JOIN_MONEY) {
+                  snprintf(msg_buf, sizeof(msg_buf),
+                           "101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
+                           player[player_id].money, MIN_JOIN_MONEY);
+                  write_msg(player[player_id].sockfd, msg_buf);
+                  break;
+                }
+                write_msg(player[player_id].sockfd, "012");  // 確認開桌
+                break;
+              case 20:  // WIN GAME
+                strncpy(msg_buf, (char*)buf + 3, sizeof(msg_buf) - 1);
+                msg_buf[sizeof(msg_buf) - 1] = '\0';
+                *(msg_buf + 5) = 0;
+                id = atoi(msg_buf);
+                read_user_id(id);
+                record.money = atol((char*)buf + 8);
+                record.game_count++;
+                write_record();
+                for (i = 1; i < MAX_PLAYER; i++) {
+                  if (player[i].login == 2 && player[i].id == id) {
+                    player[i].money = record.money;
+                    break;
+                  }
+                }
+                break;
+              case 21: /*
+                        * FIND
+                        */
+                find_user(player[player_id].sockfd, (char*)buf + 3);
+                break;
+              case 900:  // Game record
+                err("get game record\n");
+                game_log((char*)buf + 3);
+                err("get game record end\n");
+                break;
+              case 111:
+                /*
+                 * player[player_id].serv++;
+                 */
+                break;
+              case 200:  // 使用者離開遊戲(/LEAVE)
+                close_id(player_id);
+                break;
+              case 202:
+                if (strcmp(player[player_id].name, ADMIN_USER) != 0) break;
+                id = find_user_name((char*)buf + 3);
+                if (id >= 0) {
+                  write_msg(player[id].sockfd, "200");
+                  close_id(id);
+                }
+                break;
+              case 205:  // LEAVE 離開牌桌
+                if (player[player_id].serv) {
+                  /*
+                   * clear all client
+                   */
+                  for (i = 1; i < MAX_PLAYER; i++) {
+                    if (player[i].join == player_id) player[i].join = 0;
+                  }
+                  player[player_id].serv = 0;
+                  player[player_id].join = 0;
+                } else if (player[player_id].join) {
+                  if (player[player[player_id].join].serv > 0)
+                    player[player[player_id].join].serv--;
+                  player[player_id].join = 0;
+                }
+                break;
+              case 201:  // 顯示目前狀態
+                show_current_state(player_id);
+              case 500:
+                if (strcmp(player[player_id].name, ADMIN_USER) == 0)
+                  shutdown_server();
+                break;
+              default:
+                snprintf(msg_buf, sizeof(msg_buf),
+                         "### cmd=%d player_id=%d sockfd=%d ###\n", msg_id,
+                         player_id, player[player_id].sockfd);
+                err(msg_buf);
+                close_connection(player_id);
+                snprintf(msg_buf, sizeof(msg_buf),
+                         "Connection to %s error, closed it\n",
+                         lookup(&(player[player_id].addr)));
+                err(msg_buf);
+                break;
+            }
+            buf[0] = '\0';
+          }
+        }
+      }
+    }
+  }
 }
 
 void close_id(int player_id) {
-	char msg_buf[1000];
+  char msg_buf[1000];
 
-	close_connection(player_id);
-	snprintf(msg_buf, sizeof(msg_buf), "Connection to %s closed\n",
-			lookup(&(player[player_id].addr)));
-	err(msg_buf);
+  close_connection(player_id);
+  snprintf(msg_buf, sizeof(msg_buf), "Connection to %s closed\n",
+           lookup(&(player[player_id].addr)));
+  err(msg_buf);
 }
 
 void close_connection(int player_id) {
-	close(player[player_id].sockfd);
-	FD_CLR(player[player_id].sockfd, &afds);
-	if (player[player_id].join && player[player[player_id].join].serv)
-		player[player[player_id].join].serv--;
+  close(player[player_id].sockfd);
+  FD_CLR(player[player_id].sockfd, &afds);
+  if (player[player_id].join && player[player[player_id].join].serv)
+    player[player[player_id].join].serv--;
 
-	player[player_id].login = 0;
-	player[player_id].serv = 0;
-	player[player_id].join = 0;
-	player[player_id].version[0] = 0;
-	player[player_id].note[0] = 0;
-	player[player_id].name[0] = 0;
-	player[player_id].username[0] = 0;
+  player[player_id].login = 0;
+  player[player_id].serv = 0;
+  player[player_id].join = 0;
+  player[player_id].version[0] = 0;
+  player[player_id].note[0] = 0;
+  player[player_id].name[0] = 0;
+  player[player_id].username[0] = 0;
 }
 
 void shutdown_server() {
-	int i;
-	char msg_buf[1000];
+  int i;
+  char msg_buf[1000];
 
-	for (i = 1; i < MAX_PLAYER; i++) {
-		if (player[i].login)
-			shutdown(player[i].sockfd, 2);
-	}
-	snprintf(msg_buf, sizeof(msg_buf), "QKMJ Server shutdown\n");
-	err(msg_buf);
-	exit(0);
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (player[i].login) shutdown(player[i].sockfd, 2);
+  }
+  snprintf(msg_buf, sizeof(msg_buf), "QKMJ Server shutdown\n");
+  err(msg_buf);
+  exit(0);
 }
 
 void core_dump(int signo) {
-        char buf[1024];
-        char cmd[1024];
-        FILE *fh;
+  char buf[1024];
+  char cmd[1024];
+  FILE* fh;
 
-        snprintf(buf, sizeof(buf), "/proc/%d/cmdline", getpid());
-        if(!(fh = fopen(buf, "r")))
-                exit(0);
-        if(!fgets(buf, sizeof(buf), fh))
-                exit(0);
-        fclose(fh);
-        if(buf[strlen(buf) - 1] == '\n')
-                buf[strlen(buf) - 1] = '\0';
-        snprintf(cmd, sizeof(cmd), "gdb %s %d", buf, getpid());
-        system(cmd);
+  snprintf(buf, sizeof(buf), "/proc/%d/cmdline", getpid());
+  if (!(fh = fopen(buf, "r"))) exit(0);
+  if (!fgets(buf, sizeof(buf), fh)) exit(0);
+  fclose(fh);
+  if (buf[strlen(buf) - 1] == '\n') buf[strlen(buf) - 1] = '\0';
+  snprintf(cmd, sizeof(cmd), "gdb %s %d", buf, getpid());
+  system(cmd);
 
-        err("CORE DUMP!\n");
-        exit(0);
+  err("CORE DUMP!\n");
+  exit(0);
 }
-
 
 void bus_err(int signo) {
-	err("BUS ERROR!\n");
-	exit(0);
+  err("BUS ERROR!\n");
+  exit(0);
 }
 
-void broken_pipe(int signo) {
-	err("Broken PIPE!!\n");
-}
+void broken_pipe(int signo) { err("Broken PIPE!!\n"); }
 
 void time_out(int signo) {
-	err("timeout!");
-	timeup = 1;
+  err("timeout!");
+  timeup = 1;
 }
 
-char * genpasswd(char *pw) {
-	char saltc[2];
-	long salt;
-	int i, c;
-	static char pwbuf[14];
+char* genpasswd(char* pw) {
+  char saltc[2];
+  long salt;
+  int i, c;
+  static char pwbuf[14];
 
-	if (strlen(pw) == 0)
-		return "";
-	time(&salt);
-	salt = 9 * getpid();
+  if (strlen(pw) == 0) return "";
+  time(&salt);
+  salt = 9 * getpid();
 #ifndef lint
-	saltc[0] = salt & 077;
-	saltc[1] = (salt >> 6) & 077;
+  saltc[0] = salt & 077;
+  saltc[1] = (salt >> 6) & 077;
 #endif
-	for (i = 0; i < 2; i++) {
-		c = saltc[i] + '.';
-		if (c > '9')
-			c += 7;
-		if (c > 'Z')
-			c += 6;
-		saltc[i] = c;
-	}
-	strncpy(pwbuf, pw, sizeof(pwbuf) - 1);
-	pwbuf[sizeof(pwbuf) - 1] = '\0';
-	return crypt(pwbuf, saltc);
+  for (i = 0; i < 2; i++) {
+    c = saltc[i] + '.';
+    if (c > '9') c += 7;
+    if (c > 'Z') c += 6;
+    saltc[i] = c;
+  }
+  strncpy(pwbuf, pw, sizeof(pwbuf) - 1);
+  pwbuf[sizeof(pwbuf) - 1] = '\0';
+  return crypt(pwbuf, saltc);
 }
 
 /* Constant-time string comparison to prevent timing attacks */
-int safe_strcmp(const char *s1, const char *s2) {
-	unsigned char result = 0;
-	while (*s1 && *s2) {
-		result |= (*s1 ^ *s2);
-		s1++;
-		s2++;
-	}
-	// If lengths differ, *s1 or *s2 will be 0, result |= non-zero.
-	// Also ensure both are at end.
-	result |= (*s1 ^ *s2); 
-	return result == 0; // Returns 1 (true) if equal, 0 (false) if not
+int safe_strcmp(const char* s1, const char* s2) {
+  unsigned char result = 0;
+  while (*s1 && *s2) {
+    result |= (*s1 ^ *s2);
+    s1++;
+    s2++;
+  }
+  // If lengths differ, *s1 or *s2 will be 0, result |= non-zero.
+  // Also ensure both are at end.
+  result |= (*s1 ^ *s2);
+  return result == 0;  // Returns 1 (true) if equal, 0 (false) if not
 }
 
-int checkpasswd(char *passwd, char *test) {
-	static char pwbuf[14];
-	char *pw;
+int checkpasswd(char* passwd, char* test) {
+  static char pwbuf[14];
+  char* pw;
 
-	strncpy(pwbuf, test, 14);
-	pw = crypt(pwbuf, passwd);
-	return safe_strcmp(pw, passwd);
+  strncpy(pwbuf, test, 14);
+  pw = crypt(pwbuf, passwd);
+  return safe_strcmp(pw, passwd);
 }
 
-int main(int argc, char **argv) {
-	setlocale(LC_ALL, "");
-	int i;
+int main(int argc, char** argv) {
+  setlocale(LC_ALL, "");
+  int i;
 
-	/*
-	 * Set fd to be the maximum number 
-	 */
-	getrlimit(RLIMIT_NOFILE, &fd_limit);
-	fd_limit.rlim_cur = fd_limit.rlim_max;
-	setrlimit(RLIMIT_NOFILE, &fd_limit);
-	i = getdtablesize();
-	printf("FD_SIZE=%d\n", i);
-	signal(SIGSEGV, &core_dump);
-	signal(SIGBUS, bus_err);
-	signal(SIGPIPE, broken_pipe);
-	signal(SIGALRM, time_out);
-	if (argc < 2)
-		gps_port = DEFAULT_GPS_PORT;
-	else {
-		gps_port = atoi(argv[1]);
-		printf("Using port %s\n", argv[1]);
-	}
-	strncpy(gps_ip, DEFAULT_GPS_IP, sizeof(gps_ip) - 1);
-	gps_ip[sizeof(gps_ip) - 1] = '\0';
-	init_socket();
-	init_variable();
-	gps_processing();
-    return 0;
+  /*
+   * Set fd to be the maximum number
+   */
+  getrlimit(RLIMIT_NOFILE, &fd_limit);
+  fd_limit.rlim_cur = fd_limit.rlim_max;
+  setrlimit(RLIMIT_NOFILE, &fd_limit);
+  i = getdtablesize();
+  printf("FD_SIZE=%d\n", i);
+  signal(SIGSEGV, &core_dump);
+  signal(SIGBUS, bus_err);
+  signal(SIGPIPE, broken_pipe);
+  signal(SIGALRM, time_out);
+  if (argc < 2)
+    gps_port = DEFAULT_GPS_PORT;
+  else {
+    gps_port = atoi(argv[1]);
+    printf("Using port %s\n", argv[1]);
+  }
+  strncpy(gps_ip, DEFAULT_GPS_IP, sizeof(gps_ip) - 1);
+  gps_ip[sizeof(gps_ip) - 1] = '\0';
+  init_socket();
+  init_variable();
+  gps_processing();
+  return 0;
 }

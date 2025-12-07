@@ -1,25 +1,25 @@
 #define DEFAULT_SERV_PORT 15555
-//#define DEFAULT_GPS_IP "162.105.31.222" 
-//# #define DEFAULT_GPS_PORT 7001 
-//#define DEFAULT_GPS_IP "173.255.245.16"
+// #define DEFAULT_GPS_IP "162.105.31.222"
+// # #define DEFAULT_GPS_PORT 7001
+// #define DEFAULT_GPS_IP "173.255.245.16"
 #define DEFAULT_GPS_IP "127.0.0.1"
 #define DEFAULT_GPS_PORT 7000
 
-#ifdef SIGIOT //Linux
-	#define NON_WINDOWS 1
+#ifdef SIGIOT  // Linux
+#define NON_WINDOWS 1
 #endif
 
 #define QKMJRC ".qkmjrc"
-#define THROW_X  12
-#define THROW_Y  5
-#define INDEX_X  12
-#define INDEX_Y  15
+#define THROW_X 12
+#define THROW_Y 5
+#define INDEX_X 12
+#define INDEX_Y 15
 #define INDEX_X1 52
 #define INDEX_Y1 17
-#define INDEX_X2 44 
+#define INDEX_X2 44
 #define INDEX_Y2 0
 #define INDEX_X3 2
-#define INDEX_Y3 0 
+#define INDEX_Y3 0
 #define FLOWER_X 20
 #define FLOWER_Y 14
 #define FLOWER_X1 48
@@ -85,4 +85,3 @@
 #define DEFAULT_BASE 500
 #define DEFAULT_TAI 200
 #define PRESS_ANY_KEY_TO_CONTINUE "請按 <ENTER> 繼續......"
-
