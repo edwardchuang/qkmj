@@ -94,24 +94,24 @@ int read_msg(int fd, char* msg) {
     err("WRONG READ\n");
     return 2;
   }
-timeup = 0;
-	alarm(5);
-	do {
-		while (1) {
-			read_code = read(fd, msg, 1);
-			if (read_code != -1) break;
-			if (errno != EWOULDBLOCK) {
-				snprintf(msg_buf, sizeof(msg_buf), "fail in read_msg,errno = %d",errno);
-				err(msg_buf);
-				alarm(0);
-				return 0;
-			} else if (timeup) {
-				alarm(0);
-				err("TIME UP!\n");
-				return 0;
-			}
-		}
-		if (read_code == 0) {
+  timeup = 0;
+  alarm(5);
+  do {
+    while (1) {
+      read_code = read(fd, msg, 1);
+      if (read_code != -1) break;
+      if (errno != EWOULDBLOCK) {
+        snprintf(msg_buf, sizeof(msg_buf), "fail in read_msg,errno = %d",errno);
+        err(msg_buf);
+        alarm(0);
+        return 0;
+      } else if (timeup) {
+        alarm(0);
+        err("TIME UP!\n");
+        return 0;
+      }
+    }
+    if (read_code == 0) {
       alarm(0);
       return 0;
     } else {
@@ -264,7 +264,7 @@ void list_stat(int fd, char* name) {
     return;
   }
   // sprintf(msg_buf, "101◇名稱:%s  %s", record.name, record.last_login_from);
-  snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name);
+  snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name); 
   if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
     snprintf(msg_buf, sizeof(msg_buf), "(stat) Cannot open file\n");
     err(msg_buf);
@@ -299,7 +299,7 @@ void who(int fd, char* name) {
 		if (player[i].login && player[i].serv) {
 			if (strcmp(player[i].name, name) == 0) {
 				serv_id = i;
-				break;
+					break;
 			}
 		}
 	}
@@ -922,7 +922,7 @@ void gps_processing() {
                          */
                 *(buf + 11) = 0;
                 read_user_name(player[player_id].name);
-                strncpy(record.password, genpasswd((char*)buf + 3),
+                strncpy(record.password, genpasswd((char*)buf + 3), 
                         sizeof(record.password) - 1);
                 record.password[sizeof(record.password) - 1] = '\0';
                 write_record();
@@ -1100,7 +1100,7 @@ void gps_processing() {
                   }
                 }
                 break;
-              case 21: /*
+              case 21:  /*
                         * FIND
                         */
                 find_user(player[player_id].sockfd, (char*)buf + 3);

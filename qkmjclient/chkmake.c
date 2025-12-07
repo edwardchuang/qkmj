@@ -114,6 +114,12 @@ int suit;
 NODEPTR getnode() {
   NODEPTR p;
   p = (NODEPTR)malloc(sizeof(struct nodetype));
+  if (p == NULL) {
+    // Ideally log error and exit, or handle gracefully.
+    // For this legacy app, exit is probably safest to avoid crash.
+    fprintf(stderr, "Out of memory\n");
+    exit(1);
+  }
   return (p);
 }
 
