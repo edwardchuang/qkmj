@@ -101,7 +101,8 @@ int read_msg(int fd, char* msg) {
       read_code = read(fd, msg, 1);
       if (read_code != -1) break;
       if (errno != EWOULDBLOCK) {
-        snprintf(msg_buf, sizeof(msg_buf), "fail in read_msg,errno = %d",errno);
+        snprintf(msg_buf, sizeof(msg_buf), "fail in read_msg,errno = %d",
+                 errno);
         err(msg_buf);
         alarm(0);
         return 0;
@@ -264,7 +265,7 @@ void list_stat(int fd, char* name) {
     return;
   }
   // sprintf(msg_buf, "101◇名稱:%s  %s", record.name, record.last_login_from);
-  snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name); 
+  snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name);
   if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
     snprintf(msg_buf, sizeof(msg_buf), "(stat) Cannot open file\n");
     err(msg_buf);
@@ -295,19 +296,19 @@ void who(int fd, char* name) {
   int i;
   int serv_id = -1;
 
-	for (i = 1; i < MAX_PLAYER; i++) {
-		if (player[i].login && player[i].serv) {
-			if (strcmp(player[i].name, name) == 0) {
-				serv_id = i;
-					break;
-			}
-		}
-	}
-	if (serv_id == -1) {
-		write_msg(fd, "101找不到此桌");
-		return;
-	}
-	snprintf(msg_buf, sizeof(msg_buf), "101%s  ", player[serv_id].name);
+  for (i = 1; i < MAX_PLAYER; i++) {
+    if (player[i].login && player[i].serv) {
+      if (strcmp(player[i].name, name) == 0) {
+        serv_id = i;
+        break;
+      }
+    }
+  }
+  if (serv_id == -1) {
+    write_msg(fd, "101找不到此桌");
+    return;
+  }
+  snprintf(msg_buf, sizeof(msg_buf), "101%s  ", player[serv_id].name);
   write_msg(fd, "101----------------   此桌使用者   ------------------");
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].join == serv_id) {
@@ -922,7 +923,7 @@ void gps_processing() {
                          */
                 *(buf + 11) = 0;
                 read_user_name(player[player_id].name);
-                strncpy(record.password, genpasswd((char*)buf + 3), 
+                strncpy(record.password, genpasswd((char*)buf + 3),
                         sizeof(record.password) - 1);
                 record.password[sizeof(record.password) - 1] = '\0';
                 write_record();
@@ -1100,7 +1101,7 @@ void gps_processing() {
                   }
                 }
                 break;
-              case 21:  /*
+              case 21: /*
                         * FIND
                         */
                 find_user(player[player_id].sockfd, (char*)buf + 3);
