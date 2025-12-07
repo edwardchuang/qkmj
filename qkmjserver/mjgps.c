@@ -83,6 +83,11 @@ int game_log(char* gamemsg) {
   return 0;
 }
 
+/*
+ * 讀取訊息
+ * 從 socket 讀取資料，直到遇到 NULL 字元。
+ * 包含 5 秒逾時機制與錯誤處理。
+ */
 int read_msg(int fd, char* msg) {
   int n;
   char msg_buf[1000];
@@ -127,6 +132,10 @@ int read_msg(int fd, char* msg) {
   return 1;
 }
 
+/*
+ * 發送訊息
+ * 將訊息寫入 socket。如果失敗則關閉連線。
+ */
 void write_msg(int fd, char* msg) {
   size_t n;
 
@@ -733,6 +742,12 @@ int find_user_name(char* name) {
   return -1;
 }
 
+/*
+ * 主伺服器迴圈 (Main Loop)
+ * 使用 select() 監聽所有連線。
+ * 處理新的連線請求 (accept_new_connection)。
+ * 處理已連線客戶端的訊息 (process_client_message)。
+ */
 void gps_processing() {
   int alen;
   int fd, nfds;
@@ -761,7 +776,8 @@ void gps_processing() {
   tm.tv_sec = 0;
   tm.tv_usec = 0;
   /*
-   * Waiting for connections
+   * 等待連線 (Waiting for connections)
+   * 使用 select 模型同時處理新連線與現有連線的資料。
    */
   for (;;) {
     memmove((char*)&rfds, (char*)&afds, sizeof(rfds));
@@ -772,6 +788,10 @@ void gps_processing() {
       continue;
     }
     if (FD_ISSET(gps_sockfd, &rfds)) {
+      /*
+       * 處理新連線 (Handle new connection)
+       * 接受連線，檢查人數上限，並記錄來源 IP。
+       */
       for (player_num = 1; player_num < MAX_PLAYER; player_num++)
         if (!player[player_num].login) break;
       if (player_num == MAX_PLAYER - 1) err("Too many users");
@@ -1272,6 +1292,11 @@ int safe_strcmp(const char* s1, const char* s2) {
   return result == 0;  // Returns 1 (true) if equal, 0 (false) if not
 }
 
+/*
+ * 檢查密碼
+ * 使用 crypt() 加密後比對。
+ * 注意：使用 safe_strcmp 防止時序攻擊 (Timing Attack)。
+ */
 int checkpasswd(char* passwd, char* test) {
   static char pwbuf[14];
   char* pw;

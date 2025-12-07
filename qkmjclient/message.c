@@ -35,6 +35,10 @@ int convert_msg_id(int player_id, unsigned char* msg) {
   return (msg[0] - '0') * 100 + (msg[1] - '0') * 10 + (msg[2] - '0');
 }
 
+/*
+ * 處理 GPS 伺服器訊息
+ * 包含登入回應、密碼檢查、使用者列表等。
+ */
 void handle_gps_message(int msg_id, char* buf) {
   char msg_buf[255];
   char ans_buf[255];
@@ -211,6 +215,10 @@ void handle_gps_message(int msg_id, char* buf) {
   }
 }
 
+/*
+ * 處理其他客戶端訊息 (P2P)
+ * 處理打牌、吃碰槓、胡牌等遊戲邏輯訊息。
+ */
 void handle_client_message(int player_id, int msg_id, char* buf) {
   char msg_buf[255];
   int i, j, sit;
@@ -388,6 +396,10 @@ void handle_client_message(int player_id, int msg_id, char* buf) {
   }
 }
 
+/*
+ * 處理牌桌伺服器訊息
+ * 處理加入/離開牌桌、開局等訊息。
+ */
 void handle_serv_message(int msg_id, char* buf) {
   char msg_buf[255];
   int i;
@@ -619,6 +631,10 @@ void handle_serv_message(int msg_id, char* buf) {
   }
 }
 
+/*
+ * 處理訊息分發 (Message Dispatcher)
+ * 根據 msg_type (來源) 將訊息分發給對應的處理函式。
+ */
 void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
   int msg_id;
   unsigned char buf[255];

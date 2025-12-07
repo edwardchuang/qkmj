@@ -567,6 +567,10 @@ void clear_variable() {
   player_in_table = 0;
 }
 
+/*
+ * 客戶端主迴圈 (Main Loop)
+ * 處理連線、輸入、遊戲流程控制。
+ */
 void gps() {
   int status;
   int i;

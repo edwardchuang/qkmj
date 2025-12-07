@@ -339,6 +339,11 @@ void free_tree(NODEPTR p) {
   free(p);
 }
 
+/*
+ * 檢查是否胡牌 (Check Make)
+ * 這是遞迴檢查的核心函式。
+ * 嘗試將手牌組合成 面子 (Mentsu) 和 雀頭 (Jantou)。
+ */
 int check_make(int sit, int card,
                int method) /* 0 for general check, 1 for complete check */
 {
