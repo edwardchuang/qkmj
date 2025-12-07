@@ -41,35 +41,38 @@ int search_card(int sit, int card) {
   return -1;
 }
 
-int check_kang(int sit, int card) {
-  int i, kang;
+int check_kang(int sit, int card)
+{
+  int i;
 
-  kang = 1;
-  if (card == 0) return (0);
-  for (i = 0; i < pool[sit].num - 2; i++)
-    if (pool[sit].card[i] == card) goto found;
-  for (i = 0; i < pool[sit].out_card_index; i++)
-    if (pool[sit].out_card[i][0] == 2 && pool[sit].out_card[i][1] == card &&
-        sit == card_owner) {
+  if(card==0)
+    return(0);
+  for(i=0;i<pool[sit].num-2;i++)
+    if(pool[sit].card[i]==card) {
+        if(pool[sit].card[i+1]==card && pool[sit].card[i+2]==card)
+            return 1;
+    }
+  for(i=0;i<pool[sit].out_card_index;i++)
+    if(pool[sit].out_card[i][0]==2 && pool[sit].out_card[i][1]==card &&
+       sit==card_owner)
+    {
       return 2;
     }
-  kang = 0;
-found:;
-  if (pool[sit].card[i + 1] != card || pool[sit].card[i + 2] != card) kang = 0;
-  return (kang);
+  return 0;
 }
 
-int check_pong(int sit, int card) {
-  int i, pong;
+int check_pong(int sit, int card)
+{
+  int i;
 
-  pong = 1;
-  if (card == 0) return (0);
-  for (i = 0; i < pool[sit].num - 1; i++)
-    if (pool[sit].card[i] == card) goto found;
-  pong = 0;
-found:;
-  if (pool[sit].card[i + 1] != card) pong = 0;
-  return (pong);
+  if(card==0)
+    return(0);
+  for(i=0;i<pool[sit].num-1;i++)
+    if(pool[sit].card[i]==card) {
+        if(pool[sit].card[i+1]==card)
+            return 1;
+    }
+  return 0;
 }
 
 int check_eat(int sit, int card) {

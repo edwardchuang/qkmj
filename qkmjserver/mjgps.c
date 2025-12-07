@@ -94,25 +94,24 @@ int read_msg(int fd, char* msg) {
     err("WRONG READ\n");
     return 2;
   }
-  timeup = 0;
-  alarm(5);
-  do {
-  recheck:;
-    read_code = read(fd, msg, 1);
-    if (read_code == -1) {
-      if (errno != EWOULDBLOCK) {
-        snprintf(msg_buf, sizeof(msg_buf), "fail in read_msg,errno = %d",
-                 errno);
-        err(msg_buf);
-        alarm(0);
-        return 0;
-      } else if (timeup) {
-        alarm(0);
-        err("TIME UP!\n");
-        return 0;
-      } else
-        goto recheck;
-    } else if (read_code == 0) {
+timeup = 0;
+	alarm(5);
+	do {
+		while (1) {
+			read_code = read(fd, msg, 1);
+			if (read_code != -1) break;
+			if (errno != EWOULDBLOCK) {
+				snprintf(msg_buf, sizeof(msg_buf), "fail in read_msg,errno = %d",errno);
+				err(msg_buf);
+				alarm(0);
+				return 0;
+			} else if (timeup) {
+				alarm(0);
+				err("TIME UP!\n");
+				return 0;
+			}
+		}
+		if (read_code == 0) {
       alarm(0);
       return 0;
     } else {
@@ -294,20 +293,21 @@ void list_stat(int fd, char* name) {
 void who(int fd, char* name) {
   char msg_buf[1000];
   int i;
-  int serv_id;
+  int serv_id = -1;
 
-  for (i = 1; i < MAX_PLAYER; i++) {
-    if (player[i].login && player[i].serv) {
-      if (strcmp(player[i].name, name) == 0) {
-        serv_id = i;
-        goto found_serv;
-      }
-    }
-  }
-  write_msg(fd, "101找不到此桌");
-  return;
-found_serv:;
-  snprintf(msg_buf, sizeof(msg_buf), "101%s  ", player[serv_id].name);
+	for (i = 1; i < MAX_PLAYER; i++) {
+		if (player[i].login && player[i].serv) {
+			if (strcmp(player[i].name, name) == 0) {
+				serv_id = i;
+				break;
+			}
+		}
+	}
+	if (serv_id == -1) {
+		write_msg(fd, "101找不到此桌");
+		return;
+	}
+	snprintf(msg_buf, sizeof(msg_buf), "101%s  ", player[serv_id].name);
   write_msg(fd, "101----------------   此桌使用者   ------------------");
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].join == serv_id) {
@@ -1015,7 +1015,7 @@ void gps_processing() {
                     if (strcmp(player[i].name, (char*)buf + 3) == 0) {
                       if (player[i].serv >= 4) {
                         write_msg(player[player_id].sockfd, "101此桌人數已滿!");
-                        goto full;
+                        break;
                       }
                       snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld",
                                player[player_id].id, player[player_id].money);
@@ -1036,7 +1036,6 @@ void gps_processing() {
                 }
                 if (i == MAX_PLAYER)
                   write_msg(player[player_id].sockfd, "0111");
-              full:;
                 break;
               case 12:
                 if (!read_user_name_update(player[player_id].name, player_id)) {
