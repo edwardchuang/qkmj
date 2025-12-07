@@ -626,7 +626,7 @@ void draw_flower(int sit, int card) {
   pool[sit].flower[card - 51] = 1;
   strncpy(msg_buf, mj_item[card], sizeof(msg_buf) - 1);
   msg_buf[sizeof(msg_buf) - 1] = '\0';
-  msg_buf[2] = 0;
+  msg_buf[3] = 0;
   reset_cursor();
   switch ((sit - my_sit + 4) % 4) {
     case 0:

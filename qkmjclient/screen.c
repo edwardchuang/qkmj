@@ -326,8 +326,8 @@ void show_newcard(int sit, int type)
 /* type   1: column          */
 void show_card(int card,int x,int y,int type)
 {
-  char card1[3];
-  char card2[3];
+  char card1[5];
+  char card2[5];
   
   reset_cursor();
   mvwaddstr(stdscr,y,x,"  "); 
@@ -362,12 +362,15 @@ else if(card>=41 && card<=43)
 }
   if(type==1)
   {
-    card1[0]=mj_item[card][0];
-    card1[1]=mj_item[card][1];
-    card1[2]=0;
-    card2[0]=mj_item[card][2];
-    card2[1]=mj_item[card][3];
-    card2[2]=0;
+    if (mj_item[card][0] == ' ') {
+      snprintf(card1, sizeof(card1), "  ");
+      snprintf(card2, sizeof(card2), "  ");
+    } else {
+      strncpy(card1, mj_item[card], 3);
+      card1[3] = '\0';
+      strncpy(card2, mj_item[card] + 3, 3);
+      card2[3] = '\0';
+    }
     mvwaddstr(stdscr,y,x,card1);
     mvwaddstr(stdscr,y+1,x,card2);
   }
