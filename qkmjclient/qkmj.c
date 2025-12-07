@@ -160,65 +160,78 @@ int request_card() {
 }
 
 /* Change a card */
-void change_card(int position, int card) {
+void change_card(int position, int card)
+{
   int i;
 
-  i = (16 - pool[my_sit].num + position) * 2;
-  if (position == pool[my_sit].num) i++;
-  pool[my_sit].card[position] = card;
-  show_card(20, INDEX_X + i, INDEX_Y + 1, 1);
+  i=(16-pool[my_sit].num+position)*2;
+  if(position==pool[my_sit].num)
+    i++;
+  pool[my_sit].card[position]=(char)card;
+  show_card(20,INDEX_X+i,INDEX_Y+1,1);
   wrefresh(stdscr);
-  show_card(card, INDEX_X + i, INDEX_Y + 1, 1);
+  show_card(card,INDEX_X+i,INDEX_Y+1,1);
   wrefresh(stdscr);
 }
 
 /* Get a card */
-void get_card(int card) {
-  pool[my_sit].card[pool[my_sit].num] = card;
-  show_card(20, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
+void get_card(int card)
+{
+  pool[my_sit].card[pool[my_sit].num]=(char)card;
+  show_card(20,INDEX_X+16*2+1,INDEX_Y+1,1);
   wrefresh(stdscr);
-  show_card(card, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
+  show_card(card,INDEX_X+16*2+1,INDEX_Y+1,1);
   wrefresh(stdscr);
 }
 
-void process_new_card(int sit, int card) {
+void process_new_card(int sit, int card)
+{
   char msg_buf[255];
 
-  current_card = card;
-  show_cardmsg(sit, 0);
-  pool[sit].card[pool[sit].num] = card;
+  current_card=card;
+  show_cardmsg(sit,0);
+  pool[sit].card[pool[sit].num]=(char)card;
   get_card(card);
   return_cursor();
-  if (!check_flower(sit, card)) play_mode = THROW_CARD;
+  if(!check_flower(sit,card))
+    play_mode=THROW_CARD;
 }
 
 /* Throw cards to the table */
-void throw_card(int card) {
-  int x, y;
-  if (card == 20) {
+void throw_card(int card)
+{
+  int x,y;
+  if(card==20)   
+  {
     card_count--;
   }
-  table_card[card_count / 17][card_count % 17] = card;
-  x = THROW_X + (card_count % 17) * 2;
-  y = THROW_Y + card_count / 17 * 2;
-  if (y % 4 == 3) {
-    if (!color) attron(A_BOLD);
-    show_card(card, x, y, 1);
-    if (!color) attroff(A_BOLD);
-  } else
-    show_card(card, x, y, 1);
-  if (card != 20) {
+  table_card[card_count/17][card_count%17]=(char)card;
+  x=THROW_X+(card_count%17)*2;
+  y=THROW_Y+card_count/17*2;
+  if(y%4==3)
+  {
+    if(!color)
+      attron(A_BOLD); 
+    show_card(card,x,y,1);
+    if(!color)
+      attroff(A_BOLD);
+  }
+  else
+    show_card(card,x,y,1);
+  if(card!=20)
+  {
     card_count++;
   }
 }
 
-void send_one_card(int id) {
+void send_one_card(int id)
+{
   char msg_buf[255];
   char card;
   char sit;
   int i;
 
-  sit = player[id].sit;
+  sit=(char)player[id].sit;
   card = mj[card_point++];
   current_card = card;
   pool[sit].card[pool[sit].num] = card;

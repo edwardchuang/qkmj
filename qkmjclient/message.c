@@ -21,16 +21,14 @@
 #include "misc.h"
 #include "qkmj.h"
 
-int tt;
-
-int convert_msg_id(unsigned char* msg) {
+int convert_msg_id(int player_id, unsigned char* msg) {
   int i;
   char msg_buf[255];
 
   for (i = 0; i < 3; i++)
     if (msg[i] < '0' || msg[i] > '9') {
       display_comment("Invalid message id");
-      snprintf(msg_buf, sizeof(msg_buf), "From %d (%d) id=%d len=%lu %s", tt,
+      snprintf(msg_buf, sizeof(msg_buf), "From %d (%d) id=%d len=%lu %s", player_id,
                gps_sockfd, msg[i], (unsigned long)strlen((char*)msg), msg);
       display_comment(msg_buf);
     }
@@ -191,7 +189,7 @@ void handle_gps_message(int msg_id, char* buf) {
       strncpy(msg_buf, buf + 3, sizeof(msg_buf) - 1);
       msg_buf[sizeof(msg_buf) - 1] = '\0';
       *(msg_buf + 5) = 0;
-      new_client_id = atoi(msg_buf);
+      new_client_id = (unsigned int)atoi(msg_buf);
       new_client_money = atol(buf + 8);
       if (!in_serv) {
         my_gps_id = new_client_id;
@@ -443,7 +441,7 @@ void handle_serv_message(int msg_id, char* buf) {
       strncpy(msg_buf, buf + 4, sizeof(msg_buf) - 1);
       msg_buf[sizeof(msg_buf) - 1] = '\0';
       *(msg_buf + 5) = 0;
-      player[buf[3]].id = atoi(msg_buf);
+      player[buf[3]].id = (unsigned int)atoi(msg_buf);
       player[buf[3]].money = atol(buf + 9);
       break;
     case 203: /* get others info */
@@ -625,10 +623,9 @@ void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
   int msg_id;
   unsigned char buf[255];
 
-  tt = player_id;
   strncpy((char*)buf, (char*)id_buf, sizeof(buf) - 1);
   buf[sizeof(buf) - 1] = '\0';
-  msg_id = convert_msg_id(id_buf);
+  msg_id = convert_msg_id(player_id, id_buf);
 
   switch (msg_type) {
     case (FROM_GPS):

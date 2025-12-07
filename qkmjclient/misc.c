@@ -51,7 +51,7 @@ void mvwgetstring(WINDOW* win, int y, int x, int max_len,
   org_x = x;
   wmvaddstr(win, y, x, (char*)str_buf);
   wrefresh(win);
-  x = org_x + strlen((char*)str_buf);
+  x = org_x + (int)strlen((char*)str_buf);
   while (1) {
     ch = my_getch();
     switch (ch) {
@@ -85,12 +85,12 @@ void mvwgetstring(WINDOW* win, int y, int x, int max_len,
         break;
       default:
         if (x - org_x >= max_len) break;
-        str_buf[x - org_x] = ch;
+        str_buf[x - org_x] = (unsigned char)ch;
         str_buf[x + 1 - org_x] = 0;
         if (mode == 0)
           mvwaddstr(win, y, x++, "*");
         else {
-          ch_buf[0] = ch;
+          ch_buf[0] = (unsigned char)ch;
           ch_buf[1] = 0;
           mvwaddstr(win, y, x++, (char*)ch_buf);
         }

@@ -359,22 +359,20 @@ void process_key() {
           strncpy(talk_buf, history[h_point], sizeof(talk_buf) - 1);
           talk_buf[sizeof(talk_buf) - 1] = '\0';
           talk_buf[talk_right - talk_left - 1] = 0;
-          talk_buf_count = strlen(talk_buf);
+          talk_buf_count = (int)strlen(talk_buf);
           talk_x = talk_buf_count;
           break;
         case CTRL_N:
         case KEY_DOWN:
           if (h_point == h_tail)
             break;
-          else
-            h_point = (h_point + 1) % HISTORY_SIZE;
-          werase(inputwin);
+werase(inputwin);
           mvwaddstr(inputwin, 0, 0, history[h_point]);
           wrefresh(inputwin);
           strncpy(talk_buf, history[h_point], sizeof(talk_buf) - 1);
           talk_buf[sizeof(talk_buf) - 1] = '\0';
           talk_buf[talk_right - talk_left - 1] = 0;
-          talk_buf_count = strlen(talk_buf);
+          talk_buf_count = (int)strlen(talk_buf);
           talk_x = talk_buf_count;
           break;
         case CTRL_A:
@@ -445,10 +443,10 @@ void process_key() {
           if (talk_x == talk_right - talk_left) break;
           /* Cursor is in the right most side of characters */
           if (talk_buf_count == talk_x) {
-            talk_buf[talk_buf_count] = key;
+            talk_buf[talk_buf_count] = (char)key;
             talk_buf_count++;
             talk_buf[talk_buf_count] = '\0';
-            mvprintch(inputwin, talk_y, talk_x, key);
+            mvprintch(inputwin, talk_y, talk_x, (char)key);
             talk_x++;
             wrefresh(inputwin);
           } else {
@@ -458,7 +456,7 @@ void process_key() {
               talk_buf[talk_buf_count - 1] = '\0';
             for (i = talk_buf_count; i > talk_x; i--)
               talk_buf[i] = talk_buf[i - 1];
-            talk_buf[talk_x] = key;
+            talk_buf[talk_x] = (char)key;
             mvprintstr(inputwin, talk_y, talk_x, (char*)talk_buf + talk_x);
             talk_x++;
             return_cursor();

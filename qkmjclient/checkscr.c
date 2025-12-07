@@ -384,100 +384,95 @@ void process_epk(int check) {
   char msg_buf[80];
 
   switch (check) {
-    case 2:
-      play_mode = THROW_CARD;
-      for (i = 0; i < pool[my_sit].num; i++) {
-        if (pool[my_sit].card[i] == current_card) {
-          pool[my_sit].card[i] = pool[my_sit].card[pool[my_sit].num - 1];
-          pool[my_sit].card[i + 1] = pool[my_sit].card[pool[my_sit].num - 2];
-          break;
-        }
-      }
-      card1 = card2 = card3 = current_card;
-      draw_epk(my_id, check, card1, card2, card3);
-      pool[my_sit].num -= 3;
-      sort_card(1);
-      break;
-    case 3:
-    case 11:
-      for (i = 0; i < pool[my_sit].num; i++) {
-        if (pool[my_sit].card[i] == current_card) {
-          pool[my_sit].card[i] = pool[my_sit].card[pool[my_sit].num - 1];
-          pool[my_sit].card[i + 1] = pool[my_sit].card[pool[my_sit].num - 2];
-          pool[my_sit].card[i + 2] = pool[my_sit].card[pool[my_sit].num - 3];
-        }
-      }
-      card1 = current_card;
-      card2 = current_card;
-      card3 = current_card;
-      draw_epk(my_id, check, card1, card2, card3);
-      pool[my_sit].num -= 3;
-      sort_card(0);
-      play_mode = GET_CARD;
-      attron(A_REVERSE);
-      show_card(10, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
-      attroff(A_REVERSE);
-      break;
-    case 12:
-      for (i = 0; i < pool[my_sit].out_card_index; i++) {
-        if (pool[my_sit].out_card[i][1] == current_card ||
-            pool[my_sit].out_card[i][2] == current_card)
-          break;
-      }
-      pool[my_sit].out_card[i][0] = 12;
-      if (i == pool[my_sit].out_card_index) break;
-      card1 = card2 = card3 = current_card;
-      draw_epk(my_id, check, card1, card2, card3);
-      play_mode = GET_CARD;
-      attron(A_REVERSE);
-      show_card(10, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
-      attroff(A_REVERSE);
-      break;
-    case 7:
-      play_mode = THROW_CARD;
-      pool[my_sit].card[search_card(my_sit, current_card + 1)] =
-          pool[my_sit].card[pool[my_sit].num - 1];
-      pool[my_sit].card[search_card(my_sit, current_card + 2)] =
-          pool[my_sit].card[pool[my_sit].num - 2];
-      card1 = current_card + 1;
-      card2 = current_card;
-      card3 = current_card + 2;
-      draw_epk(my_id, check, card1, card2, card3);
-      pool[my_sit].num -= 3;
-      sort_card(1);
-      break;
-    case 8:
-      play_mode = THROW_CARD;
-      pool[my_sit].card[search_card(my_sit, current_card - 1)] =
-          pool[my_sit].card[pool[my_sit].num - 1];
-      pool[my_sit].card[search_card(my_sit, current_card + 1)] =
-          pool[my_sit].card[pool[my_sit].num - 2];
-      card1 = current_card - 1;
-      card2 = current_card;
-      card3 = current_card + 1;
-      draw_epk(my_id, check, card1, card2, card3);
-      pool[my_sit].num -= 3;
-      sort_card(1);
-      break;
-    case 9:
-      play_mode = THROW_CARD;
-      pool[my_sit].card[search_card(my_sit, current_card - 1)] =
-          pool[my_sit].card[pool[my_sit].num - 1];
-      pool[my_sit].card[search_card(my_sit, current_card - 2)] =
-          pool[my_sit].card[pool[my_sit].num - 2];
-      card1 = current_card - 2;
-      card2 = current_card;
-      card3 = current_card - 1;
-      draw_epk(my_id, check, card1, card2, card3);
-      pool[my_sit].num -= 3;
-      sort_card(1);
-      break;
-  }
-  if (check != 12) {
-    pool[my_sit].out_card[pool[my_sit].out_card_index][0] = check;
-    pool[my_sit].out_card[pool[my_sit].out_card_index][1] = card1;
-    pool[my_sit].out_card[pool[my_sit].out_card_index][2] = card2;
-    pool[my_sit].out_card[pool[my_sit].out_card_index][3] = card3;
+case 2:
+		play_mode=THROW_CARD;
+		for (i=0; i<pool[my_sit].num; i++) {
+			if (pool[my_sit].card[i]==current_card) {
+				pool[my_sit].card[i]=pool[my_sit].card[pool[my_sit].num-1];
+				pool[my_sit].card[i+1]=pool[my_sit].card[pool[my_sit].num-2];
+				break;
+			}
+		}
+		card1 = card2 = card3 = (char)current_card;
+		draw_epk(my_id, check, card1, card2, card3);
+		pool[my_sit].num-=3;
+		sort_card(1);
+		break;
+	case 3:
+	case 11:
+		for (i=0; i<pool[my_sit].num; i++) {
+			if (pool[my_sit].card[i]==current_card) {
+				pool[my_sit].card[i]=pool[my_sit].card[pool[my_sit].num-1];
+				pool[my_sit].card[i+1]=pool[my_sit].card[pool[my_sit].num-2];
+				pool[my_sit].card[i+2]=pool[my_sit].card[pool[my_sit].num-3];
+			}
+		}
+		card1 = (char)current_card;
+		card2 = (char)current_card;
+		card3 = (char)current_card;
+		draw_epk(my_id, check, card1, card2, card3);
+		pool[my_sit].num-=3;
+		sort_card(0);
+		play_mode=GET_CARD;
+		attron(A_REVERSE);
+		show_card(10, INDEX_X+16*2+1, INDEX_Y+1, 1);
+		attroff(A_REVERSE);
+		break;
+	case 12:
+		for (i=0; i<pool[my_sit].out_card_index; i++) {
+			if (pool[my_sit].out_card[i][1]==current_card
+					|| pool[my_sit].out_card[i][2]==current_card)
+				break;
+		}
+		pool[my_sit].out_card[i][0]=12;
+		if (i==pool[my_sit].out_card_index)
+			break;
+		card1 = card2 = card3 = (char)current_card;
+		draw_epk(my_id, check, card1, card2, card3);
+		play_mode=GET_CARD;
+		attron(A_REVERSE);
+		show_card(10, INDEX_X+16*2+1, INDEX_Y+1, 1);
+		attroff(A_REVERSE);
+		break;
+	case 7:
+		play_mode=THROW_CARD;
+		pool[my_sit].card[search_card(my_sit,current_card+1)] =pool[my_sit].card[pool[my_sit].num-1];
+		pool[my_sit].card[search_card(my_sit,current_card+2)] =pool[my_sit].card[pool[my_sit].num-2];
+		card1 = (char)(current_card + 1);
+		card2 = (char)current_card;
+		card3 = (char)(current_card + 2);
+		draw_epk(my_id, check, card1, card2, card3);
+		pool[my_sit].num-=3;
+		sort_card(1);
+		break;
+	case 8:
+		play_mode=THROW_CARD;
+		pool[my_sit].card[search_card(my_sit,current_card-1)] =pool[my_sit].card[pool[my_sit].num-1];
+		pool[my_sit].card[search_card(my_sit,current_card+1)] =pool[my_sit].card[pool[my_sit].num-2];
+		card1 = (char)(current_card - 1);
+		card2 = (char)current_card;
+		card3 = (char)(current_card + 1);
+		draw_epk(my_id, check, card1, card2, card3);
+		pool[my_sit].num-=3;
+		sort_card(1);
+		break;
+	case 9:
+		play_mode=THROW_CARD;
+		pool[my_sit].card[search_card(my_sit,current_card-1)] =pool[my_sit].card[pool[my_sit].num-1];
+		pool[my_sit].card[search_card(my_sit,current_card-2)] =pool[my_sit].card[pool[my_sit].num-2];
+		card1 = (char)(current_card - 2);
+		card2 = (char)current_card;
+		card3 = (char)(current_card - 1);
+		draw_epk(my_id, check, card1, card2, card3);
+		pool[my_sit].num-=3;
+		sort_card(1);
+		break;
+	}
+	if (check!=12) {
+		pool[my_sit].out_card[pool[my_sit].out_card_index][0] = (char)check;
+		pool[my_sit].out_card[pool[my_sit].out_card_index][1]=card1;
+		pool[my_sit].out_card[pool[my_sit].out_card_index][2]=card2;
+		pool[my_sit].out_card[pool[my_sit].out_card_index][3]=card3;
     if (check == 3 || check == 11) {
       pool[my_sit].out_card[pool[my_sit].out_card_index][4] = card3;
       pool[my_sit].out_card[pool[my_sit].out_card_index][5] = 0;

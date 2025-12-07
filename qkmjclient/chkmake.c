@@ -205,12 +205,14 @@ NODEPTR make_three(NODEPTR node) {
 
   /* Get three same cards */
   j = 0;
-  for (i = 0; card_info[i].info; i++) {
-    if (card_info[i].flag && card_info[i].info == lead) {
-      p->info[j++] = lead;
-      card_info[i].flag = 0;
+for(i=0;card_info[i].info;i++)
+  {
+    if(card_info[i].flag && card_info[i].info==lead)
+    {
+      p->info[j++]=(char)lead;
+      card_info[i].flag=0;
     }
-    if (j == 3) goto found_three;
+    if(j==3) goto found_three;
   }
   /* can't find 3 cards */
   free(p);
@@ -241,7 +243,7 @@ NODEPTR make_straight(NODEPTR node) {
   j = 0;
   for (i = 0; card_info[i].info; i++) {
     if (card_info[i].flag && card_info[i].info == lead) {
-      p->info[j++] = lead;
+      p->info[j++] = (char)lead;
       card_info[i].flag = 0;
       lead++;
     }
@@ -275,7 +277,7 @@ NODEPTR make_pair(NODEPTR node) {
   j = 0;
   for (i = 0; card_info[i].info; i++) {
     if (card_info[i].flag && card_info[i].info == lead) {
-      p->info[j++] = lead;
+      p->info[j++] = (char)lead;
       card_info[i].flag = 0;
     }
     if (j == 2) goto found_two;
@@ -346,7 +348,7 @@ int check_make(int sit, int card,
 
   /* Copy the pool to buffer */
   for (i = 0; i < pool[sit].num; i++) pool_buf[i] = pool[sit].card[i];
-  pool_buf[i] = card;
+  pool_buf[i] = (char)card;
   pool_buf[i + 1] = 0;
   /* Sort buffer */
   for (i = 0; i <= pool[sit].num; i++)
@@ -354,7 +356,7 @@ int check_make(int sit, int card,
       if (pool_buf[j] > pool_buf[j + 1]) {
         tmp = pool_buf[j];
         pool_buf[j] = pool_buf[j + 1];
-        pool_buf[j + 1] = tmp;
+        pool_buf[j + 1] = (char)tmp;
       }
   for (i = 0; i < 5; i++) {
     for (j = 0; j < 20; j++) {

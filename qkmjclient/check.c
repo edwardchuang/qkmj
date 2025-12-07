@@ -137,7 +137,7 @@ int check_begin_flower(int sit, int card, int position) /* command for server */
     if (sit == my_sit)
       change_card(position, card);
     else {
-      pool[sit].card[position] = card;
+      pool[sit].card[position] = (char)card;
       snprintf(msg_buf, sizeof(msg_buf), "301%c%c", position, card);
       write_msg(player[table[sit]].sockfd, msg_buf);
     }

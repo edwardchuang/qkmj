@@ -82,7 +82,7 @@ void Tokenize(char* strinput) {
     narg = 0;
     return;
   }
-  Ltok = strlen(token);
+  Ltok = (int)strlen(token);
   strncpy((char*)cmd_argv[narg], token, sizeof(cmd_argv[narg]) - 1);
   cmd_argv[narg][sizeof(cmd_argv[narg]) - 1] = '\0';
   arglenv[narg] = Ltok;
@@ -90,7 +90,7 @@ void Tokenize(char* strinput) {
     token = strtok(NULL, " \n\t\r");
     if (token == NULL) break;
     narg++;
-    Ltok = strlen(token);
+    Ltok = (int)strlen(token);
     strncpy((char*)cmd_argv[narg], token, sizeof(cmd_argv[narg]) - 1);
     cmd_argv[narg][sizeof(cmd_argv[narg]) - 1] = '\0';
     arglenv[narg] = Ltok;
@@ -99,8 +99,8 @@ void Tokenize(char* strinput) {
 
 void my_strupr(char* upper, char* org) {
   int i, len;
-  len = strlen(org);
-  for (i = 0; i < len; i++) upper[i] = toupper(org[i]);
+  len = (int)strlen(org);
+  for (i = 0; i < len; i++) upper[i] = (char)toupper(org[i]);
   upper[len] = '\0';
 }
 

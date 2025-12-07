@@ -86,7 +86,7 @@ int game_log(char* gamemsg) {
 int read_msg(int fd, char* msg) {
   int n;
   char msg_buf[1000];
-  int read_code;
+  ssize_t read_code;
   int log = 0;
 
   n = 0;
@@ -128,7 +128,7 @@ int read_msg(int fd, char* msg) {
 }
 
 void write_msg(int fd, char* msg) {
-  int n;
+  size_t n;
 
   n = strlen(msg);
   if (write(fd, msg, n) < 0) {
@@ -552,7 +552,7 @@ int add_user(int player_id, char* name, char* passwd) {
   struct stat status;
 
   stat(RECORD_FILE, &status);
-  if (!read_user_name("")) record.id = status.st_size / sizeof(record);
+  if (!read_user_name("")) record.id = (unsigned int)(status.st_size / sizeof(record));
   strncpy(record.name, name, sizeof(record.name) - 1);
   record.name[sizeof(record.name) - 1] = '\0';
   strncpy(record.password, genpasswd(passwd), sizeof(record.password) - 1);
@@ -1090,7 +1090,7 @@ void gps_processing() {
                 msg_buf[sizeof(msg_buf) - 1] = '\0';
                 *(msg_buf + 5) = 0;
                 id = atoi(msg_buf);
-                read_user_id(id);
+                read_user_id((unsigned int)id);
                 record.money = atol((char*)buf + 8);
                 record.game_count++;
                 write_record();
@@ -1251,7 +1251,7 @@ char* genpasswd(char* pw) {
     c = saltc[i] + '.';
     if (c > '9') c += 7;
     if (c > 'Z') c += 6;
-    saltc[i] = c;
+    saltc[i] = (char)c;
   }
   strncpy(pwbuf, pw, sizeof(pwbuf) - 1);
   pwbuf[sizeof(pwbuf) - 1] = '\0';
