@@ -1259,13 +1259,27 @@ char * genpasswd(char *pw) {
 	return crypt(pwbuf, saltc);
 }
 
+/* Constant-time string comparison to prevent timing attacks */
+int safe_strcmp(const char *s1, const char *s2) {
+	unsigned char result = 0;
+	while (*s1 && *s2) {
+		result |= (*s1 ^ *s2);
+		s1++;
+		s2++;
+	}
+	// If lengths differ, *s1 or *s2 will be 0, result |= non-zero.
+	// Also ensure both are at end.
+	result |= (*s1 ^ *s2); 
+	return result == 0; // Returns 1 (true) if equal, 0 (false) if not
+}
+
 int checkpasswd(char *passwd, char *test) {
 	static char pwbuf[14];
 	char *pw;
 
 	strncpy(pwbuf, test, 14);
 	pw = crypt(pwbuf, passwd);
-	return (!strcmp(pw, passwd));
+	return safe_strcmp(pw, passwd);
 }
 
 int main(int argc, char **argv) {
