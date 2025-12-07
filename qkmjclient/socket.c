@@ -72,7 +72,7 @@ void init_serv_socket()
     err("Server: cannot open stream socket");
   
   /* bind our local address */
-  bzero((char *)&serv_addr, sizeof(serv_addr));
+  memset((char *)&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
   do
@@ -98,13 +98,13 @@ int init_socket(char *host, int portnum, int *sockfd)
 
   struct hostent *hp;
 
-  bzero((char *) &serv_addr, sizeof(serv_addr));
+  memset((char *) &serv_addr, 0, sizeof(serv_addr));
   serv_addr.sin_family    = AF_INET;
 
   if((hp = gethostbyname(host)) == NULL || hp->h_addrtype != AF_INET) { 
     serv_addr.sin_addr.s_addr = inet_addr(host);
   } else {
-    bcopy(hp->h_addr_list[0], &serv_addr.sin_addr, hp->h_length);
+    memmove(&serv_addr.sin_addr, hp->h_addr_list[0], hp->h_length);
   }
 
   serv_addr.sin_port  = htons(portnum);

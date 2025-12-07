@@ -9,7 +9,10 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <time.h>
 #include <sys/param.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "mjgps.h"
 
@@ -44,7 +47,7 @@ read_user_name (char *name)
     return 0;
 }
 
-int
+void
 read_user_id (unsigned int id)
 {
     if ((fp = fopen (record_file, "r+b")) == NULL)
@@ -75,7 +78,6 @@ write_record ()
 void
 print_record ()
 {
-    char *ctime ();
     struct player_record tmprec;
     char time1[40], time2[40];
     int player_num;
@@ -105,8 +107,11 @@ print_record ()
 
     case 2:
 	printf ("請輸入你要查看的名稱:");
-	gets (name);
-	gets (name);
+	int c;
+	while ((c = getchar()) != '\n' && c != EOF); /* flush stdin */
+	if (fgets (name, sizeof(name), stdin)) {
+		name[strcspn(name, "\n")] = 0;
+	}
 	break;
 
     case 3:
@@ -115,7 +120,7 @@ print_record ()
     case 4:
     case 5:
 	printf ("請輸入金額:");
-	scanf ("%d", &money);
+	scanf ("%ld", &money);
 	break;
 
     default:
@@ -156,8 +161,10 @@ print_record ()
 	    tmprec.password, tmprec.money, tmprec.level, tmprec.login_count,
 		tmprec.game_count, tmprec.last_login_from);
 
-	strcpy (time1, ctime (&tmprec.regist_time));
-	strcpy (time2, ctime (&tmprec.last_login_time));
+	strncpy(time1, ctime (&tmprec.regist_time), sizeof(time1) - 1);
+	time1[sizeof(time1) - 1] = '\0';
+	strncpy(time2, ctime (&tmprec.last_login_time), sizeof(time2) - 1);
+	time2[sizeof(time2) - 1] = '\0';
 
 	time1[strlen (time1) - 1] = 0;
 	time2[strlen (time2) - 1] = 0;
@@ -181,8 +188,11 @@ modify_user ()
     long money;
 
     printf ("請輸入使用者帳號:");
-    gets (account);
-    gets (account);
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF); /* flush stdin */
+    if (fgets (account, sizeof(account), stdin)) {
+        account[strcspn(account, "\n")] = 0;
+    }
     
     int res = read_user_name(account);
     if(res == 0 ){
@@ -203,9 +213,12 @@ modify_user ()
     {
     case 1:
 	printf ("請輸入要更改的名稱:");
-	gets (name);
-	gets (name);
-	strcpy (record.name, name);
+	while ((c = getchar()) != '\n' && c != EOF); /* flush stdin */
+	if (fgets (name, sizeof(name), stdin)) {
+		name[strcspn(name, "\n")] = 0;
+	}
+	strncpy (record.name, name, sizeof(record.name) - 1);
+	record.name[sizeof(record.name) - 1] = '\0';
 	printf ("改名為 %s\n", name);
 	break;
 
@@ -216,7 +229,7 @@ modify_user ()
 
     case 3:
 	printf ("請輸入要更改的金額:");
-	scanf ("%d", &money);
+	scanf ("%ld", &money);
 	record.money = money;
 	printf ("金額更改為 %ld\n", money);
 	break;
@@ -232,7 +245,8 @@ main (int argc, char **argv)
 {
     int i, id;
 
-    strcpy (record_file, argc < 2 ? DEFAULT_RECORD_FILE : argv[1]);
+    strncpy (record_file, argc < 2 ? DEFAULT_RECORD_FILE : argv[1], sizeof(record_file) - 1);
+    record_file[sizeof(record_file) - 1] = '\0';
 
     while (1)
     {

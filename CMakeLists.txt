@@ -77,6 +77,11 @@ target_link_libraries(mjgps
     ${CRYPT_LIB}
 )
 
+# --- mjrec Target ---
+add_executable(mjrec
+    qkmjserver/mjrec.c
+)
+
 # --- qkmj Target ---
 add_executable(qkmj
     qkmjclient/card.c

@@ -719,7 +719,7 @@ void gps()
 	  
   for(;;)
   {
-	bcopy((char *) &afds,(char *) &rfds,sizeof(rfds));
+	memmove((char *) &rfds,(char *) &afds,sizeof(rfds));
     
     if( table_sockfd >= nfds) { 
     	nfds = table_sockfd +1 ;
