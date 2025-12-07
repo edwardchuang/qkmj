@@ -103,7 +103,7 @@ int read_msg(int fd, char *msg) {
 		read_code = read(fd, msg, 1);
 		if (read_code == -1) {
 			if (errno != EWOULDBLOCK) {
-				sprintf(msg_buf,"fail in read_msg,errno = %d",errno);
+				snprintf(msg_buf, sizeof(msg_buf), "fail in read_msg,errno = %d",errno);
 				err(msg_buf);
 				alarm(0);
 				return 0;
@@ -145,7 +145,7 @@ void write_msg(int fd, char *msg) {
 void display_msg(int player_id, char *msg) {
 	char msg_buf[1000];
 
-	sprintf(msg_buf, "101%s", msg);
+	snprintf(msg_buf, sizeof(msg_buf), "101%s", msg);
 	write_msg(player[player_id].sockfd, msg_buf);
 }
 
@@ -184,13 +184,13 @@ int convert_msg_id(int player_id, char *msg) {
 	char msg_buf[1000];
 
 	if (strlen(msg) < 3) {
-		sprintf(msg_buf, "Error msg: %s", msg);
+		snprintf(msg_buf, sizeof(msg_buf), "Error msg: %s", msg);
 		err(msg_buf);
 		return 0;
 	}
 	for (i = 0; i < 3; i++)
 		if (msg[i] < '0' || msg[i] > '9') {
-			sprintf(msg_buf, "%d", msg[i]);
+			snprintf(msg_buf, sizeof(msg_buf), "%d", msg[i]);
 			err(msg_buf);
 		}
 	return (msg[0] - '0') * 100 + (msg[1] - '0') * 10 + (msg[2] - '0');
@@ -214,13 +214,9 @@ void list_player(int fd) {
 			strcat(msg_buf, "  ");
 		}
 	}
-	if (strlen(msg_buf) > 4)
-		write_msg(fd, msg_buf);
-
 	write_msg(fd, "101--------------------------------------------------");
-	sprintf(msg_buf, "101共 %d 人", total_num);
-	write_msg(fd, msg_buf);
-}
+		snprintf(msg_buf, sizeof(msg_buf), "101共 %d 人", total_num);
+		write_msg(fd, msg_buf);}
 
 void list_table(int fd, int mode) {
 	int i;
@@ -236,7 +232,7 @@ void list_table(int fd, int mode) {
 					err("SERV=5\n");
 				else {
 					err("LIST TABLE ERROR!");
-					sprintf(msg_buf, "serv=%d\n", player[i].serv);
+					snprintf(msg_buf, sizeof(msg_buf), "serv=%d\n", player[i].serv);
 					close_id(i);
 					err(msg_buf);
 				}
@@ -244,13 +240,13 @@ void list_table(int fd, int mode) {
 			if (mode == 2 && player[i].serv >= 4)
 				continue;
 			total_num++;
-			sprintf(msg_buf, "101   %-10s %-4s  %s", player[i].name,
+			snprintf(msg_buf, sizeof(msg_buf), "101   %-10s %-4s  %s", player[i].name,
 					number_map[player[i].serv], player[i].note);
 			write_msg(fd, msg_buf);
 		}
 	}
 	write_msg(fd, "101--------------------------------------------------");
-	sprintf(msg_buf, "101共 %d 桌", total_num);
+	snprintf(msg_buf, sizeof(msg_buf), "101共 %d 桌", total_num);
 	write_msg(fd, msg_buf);
 }
 
@@ -270,9 +266,9 @@ void list_stat(int fd, char *name) {
 		return;
 	}
 	//sprintf(msg_buf, "101◇名稱:%s  %s", record.name, record.last_login_from);
-	sprintf(msg_buf, "101◇名稱:%s ", record.name);
+	snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name);
 	if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-		sprintf(msg_buf, "(stat) Cannot open file\n");
+		snprintf(msg_buf, sizeof(msg_buf), "(stat) Cannot open file\n");
 		err(msg_buf);
 		return;
 	}
@@ -288,8 +284,8 @@ void list_stat(int fd, char *name) {
 	if (record.game_count < 16)
 		strcpy(order_buf, "無");
 	else
-		sprintf(order_buf, "%d/%d", order, total_num);
-	sprintf(msg_buf1, "101◇金額:%ld 排名:%s 上線次數:%d 已玩局數:%d", record.money,
+		snprintf(order_buf, sizeof(order_buf), "%d/%d", order, total_num);
+	snprintf(msg_buf1, sizeof(msg_buf1), "101◇金額:%ld 排名:%s 上線次數:%d 已玩局數:%d", record.money,
 			order_buf, record.login_count, record.game_count);
 	write_msg(fd, msg_buf);
 	write_msg(fd, msg_buf1);
@@ -312,7 +308,7 @@ void who(int fd, char *name){
 	write_msg(fd, "101找不到此桌");
 	return;
 	found_serv: ;
-	sprintf(msg_buf, "101%s  ", player[serv_id].name);
+	snprintf(msg_buf, sizeof(msg_buf), "101%s  ", player[serv_id].name);
 	write_msg(fd, "101----------------   此桌使用者   ------------------");
 	for (i = 1; i < MAX_PLAYER; i++){
 		if (player[i].join == serv_id) {
@@ -320,8 +316,8 @@ void who(int fd, char *name){
 				write_msg(fd, msg_buf);
 				strcpy(msg_buf, "101");
 			}
-			strcat(msg_buf, player[i].name);
-			strcat(msg_buf, "   ");
+			strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
+			strncat(msg_buf, "   ", sizeof(msg_buf) - strlen(msg_buf) - 1);
 		}
 	}
 	if (strlen(msg_buf) > 4){
@@ -344,13 +340,13 @@ void lurker(int fd) {
 				write_msg(fd, msg_buf);
 				strcpy(msg_buf, "101");
 			}
-			strcat(msg_buf, player[i].name);
-			strcat(msg_buf, "  ");
+			strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
+			strncat(msg_buf, "  ", sizeof(msg_buf) - strlen(msg_buf) - 1);
 		}
 	if (strlen(msg_buf) > 4)
 		write_msg(fd, msg_buf);
 	write_msg(fd, "101--------------------------------------------------");
-	sprintf(msg_buf, "101共 %d 人", total_num);
+	snprintf(msg_buf, sizeof(msg_buf), "101共 %d 人", total_num);
 	write_msg(fd, msg_buf);
 }
 
@@ -364,30 +360,30 @@ void find_user(int fd, char *name) {
 	if (id > 0) {
 		if (player[id].login == 2) {
 			if (player[id].join == 0 && player[id].serv == 0) {
-				sprintf(msg_buf, "101◇%s □置中", name);
+				snprintf(msg_buf, sizeof(msg_buf), "101◇%s □置中", name);
 				write_msg(fd, msg_buf);
 			}
 			if (player[id].join) {
-				sprintf(msg_buf, "101◇%s 在 %s 桌內", name,
+				snprintf(msg_buf, sizeof(msg_buf), "101◇%s 在 %s 桌內", name,
 						player[player[id].join].name);
 				write_msg(fd, msg_buf);
 			}
 			if (player[id].serv) {
-				sprintf(msg_buf, "101◇%s 在 %s 桌內", name, player[id].name);
+				snprintf(msg_buf, sizeof(msg_buf), "101◇%s 在 %s 桌內", name, player[id].name);
 				write_msg(fd, msg_buf);
 			}
 			return;
 		}
 	}
 	if (!read_user_name(name)) {
-		sprintf(msg_buf, "101◇沒有 %s 這個人", name);
+		snprintf(msg_buf, sizeof(msg_buf), "101◇沒有 %s 這個人", name);
 		write_msg(fd, msg_buf);
 	} else {
-		sprintf(msg_buf, "101◇%s 不在線上", name);
+		snprintf(msg_buf, sizeof(msg_buf), "101◇%s 不在線上", name);
 		write_msg(fd, msg_buf);
 		strcpy(last_login_time, ctime(&record.last_login_time));
 		last_login_time[strlen (last_login_time) - 1] = 0;
-		sprintf(msg_buf, "101◇上次連線時間: %s", last_login_time);
+		snprintf(msg_buf, sizeof(msg_buf), "101◇上次連線時間: %s", last_login_time);
 		write_msg(fd, msg_buf);
 	}
 }
@@ -400,7 +396,7 @@ void broadcast(int player_id, char *msg) {
 		return;
 	for (i = 1; i < MAX_PLAYER; i++){
 		if (player[i].login == 2) {
-			sprintf(msg_buf, "101%s", msg);
+			snprintf(msg_buf, sizeof(msg_buf), "101%s", msg);
 			write_msg(player[i].sockfd, msg_buf);
 		}
 	}
@@ -415,7 +411,7 @@ void send_msg(int player_id, char *msg) {
 	str2 = msg + strlen(str1) + 1;
 	for (i = 1; i < MAX_PLAYER; i++)
 		if (player[i].login == 2 && strcmp(player[i].name, str1) == 0) {
-			sprintf(msg_buf, "101*%s* %s", player[player_id].name, str2);
+			snprintf(msg_buf, sizeof(msg_buf), "101*%s* %s", player[player_id].name, str2);
 			write_msg(player[i].sockfd, msg_buf);
 			return;
 		}
@@ -428,7 +424,7 @@ void invite(int player_id, char *name) {
 
 	for (i = 1; i < MAX_PLAYER; i++)
 		if (player[i].login == 2 && strcmp(player[i].name, name) == 0) {
-			sprintf(msg_buf, "101%s 邀請你加入 %s", player[player_id].name,
+			snprintf(msg_buf, sizeof(msg_buf), "101%s 邀請你加入 %s", player[player_id].name,
 					(player[player_id].join == 0) ? player[player_id].name
 							: player[player[player_id].join].name);
 			write_msg(player[i].sockfd, msg_buf);
@@ -498,7 +494,7 @@ int read_user_name(char *name) {
 	char msg_buf[1000];
 
 	if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
-		sprintf(msg_buf, "(read_user_name) Cannot open file!\n");
+		snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) Cannot open file!\n");
 		err(msg_buf);
 		return 0;
 	}
@@ -518,7 +514,7 @@ int read_user_name_update(char *name,int player_id){
 	char msg_buf[1000];
 
 	if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
-		sprintf(msg_buf, "(read_user_name) Cannot open file!\n");
+		snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) Cannot open file!\n");
 		err(msg_buf);
 		return 0;
 	}
@@ -542,7 +538,7 @@ void read_user_id(unsigned int id) {
 	char msg_buf[1000];
 
 	if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
-		sprintf(msg_buf, "(read_user_id) Cannot open file!\n");
+		snprintf(msg_buf, sizeof(msg_buf), "(read_user_id) Cannot open file!\n");
 		err(msg_buf);
 		return;
 	}
@@ -558,8 +554,10 @@ int add_user(int player_id, char *name, char *passwd) {
 	stat(RECORD_FILE, &status);
 	if (!read_user_name(""))
 		record.id = status.st_size / sizeof (record);
-	strcpy(record.name, name);
-	strcpy(record.password, genpasswd(passwd));
+	strncpy(record.name, name, sizeof(record.name) - 1);
+	record.name[sizeof(record.name) - 1] = '\0';
+	strncpy(record.password, genpasswd(passwd), sizeof(record.password) - 1);
+	record.password[sizeof(record.password) - 1] = '\0';
 	record.money = DEFAULT_MONEY;
 	record.level = 0;
 	record.login_count = 1;
@@ -568,9 +566,9 @@ int add_user(int player_id, char *name, char *passwd) {
 	record.last_login_time = record.regist_time;
 	record.last_login_from[0] = 0;
 	if (player[player_id].username[0] != 0) {
-		sprintf(record.last_login_from, "%s@", player[player_id].username);
+		snprintf(record.last_login_from, sizeof(record.last_login_from), "%s@", player[player_id].username);
 	}
-	strcat(record.last_login_from, lookup(&(player[player_id].addr)));
+	strncat(record.last_login_from, lookup(&(player[player_id].addr)), sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
 	if (check_user(player_id)) {
 		write_record();
 		return 1;
@@ -585,13 +583,14 @@ int check_user(int player_id) {
 	FILE *baduser_fp;
 
 	if ((baduser_fp = fopen(BADUSER_FILE, "r")) == NULL) {
-		sprintf(msg_buf, "Cannot open file %s", BADUSER_FILE);
+		snprintf(msg_buf, sizeof(msg_buf), "Cannot open file %s", BADUSER_FILE);
 		err(msg_buf);
 		return 1;
 	}
-	strcpy(from, lookup(&(player[player_id].addr)));
-	sprintf(email, "%s@", player[player_id].username);
-	strcat(email, from);
+	strncpy(from, lookup(&(player[player_id].addr)), sizeof(from) - 1);
+	from[sizeof(from) - 1] = '\0';
+	snprintf(email, sizeof(email), "%s@", player[player_id].username);
+	strncat(email, from, sizeof(email) - strlen(email) - 1);
 
 	while (fgets(msg_buf, 80, baduser_fp) != NULL) {
 		msg_buf[strlen (msg_buf) - 1] = 0;
@@ -611,7 +610,7 @@ void write_record() {
 	char msg_buf[1000];
 
 	if ((fp = fopen(RECORD_FILE, "r+b")) == NULL) {
-		sprintf(msg_buf, "(write_record) Cannot open file!");
+		snprintf(msg_buf, sizeof(msg_buf), "(write_record) Cannot open file!");
 		err(msg_buf);
 		return;
 	}
@@ -626,14 +625,14 @@ void print_news(int fd, char *name) {
 	char msg_buf[1000];
 
 	if ((news_fp = fopen(name, "r")) == NULL) {
-		sprintf(msg_buf, "Cannot open file %s\n", NEWS_FILE);
+		snprintf(msg_buf, sizeof(msg_buf), "Cannot open file %s\n", NEWS_FILE);
 		err(msg_buf);
 		return;
 	}
 	while (fgets(msg, 80, news_fp) != NULL) {
 		msg[strlen (msg) - 1] = 0;
 		strcpy(msg_buf, "101");
-		strcat(msg_buf, msg);
+		strncat(msg_buf, msg, sizeof(msg_buf) - strlen(msg_buf) - 1);
 		write_msg(fd, msg_buf);
 	}
 	fclose(news_fp);
@@ -652,7 +651,7 @@ void welcome_user(int player_id) {
 		write_msg(player[player_id].sockfd, "010");
 		return;
 	}
-	sprintf(msg_buf, "101★★★★★　歡迎 %s 來到ＱＫ麻將  ★★★★★", player[player_id].name);
+	snprintf(msg_buf, sizeof(msg_buf), "101★★★★★　歡迎 %s 來到ＱＫ麻將  ★★★★★", player[player_id].name);
 	write_msg(player[player_id].sockfd, msg_buf);
 	print_news(player[player_id].sockfd, NEWS_FILE);
 	/*
@@ -670,7 +669,7 @@ void welcome_user(int player_id) {
 	show_online_users(player_id);
 	list_stat(player[player_id].sockfd, player[player_id].name);
 	write_msg(player[player_id].sockfd, "003");
-	sprintf(msg_buf, "120%5d%ld", player[player_id].id, player[player_id].money);
+	snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id, player[player_id].money);
 	write_msg(player[player_id].sockfd, msg_buf);
 	player[player_id].input_mode = CMD_MODE;
 }
@@ -685,7 +684,7 @@ void show_online_users(int player_id){
 
 	fd = player[player_id].sockfd;
 	if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-		sprintf(msg_buf, "(current) cannot open file\n");
+		snprintf(msg_buf, sizeof(msg_buf), "(current) cannot open file\n");
 		err(msg_buf);
 	} else {
 		rewind(fp);
@@ -699,7 +698,7 @@ void show_online_users(int player_id){
 		if (player[i].login == 2)
 			online_num++;
 	}
-	sprintf(msg_buf, "101◇目前上線人數: %d 人       注冊人數: %d 人", online_num, total_num);
+	snprintf(msg_buf, sizeof(msg_buf), "101◇目前上線人數: %d 人       注冊人數: %d 人", online_num, total_num);
 	write_msg(player[player_id].sockfd, msg_buf);
 }
 void show_current_state(int player_id) {
@@ -710,13 +709,13 @@ void show_current_state(int player_id) {
 	show_online_users(player_id);	
 	list_stat(player[player_id].sockfd, player[player_id].name);
 	write_msg(player[player_id].sockfd, "003");
-	sprintf(msg_buf, "120%5d%ld", player[player_id].id, player[player_id].money);
+	snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id, player[player_id].money);
 	write_msg(player[player_id].sockfd, msg_buf);
 }
 
 void update_client_money(int player_id){
 	char msg_buf[1000];
-	sprintf(msg_buf, "120%5d%ld", player[player_id].id, player[player_id].money);
+	snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id, player[player_id].money);
 	write_msg(player[player_id].sockfd, msg_buf);
 }
 
@@ -755,16 +754,16 @@ void gps_processing() {
 	printf("%d\n", nfds);
 	FD_ZERO(&afds);
 	FD_SET(gps_sockfd, &afds);
-	bcopy((char *) &afds, (char *) &rfds, sizeof (rfds));
+	memmove((char *) &rfds, (char *) &afds, sizeof (rfds));
 	tm.tv_sec = 0;
 	tm.tv_usec = 0;
 	/*
 	 * Waiting for connections 
 	 */
 	for (;;) {
-		bcopy((char *) &afds, (char *) &rfds, sizeof (rfds));
+		memmove((char *) &rfds, (char *) &afds, sizeof (rfds));
 		if (select(nfds, &rfds, (fd_set *) 0, (fd_set *) 0, 0) < 0) {
-			sprintf(msg_buf, "select: %d %s\n", errno, strerror(errno));
+			snprintf(msg_buf, sizeof(msg_buf), "select: %d %s\n", errno, strerror(errno));
 			err(msg_buf);
 			continue;
 		}
@@ -781,8 +780,9 @@ void gps_processing() {
 			FD_SET(player[player_id].sockfd, &afds);
 			fcntl(player[player_id].sockfd, F_SETFL, FNDELAY);
 			player[player_id].login = 1;
-			strcpy(climark, lookup(&(player[player_id].addr)));
-			sprintf(msg_buf, "Connectted with %s\n", climark);
+			strncpy(climark, lookup(&(player[player_id].addr)), sizeof(climark) - 1);
+			climark[sizeof(climark) - 1] = '\0';
+			snprintf(msg_buf, sizeof(msg_buf), "Connectted with %s\n", climark);
 			err(msg_buf);
 
 			time(&current_time);
@@ -826,19 +826,22 @@ void gps_processing() {
 						 * get username 
 						 */
 							buf[15] = 0;
-							strcpy(player[player_id].username, (char*)buf + 3);
+							strncpy(player[player_id].username, (char*)buf + 3, sizeof(player[player_id].username) - 1);
+							player[player_id].username[sizeof(player[player_id].username) - 1] = '\0';
 							break;
 						case 100: /*
 						 * check version 
 						 */
 							*(buf + 6) = 0;
-							strcpy(player[player_id].version, (char*)buf + 3);
+							strncpy(player[player_id].version, (char*)buf + 3, sizeof(player[player_id].version) - 1);
+							player[player_id].version[sizeof(player[player_id].version) - 1] = '\0';
 							break;
 						case 101: /*
 						 * user login 
 						 */
 							buf[13] = 0;
-							strcpy(player[player_id].name, (char*)buf + 3);
+							strncpy(player[player_id].name, (char*)buf + 3, sizeof(player[player_id].name) - 1);
+							player[player_id].name[sizeof(player[player_id].name) - 1] = '\0';
 							for (i = 0; i < strlen((char*)buf) - 3; i++) {
 								if (buf[3 + i] <= 32 && buf[3 + i] != 0) {
 									write_msg(player[player_id].sockfd,
@@ -879,11 +882,11 @@ void gps_processing() {
 									time(&record.last_login_time);
 									record.last_login_from[0] = 0;
 									if (player[player_id].username[0] != 0) {
-										sprintf(record.last_login_from, "%s@",
+										snprintf(record.last_login_from, sizeof(record.last_login_from), "%s@",
 												player[player_id].username);
 									}
-									strcat(record.last_login_from,
-											lookup(&player[player_id].addr));
+									strncat(record.last_login_from,
+											lookup(&player[player_id].addr), sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
 									record.login_count++;
 									write_record();
 									if (check_user(player_id))
@@ -911,7 +914,8 @@ void gps_processing() {
 						 */
 							*(buf + 11) = 0;
 							read_user_name(player[player_id].name);
-							strcpy(record.password, genpasswd((char*)buf + 3));
+							strncpy(record.password, genpasswd((char*)buf + 3), sizeof(record.password) - 1);
+							record.password[sizeof(record.password) - 1] = '\0';
 							write_record();
 							break;
 						case 105:
@@ -928,11 +932,11 @@ void gps_processing() {
 								time(&record.last_login_time);
 								record.last_login_from[0] = 0;
 								if (player[player_id].username[0] != 0) {
-									sprintf(record.last_login_from, "%s@",
+									snprintf(record.last_login_from, sizeof(record.last_login_from), "%s@",
 											player[player_id].username);
 								}
-								strcat(record.last_login_from,
-										lookup(&player[player_id].addr));
+								strncat(record.last_login_from,
+										lookup(&player[player_id].addr), sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
 								record.login_count++;
 								write_record();
 								if (check_user(player_id))
@@ -948,7 +952,8 @@ void gps_processing() {
 							list_table(player[player_id].sockfd, 1);
 							break;
 						case 4:
-							strcpy(player[player_id].note, (char*)buf + 3);
+							strncpy(player[player_id].note, (char*)buf + 3, sizeof(player[player_id].note) - 1);
+							player[player_id].note[sizeof(player[player_id].note) - 1] = '\0';
 							break;
 						case 5:
 							show_online_users(player_id);
@@ -975,13 +980,13 @@ void gps_processing() {
 							 * Check for table server  
 							 */
 							if(!read_user_name_update(player[player_id].name,player_id)){
-								sprintf(msg_buf,"101查無此人");
+								snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
 							}						
 							update_client_money(player_id);
 							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								sprintf(msg_buf,"101您的賭幣（%ld）不足，必須超過 %d 元才能加入牌桌",
+								snprintf(msg_buf, sizeof(msg_buf), "101您的賭幣（%ld）不足，必須超過 %d 元才能加入牌桌",
 										player[player_id].money , MIN_JOIN_MONEY);
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
@@ -997,15 +1002,16 @@ void gps_processing() {
 													"101此桌人數已滿!");
 											goto full;
 										}
-										sprintf(msg_buf, "120%5d%ld",
+										snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld",
 												player[player_id].id,
 												player[player_id].money);
 										write_msg(player[i].sockfd, msg_buf);
-										sprintf(msg_buf, "211%s",
+										snprintf(msg_buf, sizeof(msg_buf), "211%s",
 												player[player_id].name);
 										write_msg(player[i].sockfd, msg_buf);
-										sprintf(
+										snprintf(
 												msg_buf,
+												sizeof(msg_buf),
 												"0110%s %d",
 												inet_ntoa(player[i].addr.sin_addr),
 												player[i].port);
@@ -1024,13 +1030,13 @@ void gps_processing() {
 							break;
 						case 12:
 							if(!read_user_name_update(player[player_id].name,player_id)){
-								sprintf(msg_buf,"101查無此人");
+								snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
 							}
 							update_client_money(player_id);
 							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								sprintf(msg_buf,"101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
+								snprintf(msg_buf, sizeof(msg_buf), "101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
 										player[player_id].money , MIN_JOIN_MONEY);
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
@@ -1055,13 +1061,13 @@ void gps_processing() {
 							break;
 						case 14://檢查開桌資格
 							if(!read_user_name_update(player[player_id].name,player_id)){
-								sprintf(msg_buf,"101查無此人");
+								snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
 							}							
 							update_client_money(player_id);
 							if (player[player_id].money <= MIN_JOIN_MONEY ){
-								sprintf(msg_buf,"101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
+								snprintf(msg_buf, sizeof(msg_buf), "101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
 										player[player_id].money , MIN_JOIN_MONEY);
 								write_msg(player[player_id].sockfd,msg_buf);
 								break;
@@ -1069,7 +1075,8 @@ void gps_processing() {
 							write_msg(player[player_id].sockfd,"012");//確認開桌
 							break;
 						case 20://WIN GAME
-							strcpy(msg_buf, (char*)buf + 3);
+							strncpy(msg_buf, (char*)buf + 3, sizeof(msg_buf) - 1);
+							msg_buf[sizeof(msg_buf) - 1] = '\0';
 							*(msg_buf + 5) = 0;
 							id = atoi(msg_buf);
 							read_user_id(id);
@@ -1134,12 +1141,12 @@ void gps_processing() {
 								shutdown_server();
 							break;
 						default:
-							sprintf(msg_buf,
+							snprintf(msg_buf, sizeof(msg_buf),
 									"### cmd=%d player_id=%d sockfd=%d ###\n",
 									msg_id, player_id, player[player_id].sockfd);
 							err(msg_buf);
 							close_connection(player_id);
-							sprintf(msg_buf,
+							snprintf(msg_buf, sizeof(msg_buf),
 									"Connection to %s error, closed it\n",
 									lookup(&(player[player_id].addr)));
 							err(msg_buf);
@@ -1157,7 +1164,7 @@ void close_id(int player_id) {
 	char msg_buf[1000];
 
 	close_connection(player_id);
-	sprintf(msg_buf, "Connection to %s closed\n",
+	snprintf(msg_buf, sizeof(msg_buf), "Connection to %s closed\n",
 			lookup(&(player[player_id].addr)));
 	err(msg_buf);
 }
@@ -1185,7 +1192,7 @@ void shutdown_server() {
 		if (player[i].login)
 			shutdown(player[i].sockfd, 2);
 	}
-	sprintf(msg_buf, "QKMJ Server shutdown\n");
+	snprintf(msg_buf, sizeof(msg_buf), "QKMJ Server shutdown\n");
 	err(msg_buf);
 	exit(0);
 }
@@ -1247,7 +1254,8 @@ char * genpasswd(char *pw) {
 			c += 6;
 		saltc[i] = c;
 	}
-	strcpy(pwbuf, pw);
+	strncpy(pwbuf, pw, sizeof(pwbuf) - 1);
+	pwbuf[sizeof(pwbuf) - 1] = '\0';
 	return crypt(pwbuf, saltc);
 }
 
@@ -1282,7 +1290,8 @@ int main(int argc, char **argv) {
 		gps_port = atoi(argv[1]);
 		printf("Using port %s\n", argv[1]);
 	}
-	strcpy(gps_ip, DEFAULT_GPS_IP);
+	strncpy(gps_ip, DEFAULT_GPS_IP, sizeof(gps_ip) - 1);
+	gps_ip[sizeof(gps_ip) - 1] = '\0';
 	init_socket();
 	init_variable();
 	gps_processing();

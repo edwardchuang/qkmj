@@ -33,7 +33,7 @@ int convert_msg_id(unsigned char *msg)
      if(msg[i]<'0' || msg[i]>'9')
      {
        display_comment("Invalid message id");
-       sprintf(msg_buf,"From %d (%d) id=%d len=%lu %s", tt,gps_sockfd,msg[i],(unsigned long)strlen((char*)msg),msg);
+       snprintf(msg_buf, sizeof(msg_buf), "From %d (%d) id=%d len=%lu %s", tt,gps_sockfd,msg[i],(unsigned long)strlen((char*)msg),msg);
        display_comment(msg_buf);
       }
    return(msg[0]-'0')*100+(msg[1]-'0')*10+(msg[2]-'0');
@@ -50,7 +50,8 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
   int alen;
 
   tt=player_id;
-  strcpy((char*)buf,(char*)id_buf);
+  strncpy((char*)buf,(char*)id_buf, sizeof(buf) - 1);
+  buf[sizeof(buf) - 1] = '\0';
   msg_id=convert_msg_id(id_buf);
 /*
   sprintf(msg_buf,"%d from %d %d",msg_id,player_id,msg_type);
@@ -64,22 +65,24 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
         {
           case 2:
             if(my_pass[0]!=0)
-              strcpy(ans_buf,(char*)my_pass);
+              strncpy(ans_buf,(char*)my_pass, sizeof(ans_buf) - 1);
             else
             {
               ans_buf[0]=0;
               ask_question("請輸入你的密碼：",ans_buf,8,0);
               ans_buf[8]=0;
             }
-            sprintf(msg_buf,"102%s",ans_buf);
+            ans_buf[sizeof(ans_buf) - 1] = '\0';
+            snprintf(msg_buf, sizeof(msg_buf), "102%s",ans_buf);
             write_msg(gps_sockfd,msg_buf);
-            strcpy((char*)my_pass,ans_buf);
+            strncpy((char*)my_pass,ans_buf, sizeof(my_pass) - 1);
+            my_pass[sizeof(my_pass) - 1] = '\0';
             break;
           case 3:
             pass_login=1;
             input_mode=TALK_MODE;
             display_comment("請打 /HELP 查看簡單指令說明，/Exit 離開");
-            sprintf(msg_buf,"004%s",my_note);
+            snprintf(msg_buf, sizeof(msg_buf), "004%s",my_note);
             write_msg(gps_sockfd,msg_buf);
             break;
           case 4:
@@ -93,9 +96,10 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
               ask_question("密碼錯誤! 請重新輸入你的名稱：",ans_buf,10,1);
             } while(ans_buf[0]==0);
             ans_buf[10]=0;
-            sprintf(msg_buf,"101%s",ans_buf);
+            snprintf(msg_buf, sizeof(msg_buf), "101%s",ans_buf);
             write_msg(gps_sockfd,msg_buf);
-            strcpy((char*)my_name,ans_buf);
+            strncpy((char*)my_name,ans_buf, sizeof(my_name) - 1);
+            my_name[sizeof(my_name) - 1] = '\0';
             break;
           case 5:   /* creat a new account */
             ans_buf[0]=0;
@@ -112,9 +116,10 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
               {
                 if(strcmp(ans_buf,ans_buf1)==0)
                 {
-                  sprintf(msg_buf,"103%s",ans_buf);
+                  snprintf(msg_buf, sizeof(msg_buf), "103%s",ans_buf);
                   write_msg(gps_sockfd,msg_buf);
-                  strcpy((char*)my_pass,ans_buf);
+                  strncpy((char*)my_pass,ans_buf, sizeof(my_pass) - 1);
+                  my_pass[sizeof(my_pass) - 1] = '\0';
                   break;
                 }
                 else
@@ -136,9 +141,10 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
                 ask_question("請重新輸入你的名稱：",ans_buf,10,1);
               } while(ans_buf[0]==0);
               ans_buf[10]=0;
-              sprintf(msg_buf,"101%s",ans_buf);
+              snprintf(msg_buf, sizeof(msg_buf), "101%s",ans_buf);
               write_msg(gps_sockfd,msg_buf);
-              strcpy((char*)my_name,ans_buf);
+              strncpy((char*)my_name,ans_buf, sizeof(my_name) - 1);
+              my_name[sizeof(my_name) - 1] = '\0';
             }
             break;
           case 6:
@@ -179,7 +185,7 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
             break;
           case 12://開桌
               init_serv_socket();
-              sprintf(msg_buf,"012%d",SERV_PORT - 1);
+              snprintf(msg_buf, sizeof(msg_buf), "012%d",SERV_PORT - 1);
               write_msg(gps_sockfd,msg_buf);
               my_id=1;
               in_serv=1;
@@ -188,7 +194,8 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
               player[1].sit=1;
               player[1].money=my_money;
               player[1].id=my_gps_id;
-              strcpy(player[1].name,(char*)my_name);
+              strncpy(player[1].name,(char*)my_name, sizeof(player[1].name) - 1);
+              player[1].name[sizeof(player[1].name) - 1] = '\0';
               my_sit=1;
               for(i=0;i<=4;i++)
                 table[i]=0;
@@ -199,7 +206,8 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
                 opening();
                 open_deal();
               }
-              strcpy(player[1].name,(char*)my_name);
+              strncpy(player[1].name,(char*)my_name, sizeof(player[1].name) - 1);
+              player[1].name[sizeof(player[1].name) - 1] = '\0';
               player[1].in_table=1;
               send_gps_line("您已建立新桌，目前人數1人，可使用 /who 查詢本桌清單");
               send_gps_line("如要關桌請輸入 /Leave (/L) 踢除使用者請用 /Kick ");
@@ -211,7 +219,8 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
             display_news(gps_sockfd);
             break;
           case 120:
-            strcpy(msg_buf,(char*)buf+3);
+            strncpy(msg_buf, (char*)buf + 3, sizeof(msg_buf) - 1);
+            msg_buf[sizeof(msg_buf) - 1] = '\0';
             *(msg_buf+5)=0;
             new_client_id=atoi(msg_buf);
             new_client_money=atol((char*)buf+8);
@@ -226,11 +235,12 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
             endwin();
             break;
           case 211:
-            strcpy(new_client_name,(char*)buf+3);
+            strncpy(new_client_name, (char*)buf + 3, sizeof(new_client_name) - 1);
+            new_client_name[sizeof(new_client_name) - 1] = '\0';
             new_client=1;
             break;
           default:
-            sprintf(msg_buf,"msg_id=%d",msg_id);
+            snprintf(msg_buf, sizeof(msg_buf), "msg_id=%d",msg_id);
             display_comment(msg_buf);
         }
         break;
@@ -266,15 +276,15 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
                   /* Others throw a card */
                   pool[player[player_id].sit].time+=thinktime();
                   display_time(player[player_id].sit);
-                  sprintf(msg_buf,"312%c%f",player[player_id].sit,
+                  snprintf(msg_buf, sizeof(msg_buf), "312%c%f",player[player_id].sit,
                           pool[player[player_id].sit].time);
                   broadcast_msg(1,msg_buf);
                   pool[player[player_id].sit].first_round=0;
                   in_kang=0;
                   show_newcard(player[player_id].sit,3);
-                  sprintf(msg_buf,"314%c%c",player[player_id].sit,3);
+                  snprintf(msg_buf, sizeof(msg_buf), "314%c%c",player[player_id].sit,3);
                   broadcast_msg(player_id,msg_buf);
-                  sprintf(msg_buf,"402%c%c",player_id,buf[3]);
+                  snprintf(msg_buf, sizeof(msg_buf), "402%c%c",player_id,buf[3]);
                   broadcast_msg(player_id,msg_buf);
                   current_id=player_id;
                   current_card=buf[3];
@@ -303,7 +313,7 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
                   {
                     if(check_flag[i][j])
                     {
-                      sprintf(msg_buf,"501%c%c%c%c",check_flag[i][1]+'0',
+                      snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c",check_flag[i][1]+'0',
                         check_flag[i][2]+'0',check_flag[i][3]+'0',
                         check_flag[i][4]+'0');
                       write_msg(player[table[i]].sockfd,msg_buf);
@@ -338,7 +348,7 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
                 case 515:
                   next_player_request=0;
                   turn=player[player_id].sit;
-                  sprintf(msg_buf,"310%c",turn);
+                  snprintf(msg_buf, sizeof(msg_buf), "310%c",turn);
                   broadcast_msg(player_id,msg_buf);
                   display_point(turn);
                   return_cursor();
@@ -455,27 +465,30 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
               write_msg(gps_sockfd,"201");//更新一下目前線上人數跟內容
               break;
             case 201:  /* get the new comer's info */
-              strcpy(player[buf[3]].name,(char*)buf+6);
+              strncpy(player[buf[3]].name, (char*)buf + 6, sizeof(player[buf[3]].name) - 1);
+              player[buf[3]].name[sizeof(player[buf[3]].name) - 1] = '\0';
               player[buf[3]].in_table = 1;
               player[buf[3]].sit = buf[4];
               player_in_table = buf[5];
               if(strcmp((char*)my_name,player[buf[3]].name)==0){
-            	  sprintf(msg_buf,"您已加入此桌，目前人數 %d ",player_in_table);
+            	  snprintf(msg_buf, sizeof(msg_buf), "您已加入此桌，目前人數 %d ",player_in_table);
               }else{
-            	  sprintf(msg_buf,"%s 加入此桌，目前人數 %d ",player[buf[3]].name,player_in_table);
+            	  snprintf(msg_buf, sizeof(msg_buf), "%s 加入此桌，目前人數 %d ",player[buf[3]].name,player_in_table);
               }
               send_gps_line(msg_buf);
               if(player[buf[3]].sit)
                 table[player[buf[3]].sit]=buf[3];
               break;
             case 202:
-              strcpy(msg_buf,(char*)buf+4);
+              strncpy(msg_buf, (char*)buf + 4, sizeof(msg_buf) - 1);
+              msg_buf[sizeof(msg_buf) - 1] = '\0';
               *(msg_buf+5)=0;
               player[buf[3]].id=atoi(msg_buf);
               player[buf[3]].money=atol((char*)buf+9);
               break;
             case 203:  /* get others info */
-              strcpy(player[buf[3]].name,(char*)buf+5);
+              strncpy(player[buf[3]].name, (char*)buf + 5, sizeof(player[buf[3]].name) - 1);
+              player[buf[3]].name[sizeof(player[buf[3]].name) - 1] = '\0';
               player[buf[3]].sit=buf[4];
               player[buf[3]].in_table=1;
               table[buf[4]]=buf[3];
@@ -494,7 +507,8 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
             case 205:  /* NOTICE: need player_in_table++ ? */
                        /* NOTICE: did he get table[]???? */
               my_id=buf[3];
-              strcpy(player[my_id].name,(char*)buf+5);
+              strncpy(player[my_id].name, (char*)buf + 5, sizeof(player[my_id].name) - 1);
+              player[my_id].name[sizeof(player[my_id].name) - 1] = '\0';
               my_sit=buf[4];
               player[my_id].sit=my_sit;
               player[my_id].in_table=1;
@@ -509,7 +523,7 @@ void process_msg(int player_id, unsigned char *id_buf, int msg_type)
                 input_mode=TALK_MODE;
               }
               player_in_table = buf[4];
-              sprintf(msg_buf,"%s 離開此桌，目前人數剩下 %d 人",player[buf[3]].name,player_in_table);
+              snprintf(msg_buf, sizeof(msg_buf), "%s 離開此桌，目前人數剩下 %d 人",player[buf[3]].name,player_in_table);
               display_comment(msg_buf);
               player[buf[3]].in_table=0;
               break;

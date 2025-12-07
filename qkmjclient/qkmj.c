@@ -278,15 +278,15 @@ void send_one_card(int id)
   current_card=card;
   pool[sit].card[pool[sit].num]=card;
   show_num(2,70,144-card_point-16,2);
-  sprintf(msg_buf,"314%c%c",sit,2);
+  snprintf(msg_buf, sizeof(msg_buf), "314%c%c",sit,2);
   broadcast_msg(id,msg_buf);
   show_newcard(sit,2);
   return_cursor();
-  sprintf(msg_buf,"306%c",card_point);
+  snprintf(msg_buf, sizeof(msg_buf), "306%c",card_point);
   broadcast_msg(1,msg_buf);
   show_cardmsg(sit,0);
   card_owner=sit;
-  sprintf(msg_buf,"305%c",(char) sit);
+  snprintf(msg_buf, sizeof(msg_buf), "305%c",(char) sit);
   broadcast_msg(1,msg_buf);
   clear_check_flag(sit);
   check_flag[sit][3]=check_kang(sit,card);
@@ -298,12 +298,12 @@ void send_one_card(int id)
       getting_card=1;   
       in_check[sit]=1;
       check_on=1;
-      sprintf(msg_buf,"501%c%c%c%c",check_flag[sit][1]+'0',
+      snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c",check_flag[sit][1]+'0',
         check_flag[sit][2]+'0',check_flag[sit][3]+'0',check_flag[sit][4]+'0');
       write_msg(player[table[sit]].sockfd,msg_buf);
       break;
     }
-  sprintf(msg_buf,"304%c",card);
+  snprintf(msg_buf, sizeof(msg_buf), "304%c",card);
   write_msg(player[id].sockfd,msg_buf);
   gettimeofday(&before, (struct timezone *) 0);
 }
@@ -312,7 +312,7 @@ void next_player()
 {
   char msg_buf[255];
   turn=next_turn(turn);
-  sprintf(msg_buf,"310%c",turn);
+  snprintf(msg_buf, sizeof(msg_buf), "310%c",turn);
   broadcast_msg(1,msg_buf);
   display_point(turn);
   return_cursor();
@@ -333,7 +333,7 @@ void next_player()
     play_mode=GET_CARD;
     beep1();
   }
-  sprintf(msg_buf,"314%c%c",turn,1);
+  snprintf(msg_buf, sizeof(msg_buf), "314%c%c",turn,1);
   broadcast_msg(table[turn],msg_buf);
 }  
 
@@ -355,8 +355,8 @@ void display_pool(int sit)
   msg_buf[0]=0;
   for(i=0;i<pool[sit].num;i++)
   {
-    sprintf(buf,"%2d",pool[sit].card[i]);
-    strcat(msg_buf,buf);
+    snprintf(buf, sizeof(buf), "%2d",pool[sit].card[i]);
+    strncat(msg_buf,buf, sizeof(msg_buf) - strlen(msg_buf) - 1);
   }
   display_comment(msg_buf);  
 }
@@ -468,21 +468,22 @@ void open_deal()
    pool[(i+1)%4+1].door_wind=2;
    pool[(i+2)%4+1].door_wind=3;
    pool[(i+3)%4+1].door_wind=4;
-   sprintf(msg_buf,"518%c%c%c%c",pool[1].door_wind,pool[2].door_wind,
+   snprintf(msg_buf, sizeof(msg_buf), "518%c%c%c%c",pool[1].door_wind,pool[2].door_wind,
            pool[3].door_wind,pool[4].door_wind);
    broadcast_msg(1,msg_buf);
    wmvaddstr(stdscr,2,64,sit_name[pool[my_sit].door_wind]);
    if(!table[turn])
      turn=next_turn(turn);
    card_owner=turn;
-   sprintf(msg_buf,"310%c",turn);
+   snprintf(msg_buf, sizeof(msg_buf), "310%c",turn);
    broadcast_msg(1,msg_buf);
-   sprintf(msg_buf,"305%c",card_owner);
+   snprintf(msg_buf, sizeof(msg_buf), "305%c",card_owner);
    broadcast_msg(1,msg_buf);
    display_point(turn);
    card_point=0;
    card_index=143;
-   strcpy(msg_buf,"302");
+   strncpy(msg_buf, "302", sizeof(msg_buf) - 1);
+   msg_buf[sizeof(msg_buf) - 1] = '\0';
    generate_card();
    /* send 16 cards to 4 people */
    for(j=1;j<=4;j++)
@@ -511,7 +512,7 @@ void open_deal()
    /* send an additional card to dealer */
    card=mj[card_point++];
    current_card=card;
-   sprintf(msg_buf,"304%c",card);
+   snprintf(msg_buf, sizeof(msg_buf), "304%c",card);
    if(table[turn]!=1)
    {
      show_newcard(turn,2);
@@ -527,7 +528,7 @@ void open_deal()
      return_cursor();
      play_mode=THROW_CARD;
    }
-   sprintf(msg_buf,"314%c%c",turn,2);
+   snprintf(msg_buf, sizeof(msg_buf), "314%c%c",turn,2);
    broadcast_msg(table[turn],msg_buf);
    in_play=1;
    /* check for flowers for 4 players */
@@ -550,7 +551,7 @@ void open_deal()
    current_card=pool[turn].card[16];
    show_num(2,70,144-card_point-16,2);
    return_cursor();
-   sprintf(msg_buf,"306%c",card_point);
+   snprintf(msg_buf, sizeof(msg_buf), "306%c",card_point);
    broadcast_msg(1,msg_buf);
    clear_check_flag(turn);
    check_flag[turn][3]=check_kang(turn,current_card);
@@ -569,7 +570,7 @@ void open_deal()
        }
        else
        {
-         sprintf(msg_buf,"501%c%c%c%c",'0','0',check_flag[turn][3]+'0',
+         snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c",'0','0',check_flag[turn][3]+'0',
                           check_flag[turn][4]+'0');
          write_msg(player[table[turn]].sockfd,msg_buf);
        }
@@ -670,7 +671,7 @@ void gps()
 
   init_global_screen();
   input_mode=0;
-  sprintf(msg_buf,"連往 QKMJ Server %s %d",GPS_IP,GPS_PORT);
+  snprintf(msg_buf, sizeof(msg_buf), "連往 QKMJ Server %s %d",GPS_IP,GPS_PORT);
   //sprintf(msg_buf,"連往 QKMJ Server 中 ");
   display_comment(msg_buf); 
   status=init_socket(GPS_IP,GPS_PORT,&gps_sockfd);
@@ -681,32 +682,34 @@ void gps()
     exit(0);
   } 
   //send_gps_line("已連上");
-  sprintf(msg_buf,"歡迎來到 QKMJ 休閑麻將 Ver %c.%2s 特別板 ",QKMJ_VERSION[0],QKMJ_VERSION+1);
+  snprintf(msg_buf, sizeof(msg_buf), "歡迎來到 QKMJ 休閑麻將 Ver %c.%2s 特別板 ",QKMJ_VERSION[0],QKMJ_VERSION+1);
   display_comment(msg_buf);
   display_comment("原作者 sywu (吳先祐 Shian-Yow Wu) ");
   //display_comment("本版本由  TonyQ (tonylovejava@gmail.com / TonyQ@ptt.cc ) 維護 ");
   display_comment("Forked Source: https://github.com/gjchentw/qkmj");
   //display_comment("可以用^C退出");
   get_my_info();
-  sprintf(msg_buf,"100%s",QKMJ_VERSION);
+  snprintf(msg_buf, sizeof(msg_buf), "100%s",QKMJ_VERSION);
   write_msg(gps_sockfd,msg_buf);
-  sprintf(msg_buf,"099%s",my_username);
+  snprintf(msg_buf, sizeof(msg_buf), "099%s",my_username);
   write_msg(gps_sockfd,msg_buf);
   pass_count=0;
   if(my_name[0]!=0 && my_pass[0]!=0)
-    strcpy(ans_buf,(char*)my_name);
+    strncpy(ans_buf,(char*)my_name, sizeof(ans_buf) - 1);
   else
   {
-    strcpy(ans_buf,(char*)my_name);
+    strncpy(ans_buf,(char*)my_name, sizeof(ans_buf) - 1);
     do
     {
       ask_question("請輸入你的名字：",ans_buf,10,1);
     } while(ans_buf[0]==0);
     ans_buf[10]=0;
   }
-  sprintf(msg_buf,"101%s",ans_buf);
+  ans_buf[sizeof(ans_buf) - 1] = '\0';
+  snprintf(msg_buf, sizeof(msg_buf), "101%s",ans_buf);
   write_msg(gps_sockfd,msg_buf);
-  strcpy((char*)my_name,ans_buf);
+  strncpy((char*)my_name,ans_buf, sizeof(my_name) - 1);
+  my_name[sizeof(my_name) - 1] = '\0';
   nfds=getdtablesize();
   
   FD_ZERO(&afds);
@@ -878,7 +881,7 @@ void read_qkmjrc()
   char *str1;
   char rc_name[255];
 
-  sprintf(rc_name,"%s/%s",getenv("HOME"),QKMJRC);
+  snprintf(rc_name, sizeof(rc_name), "%s/%s",getenv("HOME"),QKMJRC);
   if((qkmjrc_fp=fopen(rc_name,"r"))!=NULL)
   {
     while(fgets(msg_buf,80,qkmjrc_fp)!=NULL)
@@ -890,7 +893,8 @@ void read_qkmjrc()
         if(narg>1)
         {
           cmd_argv[2][10]=0;
-          strcpy((char*)my_name,(char*)cmd_argv[2]);
+          strncpy((char*)my_name,(char*)cmd_argv[2], sizeof(my_name) - 1);
+          my_name[sizeof(my_name) - 1] = '\0';
         }
       }
       else if(strcmp(event,"PASSWORD")==0)
@@ -898,14 +902,16 @@ void read_qkmjrc()
         if(narg>1)
         {
           cmd_argv[2][8]=0;
-          strcpy((char*)my_pass,(char*)cmd_argv[2]);
+          strncpy((char*)my_pass,(char*)cmd_argv[2], sizeof(my_pass) - 1);
+          my_pass[sizeof(my_pass) - 1] = '\0';
         }
       }
       else if(strcmp(event,"SERVER")==0)
       {
         if(narg>1)
         {
-          strcpy(GPS_IP,(char*)cmd_argv[2]);
+          strncpy(GPS_IP,(char*)cmd_argv[2], sizeof(GPS_IP) - 1);
+          GPS_IP[sizeof(GPS_IP) - 1] = '\0';
         }
         if(narg>2)
         {
@@ -918,7 +924,8 @@ void read_qkmjrc()
         {
           str1=strtok(msg_buf," \n\t\r");
           str1=strtok(NULL,"\n\t\r");
-          strcpy((char*)my_note,str1); 
+          strncpy((char*)my_note,str1, sizeof(my_note) - 1);
+          my_note[sizeof(my_note) - 1] = '\0';
         } 
       } 
       else if(strcmp(event,"BEEP")==0)
@@ -961,17 +968,20 @@ int main(int argc, char **argv)
   signal(SIGPIPE,(void (*)(int))leave);
 #endif
   init_variable();
-  strcpy(GPS_IP,DEFAULT_GPS_IP);
+  strncpy(GPS_IP,DEFAULT_GPS_IP, sizeof(GPS_IP) - 1);
+  GPS_IP[sizeof(GPS_IP) - 1] = '\0';
   GPS_PORT=DEFAULT_GPS_PORT;
   read_qkmjrc();
   if(argc>=3)
   {
-    strcpy(GPS_IP,argv[1]);
+    strncpy(GPS_IP,argv[1], sizeof(GPS_IP) - 1);
+    GPS_IP[sizeof(GPS_IP) - 1] = '\0';
     GPS_PORT=atoi(argv[2]);
   }
   else if(argc==2)
   {
-    strcpy(GPS_IP,argv[1]);
+    strncpy(GPS_IP,argv[1], sizeof(GPS_IP) - 1);
+    GPS_IP[sizeof(GPS_IP) - 1] = '\0';
     GPS_PORT=DEFAULT_GPS_PORT;
   }
   gps();

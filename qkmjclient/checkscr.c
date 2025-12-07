@@ -109,36 +109,36 @@ void process_make(int sit, int card) {
 
 	/* record start */
 	if (in_serv && sendlog == 1) {
-		sprintf(result_record_buf,
+		snprintf(result_record_buf, sizeof(result_record_buf),
 				"900{card_owner:\"%s\",winer:\"%s\",cards:{ ",
 				player[table[card_owner]].name, player[table[sit]].name);//Record
 		for (sitInd = 1; sitInd <= 4; ++sitInd) {
-			sprintf(result_buf, "\"%s\":{ind:\"%d\",card:[", player[table[sitInd]].name,sitInd);
-			strcat(result_record_buf, result_buf);
+			snprintf(result_buf, sizeof(result_buf), "\"%s\":{ind:\"%d\",card:[", player[table[sitInd]].name,sitInd);
+			strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 			for (i=0; i<pool[sitInd].num; i++) {
-				sprintf(result_buf, "%d,", pool[sitInd].card[i]);
-				strcat(result_record_buf, result_buf);
+				snprintf(result_buf, sizeof(result_buf), "%d,", pool[sitInd].card[i]);
+				strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 			}
-			strcat(result_record_buf, "],out_card:[");
+			strncat(result_record_buf, "],out_card:[", sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 			
 			for (i=0; i < pool[sitInd].out_card_index; i++) {
-				strcat(result_record_buf, "[");
+				strncat(result_record_buf, "[", sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 				for (j = 1 ; j < 6; j++) {
-					sprintf(result_buf, "%d,", pool[sitInd].out_card[i][j]);
-					strcat(result_record_buf, result_buf);
+					snprintf(result_buf, sizeof(result_buf), "%d,", pool[sitInd].out_card[i][j]);
+					strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 				}
-				strcat(result_record_buf, "]");
+				strncat(result_record_buf, "]", sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 			}
-			strcat(result_record_buf, "]");
+			strncat(result_record_buf, "]", sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 			
 			
 			if (sitInd != 4) {
-				strcat(result_record_buf, "}, ");
+				strncat(result_record_buf, "}, ", sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 			}else{
-				strcat(result_record_buf, "}");
+				strncat(result_record_buf, "}", sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 			}
 		}
-		strcat(result_record_buf, "}, tais:\"");
+		strncat(result_record_buf, "}, tais:\"", sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 	}
 	/* record end */
 
@@ -160,9 +160,9 @@ void process_make(int sit, int card) {
 					card_comb[max_index].tai_score[i]);
 			/* record */
 			if (in_serv && sendlog == 1) {
-				sprintf(result_buf, "%10s::%d;;", tai[i].name,
+				snprintf(result_buf, sizeof(result_buf), "%10s::%d;;", tai[i].name,
 						card_comb[max_index].tai_score[i]);
-				strcat(result_record_buf, result_buf);
+				strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 			}
 			/* record */
 			j++;
@@ -173,15 +173,15 @@ void process_make(int sit, int card) {
 		}
 	}
 
-	strcat(result_record_buf, "\",");
+	strncat(result_record_buf, "\",", sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 
 	if (card_comb[max_index].tai_score[52]) /* 連莊 */
 	{
 		/* record */
 		if (in_serv && sendlog == 1) {
-			sprintf(result_buf, "cont_win:%d,cont_tai:%d,", info.cont_dealer,
+			snprintf(result_buf, sizeof(result_buf), "cont_win:%d,cont_tai:%d,", info.cont_dealer,
 						info.cont_dealer*2);
-			strcat(result_record_buf, result_buf);
+			strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 		}
 		/* record */
 
@@ -199,18 +199,18 @@ void process_make(int sit, int card) {
 
 	/* record */
 	if (in_serv && sendlog == 1) {
-		sprintf(result_buf, "count_win:%d,count_tai:%d,", info.cont_dealer,
+		snprintf(result_buf, sizeof(result_buf), "count_win:%d,count_tai:%d,", info.cont_dealer,
 				info.cont_dealer*2);
-		strcat(result_record_buf, result_buf);
+		strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 	}
 	/* record */
 	if ((sit==card_owner && sit!=info.dealer) || (sit!=card_owner && card_owner
 			==info.dealer)) {
 		/* record */
 		if (in_serv && sendlog == 1) {
-			sprintf(result_buf, "is_dealer:1,dealer:\"%s\",",
+			snprintf(result_buf, sizeof(result_buf), "is_dealer:1,dealer:\"%s\",",
 					player[table[info.dealer]].name);
-			strcat(result_record_buf, result_buf);
+			strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 		}
 		/* record */
 
@@ -244,12 +244,12 @@ void process_make(int sit, int card) {
 
 	/* record start */
 	if (in_serv && sendlog == 1) {
-		sprintf(result_buf, "base_value:%d,", info.base_value);
-		strcat(result_record_buf, result_buf);
-		sprintf(result_buf, "tai_value:%d,", info.tai_value);
-		strcat(result_record_buf, result_buf);
+		snprintf(result_buf, sizeof(result_buf), "base_value:%d,", info.base_value);
+		strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
+		snprintf(result_buf, sizeof(result_buf), "tai_value:%d,", info.tai_value);
+		strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 
-		strcat(result_record_buf, "moneys:");
+		strncat(result_record_buf, "moneys:", sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 	}
 	/* record end */
 
@@ -285,23 +285,23 @@ void process_make(int sit, int card) {
 
 	/* Send money info to GPS */
 	if (in_serv) {
-		strcat(result_record_buf, "["); //record
+		strncat(result_record_buf, "[", sizeof(result_record_buf) - strlen(result_record_buf) - 1); //record
 		for (i=1; i<=4; i++) {
 			if (table[i]) {
 				/* Record start*/
 				if( sendlog == 1){
-					sprintf(result_buf,
+					snprintf(result_buf, sizeof(result_buf),
 							"{name:\"%s\",now_money:%ld,change_money:%ld}",
 							player[table[i]].name, player[table[i]].money,
 							change_money[i]);
-					strcat(result_record_buf, result_buf);
+					strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 					if (i != 4) {
-						strcat(result_record_buf, ",");
+						strncat(result_record_buf, ",", sizeof(result_record_buf) - strlen(result_record_buf) - 1);
 					}
 				}
 				/* Record end */
 
-				sprintf(msg_buf, "020%5d%ld", player[table[i]].id,
+				snprintf(msg_buf, sizeof(msg_buf), "020%5d%ld", player[table[i]].id,
 						player[table[i]].money+change_money[i]);
 				write_msg(gps_sockfd, msg_buf);
 			}
@@ -311,9 +311,9 @@ void process_make(int sit, int card) {
 		if( sendlog == 1){
 			long current_time = 0;
 			time(&current_time);
-			sprintf(result_buf, "],time:%ld000}", current_time);
-			strcat(result_record_buf, result_buf);
-			result_record_buf[strlen(result_record_buf)] = '\0';
+			snprintf(result_buf, sizeof(result_buf), "],time:%ld000}", current_time);
+			strncat(result_record_buf, result_buf, sizeof(result_record_buf) - strlen(result_record_buf) - 1);
+			result_record_buf[sizeof(result_record_buf) - 1] = '\0';
 			write_msg(gps_sockfd, result_record_buf);
 			
 		}
@@ -461,7 +461,7 @@ void process_epk(int check) {
 			pool[my_sit].out_card[pool[my_sit].out_card_index][4]=0;
 		pool[my_sit].out_card_index++;
 	}
-	sprintf(msg_buf, "530%c%c%c%c%c", my_id, check, card1, card2, card3);
+	snprintf(msg_buf, sizeof(msg_buf), "530%c%c%c%c%c", my_id, check, card1, card2, card3);
 	turn=my_sit;
 	card_owner=my_sit;
 	if (in_serv) {
@@ -593,7 +593,8 @@ void draw_flower(int sit, int card) {
 	attron(A_BOLD);
 	in_kang=1;
 	pool[sit].flower[card-51]=1;
-	strcpy(msg_buf, mj_item[card]);
+	strncpy(msg_buf, mj_item[card], sizeof(msg_buf) - 1);
+	msg_buf[sizeof(msg_buf) - 1] = '\0';
 	msg_buf[2]=0;
 	reset_cursor();
 	switch ((sit-my_sit+4)%4) {

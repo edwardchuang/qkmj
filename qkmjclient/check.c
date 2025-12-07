@@ -154,7 +154,7 @@ int check_begin_flower(int sit, int card, int position)  /* command for server *
 
   if(card<=58 && card>=51)
   {
-    sprintf(msg_buf,"525%c%c",sit,pool[sit].card[position]);
+    snprintf(msg_buf, sizeof(msg_buf), "525%c%c",sit,pool[sit].card[position]);
     broadcast_msg(1,msg_buf);
     draw_flower(sit,card);
     card=mj[card_point++];
@@ -163,7 +163,7 @@ int check_begin_flower(int sit, int card, int position)  /* command for server *
     else
     {
       pool[sit].card[position]=card;
-      sprintf(msg_buf,"301%c%c",position,card);
+      snprintf(msg_buf, sizeof(msg_buf), "301%c%c",position,card);
       write_msg(player[table[sit]].sockfd,msg_buf);
     }
     return(1);
@@ -178,7 +178,7 @@ int check_flower(int sit, int card)
 
   if(card<=58 && card>=51)
   {
-    sprintf(msg_buf,"525%c%c",sit,card);
+    snprintf(msg_buf, sizeof(msg_buf), "525%c%c",sit,card);
     draw_flower(sit,card);
     if(in_join)
     {
@@ -190,9 +190,9 @@ int check_flower(int sit, int card)
       card=mj[card_point++];
       show_num(2,70,144-card_point-16,2);
       card_owner=my_sit;
-      sprintf(msg_buf,"305%c",(char) my_sit);
+      snprintf(msg_buf, sizeof(msg_buf), "305%c",(char) my_sit);
       broadcast_msg(1,msg_buf);
-      sprintf(msg_buf,"306%c",card_point);
+      snprintf(msg_buf, sizeof(msg_buf), "306%c",card_point);
       broadcast_msg(1,msg_buf);
       play_mode=GET_CARD;
       attron(A_REVERSE);
@@ -212,7 +212,7 @@ void write_check(int check)  /* Finished checking! */
 
   if(in_join)
   {
-    sprintf(msg_buf,"510%c",check+'0');
+    snprintf(msg_buf, sizeof(msg_buf), "510%c",check+'0');
     write_msg(table_sockfd,msg_buf);
   }
   else
@@ -235,7 +235,8 @@ void send_pool_card()
   /* 51-66: 北家的牌         */
   /*    67: 0                */
   /* ----------------------- */
-  sprintf(msg_buf,"521");
+  strncpy(msg_buf, "521", sizeof(msg_buf) - 1);
+  msg_buf[sizeof(msg_buf) - 1] = '\0';
   for(j=0;j<16;j++)
     msg_buf[3+j]=pool[1].card[j];
   for(j=0;j<16;j++)
@@ -262,7 +263,7 @@ void compare_check()
     if(check_for[i]==MAKE)
     {
       send_pool_card();
-      sprintf(msg_buf,"522%c%c",i,current_card);
+      snprintf(msg_buf, sizeof(msg_buf), "522%c%c",i,current_card);
       broadcast_msg(1,msg_buf);
       process_make(i,current_card);
       goto finish;
@@ -291,18 +292,18 @@ void compare_check()
         if(search_card(i,current_card)>=0)
         {
         if(turn==i)
-          sprintf(msg_buf,"520%c",11); 
+          snprintf(msg_buf, sizeof(msg_buf), "520%c",11); 
         else
-          sprintf(msg_buf,"520%c",KANG);
+          snprintf(msg_buf, sizeof(msg_buf), "520%c",KANG);
         }
         else
-          sprintf(msg_buf,"520%c",12);
+          snprintf(msg_buf, sizeof(msg_buf), "520%c",12);
         write_msg(player[table[i]].sockfd,msg_buf);
         show_newcard(turn,1);
         return_cursor();
       }
       turn=i;
-      sprintf(msg_buf,"314%c%c",i,1);
+      snprintf(msg_buf, sizeof(msg_buf), "314%c%c",i,1);
       broadcast_msg(table[i],msg_buf);
       goto finish;
     }
@@ -317,13 +318,13 @@ void compare_check()
         process_epk(PONG);
       else
       {
-        sprintf(msg_buf,"520%c",PONG);
+        snprintf(msg_buf, sizeof(msg_buf), "520%c",PONG);
         write_msg(player[table[i]].sockfd,msg_buf);
         show_newcard(i,2);
         return_cursor();
       }
       turn=i;
-      sprintf(msg_buf,"314%c%c",i,2);
+      snprintf(msg_buf, sizeof(msg_buf), "314%c%c",i,2);
       broadcast_msg(table[i],msg_buf);
       goto finish;
     }
@@ -338,13 +339,13 @@ void compare_check()
         process_epk(check_for[i]);
       else
       {
-        sprintf(msg_buf,"520%c",check_for[i]);
+        snprintf(msg_buf, sizeof(msg_buf), "520%c",check_for[i]);
         write_msg(player[table[i]].sockfd,msg_buf);
         show_newcard(i,2);
         return_cursor();
       }
       turn=i;
-      sprintf(msg_buf,"314%c%c",i,2);
+      snprintf(msg_buf, sizeof(msg_buf), "314%c%c",i,2);
       broadcast_msg(table[i],msg_buf);
       goto finish;
     }

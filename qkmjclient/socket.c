@@ -88,7 +88,8 @@ void init_serv_socket()
 void get_my_info()
 {
   userdata=getpwuid(getuid());
-  strcpy(my_username,userdata->pw_name);
+  strncpy(my_username,userdata->pw_name, sizeof(my_username) - 1);
+  my_username[sizeof(my_username) - 1] = '\0';
 }
 
 int init_socket(char *host, int portnum, int *sockfd)
@@ -154,13 +155,14 @@ void accept_new_client()
       }
     }
   }
-  sprintf(msg_buf,"%s 加入此桌，目前人數 %d ", new_client_name ,player_in_table);
+  snprintf(msg_buf, sizeof(msg_buf), "%s 加入此桌，目前人數 %d ", new_client_name ,player_in_table);
   send_gps_line(msg_buf);
-  strcpy(player[player_id].name, new_client_name);
+  strncpy(player[player_id].name, new_client_name, sizeof(player[player_id].name) - 1);
+  player[player_id].name[sizeof(player[player_id].name) - 1] = '\0';
   player[player_id].id=new_client_id;
   player[player_id].money=new_client_money;
   /* Send the info of new comer to everyone */
-  sprintf(msg_buf,"201%c%c%c%s", (char) player_id ,player[player_id].sit,player_in_table,
+  snprintf(msg_buf, sizeof(msg_buf), "201%c%c%c%s", (char) player_id ,player[player_id].sit,player_in_table,
           player[player_id].name);
   broadcast_msg(1,msg_buf); /* NOTICE:including the new comer!!! */
   msg_buf[2]='5';   /* Set msg_id to 205 */
@@ -168,7 +170,7 @@ void accept_new_client()
 /* NOTICE: player doesn't know his own table[i], right? */
   write_msg(player[player_id].sockfd,msg_buf);
   /* Send more info of new comer */
-  sprintf(msg_buf,"202%c%5d%ld",player_id,new_client_id,new_client_money);
+  snprintf(msg_buf, sizeof(msg_buf), "202%c%5d%ld",player_id,new_client_id,new_client_money);
   broadcast_msg(1,msg_buf);
   new_client=0;
   write_msg(gps_sockfd,"111");  /* Add one new player into the table */
@@ -178,9 +180,9 @@ void accept_new_client()
     if(player[i].in_table && i!=player_id)
     {
       /* Let the new comer know everyone */
-      sprintf(msg_buf,"203%c%c%s",i,player[i].sit,player[i].name);
+      snprintf(msg_buf, sizeof(msg_buf), "203%c%c%s",i,player[i].sit,player[i].name);
       write_msg(player[player_id].sockfd,msg_buf);
-      sprintf(msg_buf,"202%c%5d%ld",i,player[i].id,player[i].money);
+      snprintf(msg_buf, sizeof(msg_buf), "202%c%5d%ld",i,player[i].id,player[i].money);
       write_msg(player[player_id].sockfd,msg_buf);
     }
   }
@@ -261,9 +263,9 @@ void close_client(int player_id)
     input_mode=TALK_MODE;
   }
   player_in_table -- ;
-  sprintf(msg_buf,"206%c%c",player_id,player_in_table);
+  snprintf(msg_buf, sizeof(msg_buf), "206%c%c",player_id,player_in_table);
   broadcast_msg(player_id,msg_buf);
-  sprintf(msg_buf,"%s 離開此桌，目前人數剩下 %d 人",player[player_id].name,player_in_table);
+  snprintf(msg_buf, sizeof(msg_buf), "%s 離開此桌，目前人數剩下 %d 人",player[player_id].name,player_in_table);
   display_comment(msg_buf);
   close(player[player_id].sockfd);
   FD_CLR(player[player_id].sockfd,&afds);

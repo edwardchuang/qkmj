@@ -604,7 +604,7 @@ void display_time(int sit)
   min=(int) pool[sit].time/60;
   min=min%60;  
   sec=(int) pool[sit].time%60;
-  sprintf(msg_buf,"%2d:%02d",min,sec);
+  snprintf(msg_buf, sizeof(msg_buf), "%2d:%02d",min,sec);
   switch(pos)
   {
     case 0:
@@ -613,7 +613,7 @@ void display_time(int sit)
       break;
     case 1:
       wmvaddstr(stdscr,21,71,"     ");
-      sprintf(msg_buf,"%d:%02d",min,sec);
+      snprintf(msg_buf, sizeof(msg_buf), "%d:%02d",min,sec);
       wmvaddstr(stdscr,21,71,msg_buf);
       break;
     case 2:
@@ -771,10 +771,10 @@ void send_talk_line(char *talk)  //User Talks
   char msg_buf[255];
   int i;
 
-  sprintf(comment,"<%s> ",my_name);
-  strcat(comment,talk);
+  snprintf(comment, sizeof(comment), "<%s> ",my_name);
+  strncat(comment,talk, sizeof(comment) - strlen(comment) - 1);
   display_comment(comment);
-  sprintf(msg_buf,"102%s",comment);
+  snprintf(msg_buf, sizeof(msg_buf), "102%s",comment);
   if(in_serv)
   {
     broadcast_msg(1,msg_buf);
@@ -792,7 +792,8 @@ void send_gps_line(char *msg)
   sprintf(comment,"□ ");
   strcat(comment,msg);
 */
-strcpy(comment,msg);
+strncpy(comment,msg, sizeof(comment) - 1);
+comment[sizeof(comment) - 1] = '\0';
   display_comment(comment);
 }
 
@@ -814,13 +815,14 @@ void convert_num(char *str, int number, int digit)
 {
   int i;
   int tmp[10];
+  str[0] = '\0';
   for(i=digit-1;i>=0;i--)
   {
     tmp[i]=number%10;
     number/=10;
   }
   for(i=0;i<digit;i++)
-    strcpy(str+i*2,number_item[tmp[i]]);
+    strcat(str, number_item[tmp[i]]);
 }
     
 void show_num(int y, int x, int number, int digit)

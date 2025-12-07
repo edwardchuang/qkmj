@@ -121,13 +121,13 @@ void process_key()
                 show_num(2,70,144-card_point-16,2);
                 /* change turn */
                 card_owner=my_sit;
-                sprintf(msg_buf,"305%c",(char) my_sit);
+                snprintf(msg_buf, sizeof(msg_buf), "305%c",(char) my_sit);
                 broadcast_msg(1,msg_buf);
                 /* show new cardback */
-                sprintf(msg_buf,"314%c%c",my_sit,2);
+                snprintf(msg_buf, sizeof(msg_buf), "314%c%c",my_sit,2);
                 broadcast_msg(1,msg_buf);
                 /* change card number */
-                sprintf(msg_buf,"306%c",card_point);
+                snprintf(msg_buf, sizeof(msg_buf), "306%c",card_point);
                 broadcast_msg(1,msg_buf);
                 /* get the card */
                 process_new_card(my_sit,card);
@@ -155,7 +155,7 @@ void process_key()
             pool[my_sit].first_round=0;
             if(in_join)
             {
-              sprintf(msg_buf,"401%c",pool[my_sit].card[current_item]);
+              snprintf(msg_buf, sizeof(msg_buf), "401%c",pool[my_sit].card[current_item]);
               write_msg(table_sockfd,msg_buf);
               current_id=my_id;
               current_card=pool[my_sit].card[current_item];
@@ -164,11 +164,11 @@ void process_key()
             {
               pool[my_sit].time+=thinktime();
               display_time(my_sit);
-              sprintf(msg_buf,"312%c%f",my_sit,pool[my_sit].time);
+              snprintf(msg_buf, sizeof(msg_buf), "312%c%f",my_sit,pool[my_sit].time);
               broadcast_msg(1,msg_buf);
-              sprintf(msg_buf,"314%c%c",my_sit,3);
+              snprintf(msg_buf, sizeof(msg_buf), "314%c%c",my_sit,3);
               broadcast_msg(1,msg_buf);
-              sprintf(msg_buf,"402%c%c",1,pool[my_sit].card[current_item]);
+              snprintf(msg_buf, sizeof(msg_buf), "402%c%c",1,pool[my_sit].card[current_item]);
               broadcast_msg(1,msg_buf);
               current_card=pool[my_sit].card[current_item];
               for(i=1;i<=4;i++)
@@ -185,7 +185,7 @@ void process_key()
                 {
                   if(check_flag[i][j])
                   {
-                    sprintf(msg_buf,"501%c%c%c%c",check_flag[i][1]+'0',
+                    snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c",check_flag[i][1]+'0',
                       check_flag[i][2]+'0',check_flag[i][3]+'0',
                       check_flag[i][4]+'0');
                     write_msg(player[table[i]].sockfd,msg_buf);
@@ -309,7 +309,7 @@ void process_key()
                 {
                   if(eat_pool[i])
                   {
-                    sprintf(msg_buf,"%d%d%d",eat_pool[i]%10,eat_pool[i]%10+1,
+                    snprintf(msg_buf, sizeof(msg_buf), "%d%d%d",eat_pool[i]%10,eat_pool[i]%10+1,
                             eat_pool[i]%10+2);
                     wmvaddstr(stdscr,org_eat_y,org_eat_x+i*4,msg_buf);
                   }
@@ -411,16 +411,11 @@ void process_key()
           talk_x++;
           return_cursor();
           break;
-        case CTRL_P:
-        case KEY_UP:
-          if(h_point==(h_head+1)%HISTORY_SIZE || h_point==h_head)
-            break;
-          else
-            h_point=(h_point-1+HISTORY_SIZE)%HISTORY_SIZE;
-          werase(inputwin);
+werase(inputwin);
           mvwaddstr(inputwin,0,0,history[h_point]);
           wrefresh(inputwin);
-          strcpy(talk_buf,history[h_point]);
+          strncpy(talk_buf,history[h_point], sizeof(talk_buf) - 1);
+          talk_buf[sizeof(talk_buf) - 1] = '\0';
           talk_buf[talk_right-talk_left-1]=0;
           talk_buf_count=strlen(talk_buf);
           talk_x=talk_buf_count;
@@ -434,7 +429,8 @@ void process_key()
           werase(inputwin);
           mvwaddstr(inputwin,0,0,history[h_point]);
           wrefresh(inputwin);
-          strcpy(talk_buf,history[h_point]);
+          strncpy(talk_buf,history[h_point], sizeof(talk_buf) - 1);
+          talk_buf[sizeof(talk_buf) - 1] = '\0';
           talk_buf[talk_right-talk_left-1]=0;
           talk_buf_count=strlen(talk_buf);
           talk_x=talk_buf_count;
@@ -460,7 +456,8 @@ void process_key()
           for(i=talk_x;i<talk_buf_count;i++)
             talk_buf[i]=talk_buf[i+1];
           talk_buf[talk_buf_count--]='\0';
-          strcpy(history[h_tail],talk_buf);
+          strncpy(history[h_tail],talk_buf, sizeof(history[h_tail]) - 1);
+          history[h_tail][sizeof(history[h_tail]) - 1] = '\0';
           mvprintstr(inputwin,talk_y,talk_x,(char*)talk_buf+talk_x);
           printch(inputwin,' ');
           return_cursor();
@@ -472,7 +469,8 @@ void process_key()
             case TALK_MODE:
               if(talk_buf_count==0)
                 break;
-              strcpy(history[h_tail],talk_buf);
+              strncpy(history[h_tail],talk_buf, sizeof(history[h_tail]) - 1);
+              history[h_tail][sizeof(history[h_tail]) - 1] = '\0';
               command_parser(talk_buf);
               h_tail=(h_tail+1)%HISTORY_SIZE;
               history[h_tail][0]=0;
@@ -532,7 +530,8 @@ void process_key()
             talk_x++;
             return_cursor();
           }
-          strcpy(history[h_tail],talk_buf);
+          strncpy(history[h_tail],talk_buf, sizeof(history[h_tail]) - 1);
+          history[h_tail][sizeof(history[h_tail]) - 1] = '\0';
           break;
       }
 /*
