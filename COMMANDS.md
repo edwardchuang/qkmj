@@ -1,100 +1,80 @@
-# QKMJ Protocol Documentation / QKMJ 通訊協定文件
+# QKMJ Protocol Commands (QKMJ 通訊協定指令)
 
-This document outlines the communication protocol used between the QKMJ Client (`qkmj`) and the GPS Server (`mjgps`), as well as the communication between the Client and the Table Server (which is hosted by one of the clients).
-本文件概述了 QKMJ 客戶端 (`qkmj`) 與 GPS 伺服器 (`mjgps`) 之間的通訊協定，以及客戶端與牌桌伺服器（由其中一個客戶端託管）之間的通訊。
+This document describes the communication protocol between the QKMJ client and server.
+本文件描述 QKMJ 客戶端與伺服器之間的通訊協定。
 
-## Client to GPS Server Commands (客戶端對 GPS 伺服器指令)
+## Message Format (訊息格式)
 
-| Command ID | Description (English) | Description (Traditional Chinese) | Parameters |
+Messages are generally sent as text strings or binary packets.
+Generally: `ID` + `Content`
+通常格式為：`指令ID` + `內容`
+
+ID is usually a 3-digit number (e.g., "101").
+ID 通常為 3 位數字（例如 "101"）。
+
+## Client to GPS Server Commands (客戶端 -> GPS 伺服器)
+
+| ID | Command (指令) | Parameter (參數) | Description (說明) |
 | :--- | :--- | :--- | :--- |
-| `099` | Send Username | 傳送使用者名稱 | `099<username>` |
-| `100` | Check Version | 檢查版本 | `100<version>` |
-| `101` | Login | 登入 | `101<name>` |
-| `102` | Verify Password | 驗證密碼 | `102<password>` |
-| `103` | Create Account | 建立新帳號 | `103<password>` |
-| `104` | Change Password | 更改密碼 | `104<new_password>` |
-| `105` | Kill Duplicate Login | 清除重複登入 | `105` |
-| `002` | Request Player List | 請求玩家列表 | `002` (Triggered by `/LIST`, `/PLAYER`) |
-| `003` | Request Table List | 請求牌桌列表 | `003` (Triggered by `/TABLE`) |
-| `004` | Update Note | 更新備註 | `004<note>` |
-| `005` | Request Stats | 請求統計資料 | `005<name>` |
-| `006` | Request Who (Table Info) | 請求牌桌成員資訊 | `006<name>` |
-| `007` | Broadcast Message | 廣播訊息 | `007<message>` |
-| `008` | Invite Player | 邀請玩家 | `008<name>` |
-| `009` | Private Message | 私人訊息 | `009<name> <message>` |
-| `010` | Request Lurker List | 請求閒置玩家列表 | `010` |
-| `011` | Join Table | 加入牌桌 | `011<table_host_name>` |
-| `012` | Open Table (Register Port) | 開桌（註冊連接埠） | `012<port>` |
-| `013` | Request Free Tables | 請求空桌列表 | `013` |
-| `014` | Check Check Open Table | 檢查開桌資格 | `014` |
-| `020` | Update Money (from Table) | 更新金額（來自牌桌） | `020<id><money>` |
-| `021` | Find User | 尋找玩家 | `021<name>` |
-| `111` | Add Player to Table (Internal)| 新增玩家至牌桌（內部） | `111` |
-| `199` | Table Server Closing | 牌桌伺服器關閉 | `199` |
-| `200` | Logout / Leave | 離開 / 登出 | `200` |
-| `201` | Update State | 更新狀態 | `201` |
-| `202` | Kill User (Admin) | 強制踢除玩家（管理員） | `202<name>` |
-| `205` | Leave Table | 離開牌桌 | `205` |
-| `500` | Shutdown Server (Admin) | 關閉伺服器（管理員） | `500` |
-| `900` | Game Log | 遊戲紀錄 | `900<log_data>` |
+| 99 | Get Username | `username` | 傳送使用者帳號名稱 |
+| 100 | Check Version | `version` | 檢查客戶端版本 |
+| 101 | Login | `name` | 使用者登入 (暱稱) |
+| 102 | Check Password | `password` | 驗證密碼 |
+| 103 | Create Account | `password` | 建立新帳號 |
+| 104 | Change Password | `new_password` | 修改密碼 |
+| 105 | Kill Duplicate | - | 強制踢除重複登入的連線 |
+| 2 | List Players | - | 列出線上使用者 (/WHO) |
+| 3 | List Tables | - | 列出目前牌桌 (/List) |
+| 4 | Set Note | `note` | 設定附註 (/Note) |
+| 5 | User Info | `name` | 查詢使用者資訊 (/Query) |
+| 6 | Who in Table | `table_leader` | 查詢牌桌內的使用者 |
+| 7 | Broadcast | `msg` | 廣播訊息 (GM Only) |
+| 8 | Invite | `name` | 邀請使用者 (/Invite) |
+| 9 | Send Message | `name msg` | 傳送私訊 (/Tell) |
+| 10 | Lurker List | - | 列出閒置使用者 |
+| 11 | Join Table | `table_leader` | 加入牌桌 (/Join) |
+| 12 | Open Table | `port` | 開設新牌桌 (/Open) |
+| 13 | List Tables (Free) | - | 列出有空位的牌桌 |
+| 14 | Check Open | - | 檢查是否符合開桌資格 |
+| 20 | Win Game | `id money` | 回報贏牌結果 (更新金錢) |
+| 21 | Find User | `name` | 尋找使用者 (/Find) |
+| 200 | Leave | - | 離開遊戲 (/Leave) |
+| 201 | Status | - | 顯示目前狀態 |
+| 205 | Leave Table | - | 離開牌桌 |
 
-## GPS Server to Client Messages (GPS 伺服器對客戶端訊息)
+## GPS Server to Client Messages (GPS 伺服器 -> 客戶端)
 
-| Command ID | Description (English) | Description (Traditional Chinese) | Parameters |
-| :--- | :--- | :--- | :--- |
-| `101` | System Message / Broadcast | 系統訊息 / 廣播 | `101<message>` |
-| `102` | User Message | 使用者訊息 | `102<message>` |
-| `002` | Login Success (Existing) | 登入成功（既有帳號） | `002` |
-| `003` | Login Success / Stats | 登入成功 / 統計 | `003` |
-| `004` | Password Error | 密碼錯誤 | `004` |
-| `005` | User Not Found | 查無此人 | `005` |
-| `006` | Duplicate Login | 重複登入 | `006` |
-| `010` | Version Mismatch | 版本不符 | `010` |
-| `011` | Join Response | 加入回應 | `0110<ip> <port>` (Success), `0111` (Full) |
-| `012` | Open Table Response | 開桌回應 | `012` |
-| `120` | Player Info (ID/Money) | 玩家資訊（ID/金額） | `120<id><money>` |
-| `200` | Force Logout / Kick | 強制登出 / 踢除 | `200` |
-| `211` | Table Host Name | 桌長名稱 | `211<name>` |
+| ID | Message (訊息) | Description (說明) |
+| :--- | :--- | :--- |
+| 101 | Text Message | 一般文字訊息顯示 |
+| 002 | Login OK | 登入成功 (需要密碼) |
+| 003 | Welcome | 歡迎訊息 (完成登入程序) |
+| 004 | Password Fail | 密碼錯誤 |
+| 005 | New User | 新使用者 (需要建立帳號) |
+| 006 | Duplicate Login | 重複登入警告 |
+| 010 | Version Error | 版本不符 |
+| 011 | Join Info | `IP Port` 牌桌伺服器位址 |
+| 012 | Open OK | 同意開桌 |
+| 120 | Update Money | 更新金錢顯示 |
+| 200 | Kick | 被踢除 |
 
-## Client <-> Table Server Protocol (客戶端與牌桌伺服器通訊協定)
+## Client to Table Server / Peer (客戶端 -> 牌桌/其他客戶端)
 
-This protocol is used for the game logic itself.
-此通訊協定用於遊戲邏輯本身。
+| ID | Command (指令) | Description (說明) |
+| :--- | :--- | :--- |
+| 101 | Chat | 聊天訊息 |
+| 301 | Change Card | 交換手牌 (配牌階段) |
+| 303 | Can Get | 通知可以摸牌 |
+| 304 | Get Card | 摸牌 |
+| 401 | Throw Card | 打出牌 |
+| 402 | Card Thrown | 廣播有人打出牌 |
+| 501 | Check Card | 詢問是否吃/碰/槓/胡 |
+| 520 | Epk (Eat/Pong/Kang)| 執行 吃/碰/槓 |
+| 522 | Make (Win) | 胡牌 |
+| 530 | Show Epk | 顯示 吃/碰/槓 的結果 |
 
-| Command ID | Description (English) | Description (Traditional Chinese) | Parameters |
-| :--- | :--- | :--- | :--- |
-| `101` | System Message | 系統訊息 | `101<msg>` |
-| `102` | Chat Message | 聊天訊息 | `102<msg>` |
-| `199` | Host Left | 桌長離開 | `199` |
-| `200` | Leave Table | 離開牌桌 | `200` |
-| `201` | New Player Joined | 新玩家加入 | `201<id><sit><count><name>` |
-| `202` | Player ID/Money | 玩家 ID/金額 | `202<id><gps_id><money>` |
-| `203` | Existing Player Info | 現有玩家資訊 | `203<id><sit><name>` |
-| `204` | Table Seat Info | 牌桌座位資訊 | `204...` |
-| `205` | Self Info (Join Confirm) | 個人資訊（加入確認） | `205<id><sit><name>` |
-| `206` | Player Left | 玩家離開 | `206<id><count>` |
-| `290` | New Game / Opening | 新局 / 開局 | `290` |
-| `300` | Init Playing Screen | 初始化遊戲畫面 | `300` |
-| `301` | Change Card | 換牌 | `301<pos><card>` |
-| `302` | Deal Cards (16) | 發牌（16張） | `302<cards...>` |
-| `303` | Can Get Card? | 可摸牌？ | `303` |
-| `304` | Get One Card | 摸一張牌 | `304<card>` |
-| `305` | Card Owner Update | 持牌者更新 | `305<sit>` |
-| `306` | Card Point/Count Update | 牌數更新 | `306<count>` |
-| `308` | Sort Cards | 理牌 | `308<mode>` |
-| `310` | Turn Change | 輪替 | `310<sit>` |
-| `312` | Time Update | 時間更新 | `312<sit><time>` |
-| `313` | Request Card | 請求摸牌 | `313` |
-| `314` | Show New Card/Back | 顯示新牌/牌背 | `314<sit><type>` |
-| `330` | Draw Game (Sea Floor) | 流局（海底撈月） | `330` |
-| `401` | Throw Card (Client) | 出牌（客戶端發送） | `401<card>` |
-| `402` | Throw Card (Broadcast) | 出牌（廣播） | `402<id><card>` |
-| `450` | Wait Confirmation | 等待確認 | `450` |
-| `501` | Check Card (Eat/Pong...) | 檢查牌（吃/碰...） | `501<flags...>` |
-| `510` | Check Response | 檢查回應 | `510<choice>` |
-| `518` | Door Wind Info | 門風資訊 | `518<winds...>` |
-| `520` | Process EPK (Action) | 執行吃碰槓 | `520<type>` |
-| `521` | Show Hands (End Game) | 攤牌（結算） | `521<cards...>` |
-| `522` | Process Win (Make) | 處理胡牌 | `522<sit><card>` |
-| `525` | Draw Flower | 補花 | `525<sit><card>` |
-| `530` | EPK Broadcast | 吃碰槓廣播 | `530<id><type><cards...>` |
+## Notes (附註)
+
+*   **Encoding**: All messages are encoded in UTF-8 (refactored from Big5).
+*   **Security**: Passwords are hashed using `crypt()`.
+*   **Transport**: TCP/IP sockets.
