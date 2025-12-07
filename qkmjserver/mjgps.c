@@ -810,19 +810,7 @@ void gps_processing() {
 
       time(&current_time);
       tim = localtime(&current_time);
-      /*
-       * if(tim->tm_hour>=2 && tim->tm_hour<6)
-       * {
-       * for(i=1;i<MAX_PLAYER;i++)
-       * {
-       * if(player[i].login)
-       * {
-       * print_news(player[i].sockfd,"opentime.lst");
-       * close_id(i);
-       * }
-       * }
-       * }
-       */
+      
       if (player_id > login_limit) {
         if (strcmp(climark, "ccsun34") != 0) {
           write_msg(player[player_id].sockfd,

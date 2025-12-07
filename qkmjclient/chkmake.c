@@ -166,7 +166,6 @@ void mark_card(NODEPTR node) {
       }
     }
     /* Can't find the card */
-    /*    display_comment("Error at marking");  */
   marked:;
     mark_card(node->father);
   }
@@ -418,15 +417,6 @@ finish:;
   if (pair != 1) make = 0;
   if (make && method) {
     full_check(sit, card);
-    /*
-    sprintf(msg_buf,"%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
-    pool[sit].num,pool[sit].card[0],pool[sit].card[1],pool[sit].card[2],
-    pool[sit].card[3],pool[sit].card[4],pool[sit].card[5],pool[sit].card[6],
-    pool[sit].card[7],pool[sit].card[8],pool[sit].card[9],pool[sit].card[10],
-    pool[sit].card[11],pool[sit].card[12],pool[sit].card[13],pool[sit].card[14],
-    pool[sit].card[15]);
-    display_comment(msg_buf);
-    */
   }
   return (make);
 }
@@ -492,14 +482,6 @@ void full_check(int sit, int make_card) {
       card_comb[i].tai_sum += card_comb[i].tai_score[j];
     }
   }
-  /*
-    for(i=0;i<card_comb[0].set_count;i++)
-    {
-      sprintf(msg_buf,"([%d] %d %d %d
-  %d)",i,card_comb[0].info[i][0],card_comb[0].info[i][1],card_comb[0].info[i][2],card_comb[0].info[i][3]);
-  display_comment(msg_buf);
-    }
-  */
   comb_num = count;
 }
 

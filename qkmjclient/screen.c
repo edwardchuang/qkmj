@@ -254,11 +254,6 @@ void show_newcard(int sit, int type)
       switch(type)
       {
         case 1:
-/*
-          attron(A_BOLD);
-          show_card(10,INDEX_X1,INDEX_Y1-17,0);
-          attroff(A_BOLD);
-*/
           break;
         case 2:
           show_card(40,INDEX_X1,INDEX_Y1-17,0);
@@ -275,11 +270,6 @@ void show_newcard(int sit, int type)
       switch(type)
       {
         case 1:
-/*
-          attron(A_BOLD);
-          show_card(10,INDEX_X2-16*2-1,INDEX_Y2,1);
-          attroff(A_BOLD);
-*/
           break;
         case 2:
           show_card(30,INDEX_X2-16*2-1,INDEX_Y2,1);
@@ -298,16 +288,10 @@ void show_newcard(int sit, int type)
       switch(type)
       {
         case 1:
-/*
-          attron(A_BOLD);
-          show_card(10,INDEX_X3,INDEX_Y3+17,0);
-          attroff(A_BOLD);
-*/
           break;
         case 2:
 /* 為處理 color 的問題 */
           show_card(40,INDEX_X3,INDEX_Y3+17,0);
-        /*  show_card(20,INDEX_X3,INDEX_Y3+17,0); */
           show_card(40,INDEX_X3,INDEX_Y3+17,0);
           break;
         case 3:
@@ -701,20 +685,6 @@ int readln(int fd, char *buf, int *end_flag)
             *end_flag=1;
             *buf='\0'; 
             return bytes;
-/*
-        } else if( ch == '\t' ) {
-            do {
-                len++, *buf++ = ' ';
-            } while( (len % 8) != 0 );
-        } else if( ch == '\033' ) {
-            if( showansi )  *buf++ = ch;
-            in_esc = 1;
-        } else if( in_esc ) {
-            if( showansi )  *buf++ = ch;
-            if( strchr( "[0123456789;,", ch ) == NULL ) {
-                in_esc = 0;
-            }
-*/
         } else {
             len++, *buf++ = (char)ch;
         }
@@ -791,10 +761,6 @@ void send_talk_line(char *talk)  //User Talks
 void send_gps_line(char *msg)
 {
   char comment[255];
-/*
-  sprintf(comment,"□ ");
-  strcat(comment,msg);
-*/
 strncpy(comment,msg, sizeof(comment) - 1);
 comment[sizeof(comment) - 1] = '\0';
   display_comment(comment);
@@ -885,28 +851,6 @@ void redraw_screen()
   touchwin(inputwin);
   wrefresh(inputwin);
   return_cursor();
-/*
-  if(screen_mode==PLAYING_SCREEN_MODE)
-  {
-    for(i=1;i<=4;i++)
-    {
-      if(table[i] && i!=my_sit)
-        show_cardback(i);
-    }
-    if(turn==card_owner)
-      show_newcard(turn,2);
-    for(i=0;i<3;i++)
-      for(j=0;j<17;j++)
-      {
-        if(table_card[i][j]!=0 && table_card[i][j]!=20)
-        {
-          show_card(20,THROW_X+j*2,THROW_Y+i*2,1);
-          show_card(table_card[i][j],THROW_X+j*2,THROW_Y+i*2,1);
-        }
-      }
-    sort_card(0);
-  }
-*/
 }
 
 void reset_cursor()

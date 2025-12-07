@@ -617,10 +617,6 @@ void draw_epk(int id, int kind, int card1, int card2, int card3) {
 void draw_flower(int sit, int card) {
   char msg_buf[80];
 
-  /*
-   set_mode(1);
-   set_color(33,40);
-   */
   attron(A_BOLD);
   in_kang = 1;
   pool[sit].flower[card - 51] = 1;
@@ -644,8 +640,4 @@ void draw_flower(int sit, int card) {
   }
   return_cursor();
   attroff(A_BOLD);
-  /*
-   set_mode(0);
-   set_color(37,40);
-   */
 }

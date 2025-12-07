@@ -27,7 +27,6 @@
 fd_set rfds, afds;
 int nfds;
 extern int errno;
-// extern char *sys_errlist[];
 char GPS_IP[50];
 int GPS_PORT;
 char my_username[20];
@@ -496,16 +495,6 @@ void open_deal() {
       }
     }
   }
-  /*
-     sprintf(msg_buf,"304%c",card);
-     if(table[turn]!=1)
-     {
-       show_newcard(turn,2);
-       return_cursor();
-       write_msg(player[table[turn]].sockfd,msg_buf);
-       pool[turn].card[pool[turn].num]=card;
-     }
-  */
   broadcast_msg(table[turn], "3080");
   if (turn != my_sit) write_msg(player[table[turn]].sockfd, "3081");
   if (turn == my_sit)
@@ -585,7 +574,6 @@ void gps() {
   input_mode = 0;
   snprintf(msg_buf, sizeof(msg_buf), "連往 QKMJ Server %s %d", GPS_IP,
            GPS_PORT);
-  // sprintf(msg_buf,"連往 QKMJ Server 中 ");
   display_comment(msg_buf);
   status = init_socket(GPS_IP, GPS_PORT, &gps_sockfd);
   if (status < 0) {
@@ -593,16 +581,12 @@ void gps() {
     endwin();
     exit(0);
   }
-  // send_gps_line("已連上");
   snprintf(msg_buf, sizeof(msg_buf),
            "歡迎來到 QKMJ 休閑麻將 Ver %c.%2s 特別板 ", QKMJ_VERSION[0],
            QKMJ_VERSION + 1);
   display_comment(msg_buf);
   display_comment("原作者 sywu (吳先祐 Shian-Yow Wu) ");
-  // display_comment("本版本由  TonyQ (tonylovejava@gmail.com / TonyQ@ptt.cc )
-  // 維護 ");
   display_comment("Forked Source: https://github.com/gjchentw/qkmj");
-  // display_comment("可以用^C退出");
   get_my_info();
   snprintf(msg_buf, sizeof(msg_buf), "100%s", QKMJ_VERSION);
   write_msg(gps_sockfd, msg_buf);
@@ -670,10 +654,6 @@ void gps() {
         if (new_client) {
           accept_new_client();
         }
-        /*
-                  else
-                    display_comment("Error from new client!");
-        */
       }
       /* Check for data from client */
       for (i = 2; i < MAX_PLAYER; i++) {
@@ -817,9 +797,6 @@ int main(int argc, char** argv) {
   cbreak();
   noecho();
   nonl();
-  /*
-  attrset(A_NORMAL);
-  */
   clear();
 #ifdef SIGIOT
   signal(SIGINT, (void (*)(int))leave);
