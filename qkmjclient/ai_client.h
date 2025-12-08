@@ -44,6 +44,12 @@ void ai_cleanup();
 int ai_is_enabled();
 
 /**
+ * @brief Enable or disable AI mode.
+ * @param enabled 1 to enable, 0 to disable.
+ */
+void ai_set_enabled(int enabled);
+
+/**
  * @brief Get a decision from the remote AI agent.
  * 
  * @param phase The current game phase (Discard or Claim).

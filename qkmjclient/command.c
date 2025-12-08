@@ -18,6 +18,7 @@
 #endif
 
 #include "qkmj.h"
+#include "ai_client.h"
 
 #define TABLE 1
 #define LIST 2
@@ -57,6 +58,7 @@
 #define S_LEAVE 36
 #define S_TABLE 37
 #define S_QUIT 38
+#define AI_CMD 39
 
 int enable_kick = 1;
 int enable_exec = 0;
@@ -66,7 +68,7 @@ char commands[100][10] = {
     "HELP", "NOTE",  "STAT",   "LOGIN",  "PASSWD",   "preserve1", "BROADCAST",
     "KICK", "KILL",  "INVITE", "MSG",    "SHUTDOWN", "LURKER",    "FIND",
     "BEEP", "EXEC",  "FREE",   "P",      "J",        "H",         "W",
-    "S",    "L",     "T",      "Q"};
+    "S",    "L",     "T",      "Q",      "AI"};
 
 void Tokenize(char* strinput) {
   int k1, klast, Ltok, k1old;
@@ -458,6 +460,23 @@ void command_parser(char* msg) {
         snprintf(msg_buf, sizeof(msg_buf), "邀請 %s 加入此桌",
                  (char*)cmd_argv[2]);
         display_comment(msg_buf);
+        break;
+      case AI_CMD:
+        if (narg < 2) {
+          snprintf(msg_buf, sizeof(msg_buf), "目前 AI 模式為%s",
+                   (ai_is_enabled()) ? "開啟" : "關閉");
+          display_comment(msg_buf);
+        } else {
+          my_strupr(ans_buf, (char*)cmd_argv[2]);
+          if (strcmp(ans_buf, "ON") == 0) {
+            ai_set_enabled(1);
+            display_comment("開啟 AI 模式");
+          }
+          if (strcmp(ans_buf, "OFF") == 0) {
+            ai_set_enabled(0);
+            display_comment("關閉 AI 模式");
+          }
+        }
         break;
       default:
         err("Unknow command id");

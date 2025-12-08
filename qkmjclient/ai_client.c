@@ -52,6 +52,10 @@ int ai_is_enabled() {
     return ai_enabled;
 }
 
+void ai_set_enabled(int enabled) {
+    ai_enabled = enabled;
+}
+
 // Helper to add player state
 void add_player_state(cJSON *players_array, int seat_idx) {
     cJSON *player_obj = cJSON_CreateObject();

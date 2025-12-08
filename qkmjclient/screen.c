@@ -18,6 +18,7 @@
 #endif
 
 #include "qkmj.h"
+#include "ai_client.h"
 
 /* Prototypes - Removed as they are in qkmj.h */
 void draw_global_screen();
@@ -656,6 +657,16 @@ void display_info()
   attron(A_REVERSE);
   mvwprintw(stdscr,2+info.dealer*2,74,"莊");
   attroff(A_REVERSE);
+
+  wmove(stdscr, 12, 60);
+  if (ai_is_enabled()) {
+      attron(A_REVERSE);
+      waddstr(stdscr, " AI ");
+      attroff(A_REVERSE);
+  } else {
+      waddstr(stdscr, "    ");
+  }
+
   wrefresh(stdscr);
   wmove(inputwin,talk_y,talk_x);
   wrefresh(inputwin);
