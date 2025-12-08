@@ -45,7 +45,7 @@ bool mongo_connect(const char* uri_string) {
   mongoc_client_set_appname(client, MONGO_APP_NAME);
 
   // Check connection
-  bson_t *command;
+  bson_t* command;
   bson_t reply;
   bson_error_t error;
   command = BCON_NEW("ping", BCON_INT32(1));
@@ -354,6 +354,8 @@ int64_t mongo_get_next_sequence(const char* db_name,
   bson_t reply;
   int64_t seq_value = -1;
   mongoc_find_and_modify_opts_t* opts;
+  bson_iter_t iter;
+  bson_iter_t child;
 
   if (!client) {
     fprintf(stderr, "MongoDB client not connected\n");
@@ -376,9 +378,6 @@ int64_t mongo_get_next_sequence(const char* db_name,
 
   if (mongoc_collection_find_and_modify_with_opts(collection, query, opts,
                                                   &reply, &error)) {
-    bson_iter_t iter;
-    bson_iter_t child;
-
     // Extract the 'seq' value from the returned document
     if (bson_iter_init_find(&iter, &reply, "value") &&
         BSON_ITER_HOLDS_DOCUMENT(&iter) && bson_iter_recurse(&iter, &child)) {

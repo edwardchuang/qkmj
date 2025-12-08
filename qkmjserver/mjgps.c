@@ -62,11 +62,12 @@ struct ask_mode_info ask;
 struct rlimit fd_limit;
 
 int err(char* errmsg) {
+  bson_t* doc;
+
   printf("%s", errmsg);
 
-  bson_t* doc =
-      BCON_NEW("level", BCON_UTF8("error"), "message", BCON_UTF8(errmsg),
-               "timestamp", BCON_DATE_TIME(time(NULL) * 1000));
+  doc = BCON_NEW("level", BCON_UTF8("error"), "message", BCON_UTF8(errmsg),
+                 "timestamp", BCON_DATE_TIME(time(NULL) * 1000));
   mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
   bson_destroy(doc);
   return 0;
@@ -762,6 +763,7 @@ void gps_processing() {
   struct timeval tm;
   long current_time;
   struct tm* tim;
+  int find_duplicated;
 
   log_level = 0;
   nfds = getdtablesize();
@@ -882,7 +884,7 @@ void gps_processing() {
                 if (read_user_name(player[player_id].name)) {
                   *(buf + 11) = 0;
                   if (checkpasswd(record.password, (char*)buf + 3)) {
-                    int find_duplicated = 0;
+                    find_duplicated = 0;
                     for (i = 1; i < MAX_PLAYER; i++) {
                       if ((player[i].login == 2 || player[i].login == 3) &&
                           strcmp(player[i].name, player[player_id].name) == 0) {
@@ -1299,8 +1301,10 @@ int checkpasswd(char* passwd, char* test) {
 }
 
 int main(int argc, char** argv) {
-  setlocale(LC_ALL, "");
   int i;
+  char* mongo_uri;
+
+  setlocale(LC_ALL, "");
 
   /*
    * Set fd to be the maximum number
@@ -1321,19 +1325,20 @@ int main(int argc, char** argv) {
     printf("Using port %s\n", argv[1]);
   }
   strncpy(gps_ip, DEFAULT_GPS_IP, sizeof(gps_ip) - 1);
-    gps_ip[sizeof(gps_ip) - 1] = '\0';
-    
-    // Init Mongo
-    char *mongo_uri = getenv("MONGO_URI");
-    if (!mongo_uri) {
-        mongo_uri = "mongodb://localhost:27017";
-    }
-    if (!mongo_connect(mongo_uri)) {
-        fprintf(stderr, "Failed to connect to MongoDB at %s\n", mongo_uri);
-        exit(1);
-    }
-    
-    init_socket();  init_variable();
+  gps_ip[sizeof(gps_ip) - 1] = '\0';
+
+  // Init Mongo
+  mongo_uri = getenv("MONGO_URI");
+  if (!mongo_uri) {
+    mongo_uri = "mongodb://localhost:27017";
+  }
+  if (!mongo_connect(mongo_uri)) {
+    fprintf(stderr, "Failed to connect to MongoDB at %s\n", mongo_uri);
+    exit(1);
+  }
+
+  init_socket();
+  init_variable();
   gps_processing();
 
   mongo_disconnect();

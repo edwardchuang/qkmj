@@ -8,17 +8,18 @@
 // Helper to convert MongoDB BSON to player_record struct
 void bson_to_record(const bson_t* doc, struct player_record* rec) {
   bson_iter_t iter;
+  const char* str;
 
   if (bson_iter_init_find(&iter, doc, "user_id")) {
     rec->id = (unsigned int)bson_iter_int64(&iter);
   }
   if (bson_iter_init_find(&iter, doc, "name")) {
-    const char* str = bson_iter_utf8(&iter, NULL);
+    str = bson_iter_utf8(&iter, NULL);
     strncpy(rec->name, str, sizeof(rec->name) - 1);
     rec->name[sizeof(rec->name) - 1] = '\0';
   }
   if (bson_iter_init_find(&iter, doc, "password")) {
-    const char* str = bson_iter_utf8(&iter, NULL);
+    str = bson_iter_utf8(&iter, NULL);
     strncpy(rec->password, str, sizeof(rec->password) - 1);
     rec->password[sizeof(rec->password) - 1] = '\0';
   }
@@ -41,7 +42,7 @@ void bson_to_record(const bson_t* doc, struct player_record* rec) {
     rec->last_login_time = (long)bson_iter_int64(&iter);
   }
   if (bson_iter_init_find(&iter, doc, "last_login_from")) {
-    const char* str = bson_iter_utf8(&iter, NULL);
+    str = bson_iter_utf8(&iter, NULL);
     strncpy(rec->last_login_from, str, sizeof(rec->last_login_from) - 1);
     rec->last_login_from[sizeof(rec->last_login_from) - 1] = '\0';
   }

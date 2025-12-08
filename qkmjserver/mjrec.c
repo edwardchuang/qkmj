@@ -84,6 +84,7 @@ void print_record() {
   int id;
   char name[40];
   long money;
+  int c;
 
   bson_t* query = bson_new();
 
@@ -108,7 +109,6 @@ void print_record() {
 
     case 2:
       printf("請輸入你要查看的名稱:");
-      int c;
       while ((c = getchar()) != '\n' && c != EOF); /* flush stdin */
       if (fgets(name, sizeof(name), stdin)) {
         name[strcspn(name, "\n")] = 0;
@@ -180,15 +180,16 @@ void modify_user() {
   char name[40];
   char account[40];
   long money;
+  int c;
+  int res;
 
   printf("請輸入使用者帳號:");
-  int c;
   while ((c = getchar()) != '\n' && c != EOF); /* flush stdin */
   if (fgets(account, sizeof(account), stdin)) {
     account[strcspn(account, "\n")] = 0;
   }
 
-  int res = read_user_name(account);
+  res = read_user_name(account);
   if (res == 0) {
     printf(" 查無此人 ");
     return;
@@ -235,17 +236,17 @@ void modify_user() {
 
 int main(int argc, char** argv) {
   int i, id;
+  char* mongo_uri;
 
-// record_file argument ignored in Mongo version but kept for arg position compat
-  
-  // Init Mongo
-  char *mongo_uri = getenv("MONGO_URI");
+  // record_file argument ignored in Mongo version but kept for arg position
+  // compat Init Mongo
+  mongo_uri = getenv("MONGO_URI");
   if (!mongo_uri) {
-      mongo_uri = "mongodb://localhost:27017";
+    mongo_uri = "mongodb://localhost:27017";
   }
   if (!mongo_connect(mongo_uri)) {
-      fprintf(stderr, "Failed to connect to MongoDB at %s\n", mongo_uri);
-      exit(1);
+    fprintf(stderr, "Failed to connect to MongoDB at %s\n", mongo_uri);
+    exit(1);
   }
 
   while (1) {
