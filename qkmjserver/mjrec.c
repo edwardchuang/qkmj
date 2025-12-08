@@ -15,52 +15,65 @@
 #include <unistd.h>
 
 #include "mjgps.h"
+#include "mjgps_mongo_helpers.h"
+#include "mongo.h"
 
-char record_file[MAXPATHLEN];
+char record_file[MAXPATHLEN];  // Kept for compatibility in main, but unused
 
 struct player_record record;
 
-FILE* fp;
-
 int read_user_name(char* name) {
-  struct player_record tmp_rec;
+  bson_t* query;
+  bson_t* doc;
 
-  if ((fp = fopen(record_file, "r+b")) == NULL) {
-    printf("Cannot open file %s\n", record_file);
-    exit(1);
-  }
+  query = BCON_NEW("name", BCON_UTF8(name));
+  doc = mongo_find_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+  bson_destroy(query);
 
-  while (!feof(fp) && fread(&tmp_rec, sizeof(tmp_rec), 1, fp)) {
-    if (strcmp(name, tmp_rec.name) == 0) {
-      record = tmp_rec;
-      fclose(fp);
-      return 1;
-    }
+  if (doc) {
+    bson_to_record(doc, &record);
+    bson_destroy(doc);
+    return 1;
   }
-  fclose(fp);
   return 0;
 }
 
 void read_user_id(unsigned int id) {
-  if ((fp = fopen(record_file, "r+b")) == NULL) {
-    printf("Cannot open file %s\n", record_file);
-    exit(1);
-  }
+  bson_t* query;
+  bson_t* doc;
 
-  fseek(fp, sizeof(record) * id, 0);
-  fread(&record, sizeof(record), 1, fp);
-  fclose(fp);
+  query = BCON_NEW("user_id", BCON_INT64(id));
+  doc = mongo_find_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+  bson_destroy(query);
+
+  if (doc) {
+    bson_to_record(doc, &record);
+    bson_destroy(doc);
+  } else {
+    // If not found, maybe clear record?
+    // Original code fseek/fread might leave garbage or fail silent if EOF.
+    // We'll just zero it.
+    memset(&record, 0, sizeof(record));
+  }
 }
 
 void write_record() {
-  if ((fp = fopen(record_file, "r+b")) == NULL) {
-    printf("Cannot open file %s\n", record_file);
-    exit(1);
-  }
+  bson_t* query;
+  bson_t* doc;
 
-  fseek(fp, sizeof(record) * record.id, 0);
-  fwrite(&record, sizeof(record), 1, fp);
-  fclose(fp);
+  query = BCON_NEW("user_id", BCON_INT64(record.id));
+  doc = record_to_bson(&record);
+
+  mongo_replace_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query, doc);
+
+  bson_destroy(query);
+  bson_destroy(doc);
+}
+
+void delete_user(unsigned int id) {
+  bson_t* query = BCON_NEW("user_id", BCON_INT64(id));
+  mongo_delete_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+  bson_destroy(query);
 }
 
 void print_record() {
@@ -71,6 +84,8 @@ void print_record() {
   int id;
   char name[40];
   long money;
+
+  bson_t* query = bson_new();
 
   printf("(1) 以 id 查看特定使用者\n");
   printf("(2) 以名稱查看特定使用者\n");
@@ -84,9 +99,11 @@ void print_record() {
     case 1:
       printf("請輸入你要查看的 id:");
       scanf("%d", &id);
-
-      if (id < 0) return;
-
+      if (id < 0) {
+        bson_destroy(query);
+        return;
+      }
+      BSON_APPEND_INT64(query, "user_id", id);
       break;
 
     case 2:
@@ -96,59 +113,66 @@ void print_record() {
       if (fgets(name, sizeof(name), stdin)) {
         name[strcspn(name, "\n")] = 0;
       }
+      BSON_APPEND_UTF8(query, "name", name);
       break;
 
     case 3:
+      // Empty query matches all
       break;
 
     case 4:
+      printf("請輸入金額:");
+      scanf("%ld", &money);
+      BSON_APPEND_INT64(query, "money", money);
+      // GT operator needed?
+      // Complex query construction: { money: { $gte: money } }
+      bson_destroy(query);
+      query = BCON_NEW("money", "{", "$gte", BCON_INT64(money), "}");
+      break;
+
     case 5:
       printf("請輸入金額:");
       scanf("%ld", &money);
+      bson_destroy(query);
+      query = BCON_NEW("money", "{", "$lte", BCON_INT64(money), "}");
       break;
 
     default:
+      bson_destroy(query);
       return;
   }
 
   player_num = 0;
-  if ((fp = fopen(record_file, "rb")) == NULL) {
-    printf("Cannot open file %s\n", record_file);
-    exit(1);
+  mongoc_cursor_t* cursor =
+      mongo_find_documents(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+  const bson_t* doc;
+
+  if (cursor) {
+    while (mongoc_cursor_next(cursor, &doc)) {
+      bson_to_record(doc, &tmprec);
+
+      printf("%d %10s %15s %ld %d %d %d  %s\n", tmprec.id, tmprec.name,
+             tmprec.password, tmprec.money, tmprec.level, tmprec.login_count,
+             tmprec.game_count, tmprec.last_login_from);
+
+      strncpy(time1, ctime(&tmprec.regist_time), sizeof(time1) - 1);
+      time1[sizeof(time1) - 1] = '\0';
+      strncpy(time2, ctime(&tmprec.last_login_time), sizeof(time2) - 1);
+      time2[sizeof(time2) - 1] = '\0';
+
+      time1[strlen(time1) - 1] = 0;
+      time2[strlen(time2) - 1] = 0;
+      printf("              %s    %s\n", time1, time2);
+
+      if (tmprec.name[0] != 0) player_num++;
+    }
+    mongoc_cursor_destroy(cursor);
   }
 
-  while (!feof(fp) && fread(&tmprec, sizeof(tmprec), 1, fp)) {
-    if (i == 1) {
-      if (id != tmprec.id) continue;
-    }
-    if (i == 2) {
-      if (strcmp(name, tmprec.name) != 0 || name[0] == 0) continue;
-    }
-    if (i == 4) {
-      if (tmprec.money <= money || tmprec.name[0] == 0) continue;
-    }
-    if (i == 5) {
-      if (tmprec.money >= money || tmprec.name[0] == 0) continue;
-    }
-
-    printf("%d %10s %15s %ld %d %d %d  %s\n", tmprec.id, tmprec.name,
-           tmprec.password, tmprec.money, tmprec.level, tmprec.login_count,
-           tmprec.game_count, tmprec.last_login_from);
-
-    strncpy(time1, ctime(&tmprec.regist_time), sizeof(time1) - 1);
-    time1[sizeof(time1) - 1] = '\0';
-    strncpy(time2, ctime(&tmprec.last_login_time), sizeof(time2) - 1);
-    time2[sizeof(time2) - 1] = '\0';
-
-    time1[strlen(time1) - 1] = 0;
-    time2[strlen(time2) - 1] = 0;
-    printf("              %s    %s\n", time1, time2);
-
-    if (tmprec.name[0] != 0) player_num++;
-  }
   printf("--------------------------------------------------------------\n");
   if (i == 3) printf("共 %d 人注冊\n", player_num);
-  fclose(fp);
+
+  bson_destroy(query);
 }
 
 void modify_user() {
@@ -212,9 +236,11 @@ void modify_user() {
 int main(int argc, char** argv) {
   int i, id;
 
-  strncpy(record_file, argc < 2 ? DEFAULT_RECORD_FILE : argv[1],
-          sizeof(record_file) - 1);
-  record_file[sizeof(record_file) - 1] = '\0';
+  // record_file argument ignored in Mongo version but kept for arg position
+  // compat
+
+  // Init Mongo
+  mongo_connect("mongodb://localhost:27017");
 
   while (1) {
     printf("\n");
@@ -235,9 +261,8 @@ int main(int argc, char** argv) {
         scanf("%d", &id);
 
         if (id >= 0) {
-          read_user_id(id);
-          record.name[0] = 0;
-          write_record();
+          delete_user((unsigned int)id);
+          printf("User %d deleted.\n", id);
         }
         break;
 
@@ -246,9 +271,11 @@ int main(int argc, char** argv) {
         break;
 
       default:
+        mongo_disconnect();
         return 0;
     }
   }
 
+  mongo_disconnect();
   return 0;
 }

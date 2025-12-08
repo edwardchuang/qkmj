@@ -25,6 +25,9 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "mjgps_mongo_helpers.h"
+#include "mongo.h"
+
 /*
  * Global variables
  */
@@ -59,27 +62,22 @@ struct ask_mode_info ask;
 struct rlimit fd_limit;
 
 int err(char* errmsg) {
-  if ((log_fp = fopen(LOG_FILE, "a")) == NULL) {
-    printf("Cannot open logfile\n");
-    return -1;
-  }
   printf("%s", errmsg);
 
-  if (log_level == 0) fprintf(log_fp, "%s", errmsg);
-
-  log_level = 0;
-  fclose(log_fp);
+  bson_t* doc =
+      BCON_NEW("level", BCON_UTF8("error"), "message", BCON_UTF8(errmsg),
+               "timestamp", BCON_DATE_TIME(time(NULL) * 1000));
+  mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
+  bson_destroy(doc);
   return 0;
 }
 
 int game_log(char* gamemsg) {
-  if ((log_fp = fopen(GAME_FILE, "a")) == NULL) {
-    printf("Cannot open GAME_FILE\n");
-    return -1;
-  }
-  fprintf(log_fp, "%s", gamemsg);
-
-  fclose(log_fp);
+  bson_t* doc =
+      BCON_NEW("level", BCON_UTF8("game"), "message", BCON_UTF8(gamemsg),
+               "timestamp", BCON_DATE_TIME(time(NULL) * 1000));
+  mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
+  bson_destroy(doc);
   return 0;
 }
 
@@ -262,32 +260,37 @@ void list_stat(int fd, char* name) {
   char msg_buf[1000];
   char msg_buf1[1000];
   char order_buf[30];
-  int i;
-  int total_num;
-  int order;
+  int total_num = 0;
+  int order = 1;
   struct player_record tmp_rec;
 
-  total_num = 0;
-  order = 1;
+  // MongoDB variables
+  bson_t* query;
+  mongoc_cursor_t* cursor;
+  const bson_t* doc;
+
   if (!read_user_name(name)) {
     write_msg(fd, "101找不到這個人!");
     return;
   }
-  // sprintf(msg_buf, "101◇名稱:%s  %s", record.name, record.last_login_from);
   snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name);
-  if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-    snprintf(msg_buf, sizeof(msg_buf), "(stat) Cannot open file\n");
-    err(msg_buf);
-    return;
+
+  if (record.game_count >= 16) {
+    // Count players with more money and >= 16 games
+    query = BCON_NEW("game_count", BCON_INT32(16), "money", "{", "$gt",
+                     BCON_INT64(record.money), "}");
+    order = (int)mongo_count_documents(MONGO_DB_NAME, MONGO_COLLECTION_USERS,
+                                       query) +
+            1;
+    bson_destroy(query);
+
+    // Count total players with >= 16 games
+    query = BCON_NEW("game_count", BCON_INT32(16));
+    total_num = (int)mongo_count_documents(MONGO_DB_NAME,
+                                           MONGO_COLLECTION_USERS, query);
+    bson_destroy(query);
   }
-  rewind(fp);
-  if (record.game_count >= 16)
-    while (!feof(fp) && fread(&tmp_rec, sizeof(tmp_rec), 1, fp)) {
-      if (tmp_rec.name[0] != 0 && tmp_rec.game_count >= 16) {
-        total_num++;
-        if (tmp_rec.money > record.money) order++;
-      }
-    }
+
   if (record.game_count < 16)
     strcpy(order_buf, "無");
   else
@@ -297,7 +300,6 @@ void list_stat(int fd, char* name) {
            order_buf, record.login_count, record.game_count);
   write_msg(fd, msg_buf);
   write_msg(fd, msg_buf1);
-  fclose(fp);
 }
 
 void who(int fd, char* name) {
@@ -499,69 +501,63 @@ void init_variable() {
 }
 
 int read_user_name(char* name) {
-  struct player_record tmp_rec;
-  char msg_buf[1000];
+  bson_t* query;
+  bson_t* doc;
 
-  if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
-    snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) Cannot open file!\n");
-    err(msg_buf);
-    return 0;
+  query = BCON_NEW("name", BCON_UTF8(name));
+  doc = mongo_find_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+  bson_destroy(query);
+
+  if (doc) {
+    bson_to_record(doc, &record);
+    bson_destroy(doc);
+    return 1;
   }
-  rewind(fp);
-  while (!feof(fp) && fread(&tmp_rec, sizeof(tmp_rec), 1, fp)) {
-    if (strcmp(name, tmp_rec.name) == 0) {
-      record = tmp_rec;
-      fclose(fp);
-      return 1;
-    }
-  }
-  fclose(fp);
   return 0;
 }
-int read_user_name_update(char* name, int player_id) {
-  struct player_record tmp_rec;
-  char msg_buf[1000];
 
-  if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
-    snprintf(msg_buf, sizeof(msg_buf), "(read_user_name) Cannot open file!\n");
-    err(msg_buf);
-    return 0;
-  }
-  rewind(fp);
-  while (!feof(fp) && fread(&tmp_rec, sizeof(tmp_rec), 1, fp)) {
-    if (strcmp(name, tmp_rec.name) == 0) {
-      record = tmp_rec;
-      if (player[player_id].id == record.id) {  // double check
-        player[player_id].id = record.id;
-        player[player_id].money = record.money;
-      }
-      fclose(fp);
-      return 1;
+int read_user_name_update(char* name, int player_id) {
+  if (read_user_name(name)) {
+    if (player[player_id].id == record.id) {  // double check
+      player[player_id].id = record.id;
+      player[player_id].money = record.money;
     }
+    return 1;
   }
-  fclose(fp);
   return 0;
 }
 
 void read_user_id(unsigned int id) {
-  char msg_buf[1000];
+  bson_t* query;
+  bson_t* doc;
 
-  if ((fp = fopen(RECORD_FILE, "a+b")) == NULL) {
-    snprintf(msg_buf, sizeof(msg_buf), "(read_user_id) Cannot open file!\n");
-    err(msg_buf);
-    return;
+  query = BCON_NEW("user_id", BCON_INT64(id));
+  doc = mongo_find_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+  bson_destroy(query);
+
+  if (doc) {
+    bson_to_record(doc, &record);
+    bson_destroy(doc);
   }
-  rewind(fp);
-  fseek(fp, sizeof(record) * id, 0);
-  fread(&record, sizeof(record), 1, fp);
-  fclose(fp);
 }
 
 int add_user(int player_id, char* name, char* passwd) {
-  struct stat status;
+  bson_t* doc;
+  int64_t new_id;
 
-  stat(RECORD_FILE, &status);
-  if (!read_user_name("")) record.id = (unsigned int)(status.st_size / sizeof(record));
+  // Check if user exists by name (empty name check in original code??)
+  // Original code: if (!read_user_name("")) record.id = ...
+  // This logic seems to be "if empty name user doesn't exist, set ID".
+  // Actually original logic was checking for ID generation.
+  // Here we use counter.
+
+  new_id = mongo_get_next_sequence(MONGO_DB_NAME, MONGO_SEQUENCE_USERID);
+  if (new_id < 0) {
+    err("Failed to generate user ID");
+    return 0;
+  }
+  record.id = (unsigned int)new_id;
+
   strncpy(record.name, name, sizeof(record.name) - 1);
   record.name[sizeof(record.name) - 1] = '\0';
   strncpy(record.password, genpasswd(passwd), sizeof(record.password) - 1);
@@ -573,12 +569,14 @@ int add_user(int player_id, char* name, char* passwd) {
   time(&record.regist_time);
   record.last_login_time = record.regist_time;
   record.last_login_from[0] = 0;
+
   if (player[player_id].username[0] != 0) {
     snprintf(record.last_login_from, sizeof(record.last_login_from), "%s@",
              player[player_id].username);
   }
   strncat(record.last_login_from, lookup(&(player[player_id].addr)),
           sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
+
   if (check_user(player_id)) {
     write_record();
     return 1;
@@ -590,61 +588,64 @@ int check_user(int player_id) {
   char msg_buf[1000];
   char from[80];
   char email[80];
-  FILE* baduser_fp;
 
-  if ((baduser_fp = fopen(BADUSER_FILE, "r")) == NULL) {
-    snprintf(msg_buf, sizeof(msg_buf), "Cannot open file %s", BADUSER_FILE);
-    err(msg_buf);
-    return 1;
-  }
   strncpy(from, lookup(&(player[player_id].addr)), sizeof(from) - 1);
   from[sizeof(from) - 1] = '\0';
   snprintf(email, sizeof(email), "%s@", player[player_id].username);
   strncat(email, from, sizeof(email) - strlen(email) - 1);
 
-  while (fgets(msg_buf, 80, baduser_fp) != NULL) {
-    msg_buf[strlen(msg_buf) - 1] = 0;
-    if (strcmp(email, msg_buf) == 0 ||
-        strcmp(player[player_id].username, msg_buf) == 0) {
-      display_msg(player_id, "你已被限制進入");
-      fclose(baduser_fp);
-      return 0;
-    }
+  // Query badusers collection
+  // Schema: { "pattern": "string" }
+  // If match found, return 0.
+
+  bson_t* query = BCON_NEW("pattern", "{", "$in", "[", BCON_UTF8(email),
+                           BCON_UTF8(player[player_id].username), "]", "}");
+  int64_t count = mongo_count_documents(MONGO_DB_NAME, "badusers", query);
+  bson_destroy(query);
+
+  if (count > 0) {
+    display_msg(player_id, "你已被限制進入");
+    return 0;
   }
-  fclose(baduser_fp);
   return 1;
 }
 
 void write_record() {
-  char msg_buf[1000];
+  bson_t* query;
+  bson_t* doc;
 
-  if ((fp = fopen(RECORD_FILE, "r+b")) == NULL) {
-    snprintf(msg_buf, sizeof(msg_buf), "(write_record) Cannot open file!");
-    err(msg_buf);
-    return;
-  }
-  fseek(fp, sizeof(record) * record.id, 0);
-  fwrite(&record, sizeof(record), 1, fp);
-  fclose(fp);
+  query = BCON_NEW("user_id", BCON_INT64(record.id));
+  doc = record_to_bson(&record);
+
+  mongo_replace_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query, doc);
+
+  bson_destroy(query);
+  bson_destroy(doc);
 }
 
 void print_news(int fd, char* name) {
-  FILE* news_fp;
-  char msg[255];
+  // Ignore 'name' (filename) and read from 'news' collection
+  bson_t* query = bson_new();
+  bson_t* opts =
+      BCON_NEW("sort", "{", "date", BCON_INT32(-1), "}");  // Show newest first
+
+  mongoc_cursor_t* cursor = mongo_find_documents(MONGO_DB_NAME, "news", query);
+  const bson_t* doc;
   char msg_buf[1000];
 
-  if ((news_fp = fopen(name, "r")) == NULL) {
-    snprintf(msg_buf, sizeof(msg_buf), "Cannot open file %s\n", NEWS_FILE);
-    err(msg_buf);
-    return;
+  if (cursor) {
+    while (mongoc_cursor_next(cursor, &doc)) {
+      bson_iter_t iter;
+      if (bson_iter_init_find(&iter, doc, "content")) {
+        const char* content = bson_iter_utf8(&iter, NULL);
+        snprintf(msg_buf, sizeof(msg_buf), "101%s", content);
+        write_msg(fd, msg_buf);
+      }
+    }
+    mongoc_cursor_destroy(cursor);
   }
-  while (fgets(msg, 80, news_fp) != NULL) {
-    msg[strlen(msg) - 1] = 0;
-    strcpy(msg_buf, "101");
-    strncat(msg_buf, msg, sizeof(msg_buf) - strlen(msg_buf) - 1);
-    write_msg(fd, msg_buf);
-  }
-  fclose(news_fp);
+  bson_destroy(query);
+  bson_destroy(opts);
 }
 
 void welcome_user(int player_id) {
@@ -695,16 +696,12 @@ void show_online_users(int player_id) {
   struct player_record tmp_rec;
 
   fd = player[player_id].sockfd;
-  if ((fp = fopen(RECORD_FILE, "rb")) == NULL) {
-    snprintf(msg_buf, sizeof(msg_buf), "(current) cannot open file\n");
-    err(msg_buf);
-  } else {
-    rewind(fp);
-    while (!feof(fp) && fread(&tmp_rec, sizeof(tmp_rec), 1, fp)) {
-      if (tmp_rec.name[0] != 0) total_num++;
-    }
-    fclose(fp);
-  }
+
+  bson_t* query = bson_new();
+  total_num =
+      (int)mongo_count_documents(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+  bson_destroy(query);
+
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].login == 2) online_num++;
   }
@@ -800,6 +797,12 @@ void gps_processing() {
       player[player_id].sockfd =
           accept(gps_sockfd, (struct sockaddr*)&player[player_num].addr,
                  (socklen_t*)&alen);
+
+      if (player[player_id].sockfd < 0) {
+        err("accept failed");
+        continue;  // Don't break the loop
+      }
+
       FD_SET(player[player_id].sockfd, &afds);
       fcntl(player[player_id].sockfd, F_SETFL, FNDELAY);
       player[player_id].login = 1;
@@ -810,7 +813,7 @@ void gps_processing() {
 
       time(&current_time);
       tim = localtime(&current_time);
-      
+
       if (player_id > login_limit) {
         if (strcmp(climark, "ccsun34") != 0) {
           write_msg(player[player_id].sockfd,
@@ -1210,6 +1213,7 @@ void shutdown_server() {
   }
   snprintf(msg_buf, sizeof(msg_buf), "QKMJ Server shutdown\n");
   err(msg_buf);
+  mongo_disconnect();
   exit(0);
 }
 
@@ -1318,8 +1322,14 @@ int main(int argc, char** argv) {
   }
   strncpy(gps_ip, DEFAULT_GPS_IP, sizeof(gps_ip) - 1);
   gps_ip[sizeof(gps_ip) - 1] = '\0';
+
+  // Init Mongo
+  mongo_connect("mongodb://localhost:27017");
+
   init_socket();
   init_variable();
   gps_processing();
+
+  mongo_disconnect();
   return 0;
 }

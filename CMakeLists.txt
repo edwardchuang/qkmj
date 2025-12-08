@@ -19,6 +19,8 @@ find_package(PkgConfig REQUIRED)
 include_directories(
     ${CMAKE_SOURCE_DIR}/qkmjclient
     ${CMAKE_SOURCE_DIR}/qkmjserver
+    ${MONGOC_INCLUDE_DIRS}
+    ${BSON_INCLUDE_DIRS}
 )
 
 # Check for ncursesw first, then ncurses
@@ -58,6 +60,10 @@ if(CURSES_FOUND)
     endif()
 endif()
 
+# Find Mongo C Driver
+pkg_check_modules(MONGOC REQUIRED IMPORTED_TARGET mongoc2)
+pkg_check_modules(BSON REQUIRED IMPORTED_TARGET bson2)
+
 # Math library
 find_library(MATH_LIB m)
 
@@ -70,16 +76,27 @@ endif()
 # --- mjgps Target ---
 add_executable(mjgps
     qkmjserver/mjgps.c
+    qkmjserver/mongo.c
+    qkmjserver/mjgps_mongo_helpers.c
 )
 
 target_link_libraries(mjgps
     ${MATH_LIB}
     ${CRYPT_LIB}
+    PkgConfig::MONGOC
+    PkgConfig::BSON
 )
 
 # --- mjrec Target ---
 add_executable(mjrec
     qkmjserver/mjrec.c
+    qkmjserver/mongo.c
+    qkmjserver/mjgps_mongo_helpers.c
+)
+
+target_link_libraries(mjrec
+    PkgConfig::MONGOC
+    PkgConfig::BSON
 )
 
 # --- qkmj Target ---
@@ -101,4 +118,3 @@ target_link_libraries(qkmj
     ${CURSES_LINK_LIB}
     ${MATH_LIB}
 )
-
