@@ -19,13 +19,16 @@
 #define MONGO_COLLECTION_COUNTERS "counters"
 #define MONGO_SEQUENCE_USERID "userid"
 
+#include <stdbool.h>
+
 /**
  * @brief Initializes the MongoDB driver and establishes a connection.
  *
  * @param uri_string The MongoDB connection string (e.g.,
  * "mongodb://localhost:27017").
+ * @return true if successful, false otherwise.
  */
-void mongo_connect(const char* uri_string);
+bool mongo_connect(const char* uri_string);
 
 /**
  * @brief Disconnects from the MongoDB server and cleans up resources.

@@ -1321,13 +1321,19 @@ int main(int argc, char** argv) {
     printf("Using port %s\n", argv[1]);
   }
   strncpy(gps_ip, DEFAULT_GPS_IP, sizeof(gps_ip) - 1);
-  gps_ip[sizeof(gps_ip) - 1] = '\0';
-
-  // Init Mongo
-  mongo_connect("mongodb://localhost:27017");
-
-  init_socket();
-  init_variable();
+    gps_ip[sizeof(gps_ip) - 1] = '\0';
+    
+    // Init Mongo
+    char *mongo_uri = getenv("MONGO_URI");
+    if (!mongo_uri) {
+        mongo_uri = "mongodb://localhost:27017";
+    }
+    if (!mongo_connect(mongo_uri)) {
+        fprintf(stderr, "Failed to connect to MongoDB at %s\n", mongo_uri);
+        exit(1);
+    }
+    
+    init_socket();  init_variable();
   gps_processing();
 
   mongo_disconnect();

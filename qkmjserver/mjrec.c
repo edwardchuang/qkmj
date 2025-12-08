@@ -236,11 +236,17 @@ void modify_user() {
 int main(int argc, char** argv) {
   int i, id;
 
-  // record_file argument ignored in Mongo version but kept for arg position
-  // compat
-
+// record_file argument ignored in Mongo version but kept for arg position compat
+  
   // Init Mongo
-  mongo_connect("mongodb://localhost:27017");
+  char *mongo_uri = getenv("MONGO_URI");
+  if (!mongo_uri) {
+      mongo_uri = "mongodb://localhost:27017";
+  }
+  if (!mongo_connect(mongo_uri)) {
+      fprintf(stderr, "Failed to connect to MongoDB at %s\n", mongo_uri);
+      exit(1);
+  }
 
   while (1) {
     printf("\n");

@@ -25,13 +25,13 @@ static mongoc_uri_t* uri;
  * @param uri_string The MongoDB connection string (e.g.,
  * "mongodb://localhost:27017").
  */
-void mongo_connect(const char* uri_string) {
+bool mongo_connect(const char* uri_string) {
   mongoc_init();
 
   uri = mongoc_uri_new_with_error(uri_string, NULL);
   if (!uri) {
     fprintf(stderr, "failed to parse URI: %s\n", uri_string);
-    return;
+    return false;
   }
 
   client = mongoc_client_new_from_uri(uri);
@@ -39,10 +39,29 @@ void mongo_connect(const char* uri_string) {
     fprintf(stderr, "failed to create client\n");
     mongoc_uri_destroy(uri);
     mongoc_cleanup();
-    return;
+    return false;
   }
 
   mongoc_client_set_appname(client, MONGO_APP_NAME);
+
+  // Check connection
+  bson_t *command;
+  bson_t reply;
+  bson_error_t error;
+  command = BCON_NEW("ping", BCON_INT32(1));
+  if (!mongoc_client_command_simple(client, "admin", command, NULL, &reply,
+                                    &error)) {
+    fprintf(stderr, "Ping failed: %s\n", error.message);
+    bson_destroy(command);
+    bson_destroy(&reply);
+    mongoc_client_destroy(client);
+    mongoc_uri_destroy(uri);
+    mongoc_cleanup();
+    return false;
+  }
+  bson_destroy(command);
+  bson_destroy(&reply);
+  return true;
 }
 
 /**
