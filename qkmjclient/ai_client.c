@@ -237,6 +237,25 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
         res = curl_easy_perform(curl);
 
         if (res == CURLE_OK) {
+            char *log_str;
+            cJSON *log_root = cJSON_CreateObject();
+            cJSON_AddStringToObject(log_root, "level", "ai_trace");
+            cJSON_AddItemToObject(log_root, "request", cJSON_Parse(json_payload)); // Parse back to object to embed
+            cJSON_AddItemToObject(log_root, "response", cJSON_Parse(chunk.response));
+            cJSON_AddNumberToObject(log_root, "timestamp", (double)time(NULL)*1000.0);
+            
+            log_str = cJSON_PrintUnformatted(log_root);
+            if (log_str) {
+                char *send_buf = (char*)malloc(strlen(log_str) + 4);
+                if (send_buf) {
+                    sprintf(send_buf, "901%s", log_str);
+                    write_msg(gps_sockfd, send_buf);
+                    free(send_buf);
+                }
+                free(log_str);
+            }
+            cJSON_Delete(log_root);
+
             decision = ai_parse_decision(chunk.response);
         } else {
             fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));

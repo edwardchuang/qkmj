@@ -634,10 +634,17 @@ void display_info()
   wmvaddstr(stdscr,21,68,sit_name[(my_sit)%4+1]);
   wmvaddstr(stdscr,20,66,sit_name[(my_sit+1)%4+1]);
   wmvaddstr(stdscr,21,64,sit_name[(my_sit+2)%4+1]);
-  wmvaddstr(stdscr,4,64,player[table[EAST]].name);
-  wmvaddstr(stdscr,6,64,player[table[SOUTH]].name);
-  wmvaddstr(stdscr,8,64,player[table[WEST]].name);
-  wmvaddstr(stdscr,10,64,player[table[NORTH]].name);
+  
+  char name_buf[40];
+  snprintf(name_buf, sizeof(name_buf), "%s%s", player[table[EAST]].name, player[table[EAST]].is_ai ? "(AI)" : "");
+  wmvaddstr(stdscr,4,64,name_buf);
+  snprintf(name_buf, sizeof(name_buf), "%s%s", player[table[SOUTH]].name, player[table[SOUTH]].is_ai ? "(AI)" : "");
+  wmvaddstr(stdscr,6,64,name_buf);
+  snprintf(name_buf, sizeof(name_buf), "%s%s", player[table[WEST]].name, player[table[WEST]].is_ai ? "(AI)" : "");
+  wmvaddstr(stdscr,8,64,name_buf);
+  snprintf(name_buf, sizeof(name_buf), "%s%s", player[table[NORTH]].name, player[table[NORTH]].is_ai ? "(AI)" : "");
+  wmvaddstr(stdscr,10,64,name_buf);
+
   for(i=1;i<=4;i++)
   {
     display_time(i);

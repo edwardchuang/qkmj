@@ -1124,6 +1124,22 @@ void gps_processing() {
                 game_log((char*)buf + 3);
                 err("get game record end\n");
                 break;
+              case 901: // AI Log
+                {
+                    bson_t *doc = bson_new_from_json((const uint8_t *)buf + 3, -1, NULL);
+                    if (doc) {
+                        mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
+                        bson_destroy(doc);
+                    } else {
+                        // Fallback if not valid JSON, just log as message
+                        bson_t *fallback = BCON_NEW("level", BCON_UTF8("ai_trace_raw"), 
+                                                    "message", BCON_UTF8((char*)buf + 3),
+                                                    "timestamp", BCON_DATE_TIME(time(NULL) * 1000));
+                        mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, fallback);
+                        bson_destroy(fallback);
+                    }
+                }
+                break;
               case 111:
                 /*
                  * player[player_id].serv++;

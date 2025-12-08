@@ -95,3 +95,7 @@ int next_player_on, next_player_request;
 int color;
 int cheat_mode;
 char table_card[6][17];
+
+void write_msg(int fd, char* msg) {
+    // Mock implementation
+}

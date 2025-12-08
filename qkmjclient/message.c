@@ -234,6 +234,14 @@ void handle_client_message(int player_id, int msg_id, char* buf) {
       display_comment(buf + 3);
       broadcast_msg(player_id, buf);
       break;
+    case 130:
+      player[player_id].is_ai = buf[3] - '0';
+      snprintf(msg_buf, sizeof(msg_buf), "130%c%c", player[player_id].sit + '0', buf[3]);
+      broadcast_msg(player_id, msg_buf);
+      // Also echo back to sender so they know it's confirmed? 
+      // Or sender updates itself locally.
+      // Usually sender updates local state when sending.
+      break;
     case 200:  // Other User Leave
       close_client(player_id);
       break;
@@ -412,6 +420,11 @@ void handle_serv_message(int msg_id, char* buf) {
       break;
     case 102:
       display_comment(buf + 3);
+      break;
+    case 130:
+      if (table[buf[3] - '0']) {
+          player[table[buf[3] - '0']].is_ai = buf[4] - '0';
+      }
       break;
     case 199:                        // LEAVE 開桌者離開牌桌
       write_msg(gps_sockfd, "205");  // 通知 GPS Server

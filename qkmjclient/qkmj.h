@@ -114,6 +114,7 @@ struct player_info {
   long money;
   char pool[20];
   struct sockaddr_in addr;
+  int is_ai;
 };
 extern struct player_info player[MAX_PLAYER];
 

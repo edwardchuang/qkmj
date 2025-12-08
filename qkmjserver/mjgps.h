@@ -49,6 +49,7 @@ struct player_info {
   struct sockaddr_in addr;
   int port;
   char version[10];
+  int is_ai;
 };
 
 struct record_index_type {

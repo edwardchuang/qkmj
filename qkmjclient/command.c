@@ -471,10 +471,26 @@ void command_parser(char* msg) {
           if (strcmp(ans_buf, "ON") == 0) {
             ai_set_enabled(1);
             display_comment("開啟 AI 模式");
+            if (in_serv) {
+                player[my_id].is_ai = 1;
+                char msg[10];
+                snprintf(msg, sizeof(msg), "130%c1", my_sit + '0');
+                broadcast_msg(my_id, msg);
+            } else if (in_join) {
+                write_msg(table_sockfd, "1301");
+            }
           }
           if (strcmp(ans_buf, "OFF") == 0) {
             ai_set_enabled(0);
             display_comment("關閉 AI 模式");
+            if (in_serv) {
+                player[my_id].is_ai = 0;
+                char msg[10];
+                snprintf(msg, sizeof(msg), "130%c0", my_sit + '0');
+                broadcast_msg(my_id, msg);
+            } else if (in_join) {
+                write_msg(table_sockfd, "1300");
+            }
           }
         }
         break;
