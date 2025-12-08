@@ -16,6 +16,7 @@
 #include "ncurses/ncurses.h"
 #endif
 
+#include <cjson/cJSON.h>
 #include "qkmj.h"
 
 /* Prototypes for external functions */
@@ -79,12 +80,13 @@ void init_check_mode() {
 void process_make(int sit, int card) {
   int i, j, k, max_sum, max_index, sitInd;
   char msg_buf[80];
-  char result_record_buf[2000];
-  result_record_buf[0] = '\0';
-  char result_buf[2000];
+  char *json_str;
   long change_money[5];
-
+  cJSON *root, *cards, *player_node, *card_array, *out_card_array, *out_card_group, *moneys_array, *money_node;
+  char send_buf[8192];
   int sendlog = 1;
+  char tai_buf[1024];
+  tai_buf[0] = 0;
 
   play_mode = WAIT_CARD;
   for (i = 0; i <= 4; i++) change_money[i] = 0;
@@ -105,53 +107,6 @@ void process_make(int sit, int card) {
   wmove(stdscr, THROW_Y, THROW_X);
   wprintw(stdscr, "%s ", player[table[sit]].name);
 
-  /* record start */
-  if (in_serv && sendlog == 1) {
-    snprintf(result_record_buf, sizeof(result_record_buf),
-             "900{card_owner:\"%s\",winer:\"%s\",cards:{ ",
-             player[table[card_owner]].name,
-             player[table[sit]].name);  // Record
-    for (sitInd = 1; sitInd <= 4; ++sitInd) {
-      snprintf(result_buf, sizeof(result_buf), "\"%s\":{ind:\"%d\",card:[",
-               player[table[sitInd]].name, sitInd);
-      strncat(result_record_buf, result_buf,
-              sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-      for (i = 0; i < pool[sitInd].num; i++) {
-        snprintf(result_buf, sizeof(result_buf), "%d,", pool[sitInd].card[i]);
-        strncat(result_record_buf, result_buf,
-                sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-      }
-      strncat(result_record_buf, "],out_card:[",
-              sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-
-      for (i = 0; i < pool[sitInd].out_card_index; i++) {
-        strncat(result_record_buf, "[",
-                sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-        for (j = 1; j < 6; j++) {
-          snprintf(result_buf, sizeof(result_buf), "%d,",
-                   pool[sitInd].out_card[i][j]);
-          strncat(result_record_buf, result_buf,
-                  sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-        }
-        strncat(result_record_buf, "]",
-                sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-      }
-      strncat(result_record_buf, "]",
-              sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-
-      if (sitInd != 4) {
-        strncat(result_record_buf, "}, ",
-                sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-      } else {
-        strncat(result_record_buf, "}",
-                sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-      }
-    }
-    strncat(result_record_buf, "}, tais:\"",
-            sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-  }
-  /* record end */
-
   if (sit == card_owner) {
     wprintw(stdscr, "自摸");
   } else {
@@ -168,14 +123,12 @@ void process_make(int sit, int card) {
       wmove(stdscr, THROW_Y + j, THROW_X + k);
       wprintw(stdscr, "%-10s%2d 台", tai[i].name,
               card_comb[max_index].tai_score[i]);
-      /* record */
+      /* Record tai for log */
       if (in_serv && sendlog == 1) {
-        snprintf(result_buf, sizeof(result_buf), "%10s::%d;;", tai[i].name,
-                 card_comb[max_index].tai_score[i]);
-        strncat(result_record_buf, result_buf,
-                sizeof(result_record_buf) - strlen(result_record_buf) - 1);
+          char tmp_tai[100];
+          snprintf(tmp_tai, sizeof(tmp_tai), "%s::%d;;", tai[i].name, card_comb[max_index].tai_score[i]);
+          strncat(tai_buf, tmp_tai, sizeof(tai_buf) - strlen(tai_buf) - 1);
       }
-      /* record */
       j++;
       if (j == 7) {
         j = 2;
@@ -184,20 +137,8 @@ void process_make(int sit, int card) {
     }
   }
 
-  strncat(result_record_buf, "\",",
-          sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-
   if (card_comb[max_index].tai_score[52]) /* 連莊 */
   {
-    /* record */
-    if (in_serv && sendlog == 1) {
-      snprintf(result_buf, sizeof(result_buf), "cont_win:%d,cont_tai:%d,",
-               info.cont_dealer, info.cont_dealer * 2);
-      strncat(result_record_buf, result_buf,
-              sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-    }
-    /* record */
-
     wmove(stdscr, THROW_Y + j, THROW_X + k);
     if (info.cont_dealer < 10)
       wprintw(stdscr, "連%s拉%s  %2d 台", number_item[info.cont_dealer],
@@ -210,25 +151,8 @@ void process_make(int sit, int card) {
   wmove(stdscr, THROW_Y + 6, THROW_X + 26);
   wprintw(stdscr, "共 %2d 台", card_comb[max_index].tai_sum);
 
-  /* record */
-  if (in_serv && sendlog == 1) {
-    snprintf(result_buf, sizeof(result_buf), "count_win:%d,count_tai:%d,",
-             info.cont_dealer, info.cont_dealer * 2);
-    strncat(result_record_buf, result_buf,
-            sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-  }
-  /* record */
   if ((sit == card_owner && sit != info.dealer) ||
       (sit != card_owner && card_owner == info.dealer)) {
-    /* record */
-    if (in_serv && sendlog == 1) {
-      snprintf(result_buf, sizeof(result_buf), "is_dealer:1,dealer:\"%s\",",
-               player[table[info.dealer]].name);
-      strncat(result_record_buf, result_buf,
-              sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-    }
-    /* record */
-
     if (info.cont_dealer > 0) {
       wmove(stdscr, THROW_Y + 7, THROW_X + 15);
       if (info.cont_dealer < 10)
@@ -255,20 +179,6 @@ void process_make(int sit, int card) {
   }
   show_newcard(sit, 4);
   return_cursor();
-
-  /* record start */
-  if (in_serv && sendlog == 1) {
-    snprintf(result_buf, sizeof(result_buf), "base_value:%d,", info.base_value);
-    strncat(result_record_buf, result_buf,
-            sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-    snprintf(result_buf, sizeof(result_buf), "tai_value:%d,", info.tai_value);
-    strncat(result_record_buf, result_buf,
-            sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-
-    strncat(result_record_buf, "moneys:",
-            sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-  }
-  /* record end */
 
   /* Process money */
   if (sit == card_owner) /* 自摸 */
@@ -300,48 +210,89 @@ void process_make(int sit, int card) {
     change_money[sit] += -change_money[card_owner];
   }
 
-  /* Send money info to GPS */
+  /* Generate JSON Log */
+  if (in_serv && sendlog == 1) {
+      root = cJSON_CreateObject();
+      cJSON_AddStringToObject(root, "card_owner", player[table[card_owner]].name);
+      cJSON_AddStringToObject(root, "winer", player[table[sit]].name);
+      
+      cards = cJSON_CreateObject();
+      cJSON_AddItemToObject(root, "cards", cards);
+
+      for (sitInd = 1; sitInd <= 4; ++sitInd) {
+          player_node = cJSON_CreateObject();
+          cJSON_AddItemToObject(cards, player[table[sitInd]].name, player_node);
+          
+          snprintf(msg_buf, sizeof(msg_buf), "%d", sitInd);
+          cJSON_AddStringToObject(player_node, "ind", msg_buf); // Keep string to match original
+          
+          // Card array
+          card_array = cJSON_CreateArray();
+          for(i=0; i<pool[sitInd].num; i++) {
+              cJSON_AddItemToArray(card_array, cJSON_CreateNumber(pool[sitInd].card[i]));
+          }
+          cJSON_AddItemToObject(player_node, "card", card_array);
+
+          // Out card array
+          out_card_array = cJSON_CreateArray();
+          for (i = 0; i < pool[sitInd].out_card_index; i++) {
+              out_card_group = cJSON_CreateArray();
+              for (j=1; j<6; j++) {
+                  cJSON_AddItemToArray(out_card_group, cJSON_CreateNumber(pool[sitInd].out_card[i][j]));
+              }
+              cJSON_AddItemToArray(out_card_array, out_card_group);
+          }
+          cJSON_AddItemToObject(player_node, "out_card", out_card_array);
+      }
+      
+      cJSON_AddStringToObject(root, "tais", tai_buf);
+      cJSON_AddNumberToObject(root, "cont_win", info.cont_dealer);
+      cJSON_AddNumberToObject(root, "cont_tai", info.cont_dealer * 2);
+      cJSON_AddNumberToObject(root, "count_win", info.cont_dealer); // Original had both?
+      cJSON_AddNumberToObject(root, "count_tai", info.cont_dealer * 2);
+      
+      if ((sit == card_owner && sit != info.dealer) ||
+          (sit != card_owner && card_owner == info.dealer)) {
+          cJSON_AddNumberToObject(root, "is_dealer", 1);
+          cJSON_AddStringToObject(root, "dealer", player[table[info.dealer]].name);
+      }
+      
+      cJSON_AddNumberToObject(root, "base_value", info.base_value);
+      cJSON_AddNumberToObject(root, "tai_value", info.tai_value);
+      
+      moneys_array = cJSON_CreateArray();
+      for (i = 1; i <= 4; i++) {
+          if (table[i]) {
+              money_node = cJSON_CreateObject();
+              cJSON_AddStringToObject(money_node, "name", player[table[i]].name);
+              cJSON_AddNumberToObject(money_node, "now_money", player[table[i]].money);
+              cJSON_AddNumberToObject(money_node, "change_money", change_money[i]);
+              cJSON_AddItemToArray(moneys_array, money_node);
+          }
+      }
+      cJSON_AddItemToObject(root, "moneys", moneys_array);
+      cJSON_AddNumberToObject(root, "time", (double)time(NULL)*1000.0);
+
+      json_str = cJSON_PrintUnformatted(root);
+      if (json_str) {
+          // Prefix with 900
+          snprintf(send_buf, sizeof(send_buf), "900%s", json_str);
+          write_msg(gps_sockfd, send_buf);
+          free(json_str);
+      }
+      cJSON_Delete(root);
+  }
+
+  /* Send money info to GPS (Update money) */
   if (in_serv) {
-    strncat(
-        result_record_buf, "[",
-        sizeof(result_record_buf) - strlen(result_record_buf) - 1);  // record
     for (i = 1; i <= 4; i++) {
       if (table[i]) {
-        /* Record start*/
-        if (sendlog == 1) {
-          snprintf(result_buf, sizeof(result_buf),
-                   "{name:\"%s\",now_money:%ld,change_money:%ld}",
-                   player[table[i]].name, player[table[i]].money,
-                   change_money[i]);
-          strncat(result_record_buf, result_buf,
-                  sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-          if (i != 4) {
-            strncat(result_record_buf, ",",
-                    sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-          }
-        }
-        /* Record end */
-
         snprintf(msg_buf, sizeof(msg_buf), "020%5d%ld", player[table[i]].id,
                  player[table[i]].money + change_money[i]);
         write_msg(gps_sockfd, msg_buf);
       }
     }
-
-    /* record start */
-    if (sendlog == 1) {
-      long current_time = 0;
-      time(&current_time);
-      snprintf(result_buf, sizeof(result_buf), "],time:%ld000}", current_time);
-      strncat(result_record_buf, result_buf,
-              sizeof(result_record_buf) - strlen(result_record_buf) - 1);
-      result_record_buf[sizeof(result_record_buf) - 1] = '\0';
-      write_msg(gps_sockfd, result_record_buf);
-    }
-    /* record end */
   }
-
-  // Send result record to server side
 
   wait_a_key(PRESS_ANY_KEY_TO_CONTINUE);
   set_color(37, 40);

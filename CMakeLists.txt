@@ -60,6 +60,19 @@ if(CURSES_FOUND)
     endif()
 endif()
 
+pkg_check_modules(CJSON REQUIRED IMPORTED_TARGET libcjson)
+if(CJSON_FOUND)
+    set(CMAKE_REQUIRED_INCLUDES ${CJSON_INCLUDE_DIRS})
+    check_include_file("cjson/cJSON.h" HAVE_CJSON_CJSON_H)
+    check_include_file("cJSON.h" HAVE_CJSON_H)
+
+    if(HAVE_CJSON_CJSON_H)
+        add_definitions(-DHAVE_CJSON_CJSON_H)
+    elseif(HAVE_CJSON_H)
+        add_definitions(-DHAVE_CJSON_H)
+    endif()
+endif()
+
 # Find Mongo C Driver
 pkg_check_modules(MONGOC REQUIRED IMPORTED_TARGET mongoc2)
 pkg_check_modules(BSON REQUIRED IMPORTED_TARGET bson2)
@@ -85,6 +98,7 @@ target_link_libraries(mjgps
     ${CRYPT_LIB}
     PkgConfig::MONGOC
     PkgConfig::BSON
+    PkgConfig::CJSON
 )
 
 # --- mjrec Target ---
@@ -97,6 +111,7 @@ add_executable(mjrec
 target_link_libraries(mjrec
     PkgConfig::MONGOC
     PkgConfig::BSON
+    PkgConfig::CJSON
 )
 
 # --- qkmj Target ---
@@ -117,4 +132,5 @@ add_executable(qkmj
 target_link_libraries(qkmj
     ${CURSES_LINK_LIB}
     ${MATH_LIB}
+    PkgConfig::CJSON
 )
