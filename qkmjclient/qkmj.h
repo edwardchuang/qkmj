@@ -7,10 +7,18 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
-#ifdef NON_WINDOWS
-#include "curses.h"
+#if defined(HAVE_NCURSESW_CURSES_H)
+#include <ncursesw/curses.h>
+#elif defined(HAVE_NCURSES_NCURSES_H)
+#include <ncurses/ncurses.h>
+#elif defined(HAVE_NCURSES_CURSES_H)
+#include <ncurses/curses.h>
+#elif defined(HAVE_NCURSES_H)
+#include <ncurses.h>
+#elif defined(HAVE_CURSES_H)
+#include <curses.h>
 #else
-#include "ncurses/ncurses.h"
+#error "No curses header found"
 #endif
 
 #include "mjdef.h"

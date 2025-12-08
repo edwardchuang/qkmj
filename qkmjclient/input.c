@@ -21,6 +21,72 @@
 
 int my_getch();
 
+void action_throw_card(int index) {
+  char msg_buf[255];
+  int i, j;
+
+  play_mode = WAIT_CARD;
+  in_kang = 0;
+  pool[my_sit].first_round = 0;
+  if (in_join) {
+    snprintf(msg_buf, sizeof(msg_buf), "401%c",
+             pool[my_sit].card[index]);
+    write_msg(table_sockfd, msg_buf);
+    current_id = my_id;
+    current_card = pool[my_sit].card[index];
+  } else if (in_serv) /* need not to check card for itself */
+  {
+    pool[my_sit].time += thinktime();
+    display_time(my_sit);
+    snprintf(msg_buf, sizeof(msg_buf), "312%c%f", my_sit,
+             pool[my_sit].time);
+    broadcast_msg(1, msg_buf);
+    snprintf(msg_buf, sizeof(msg_buf), "314%c%c", my_sit, 3);
+    broadcast_msg(1, msg_buf);
+    snprintf(msg_buf, sizeof(msg_buf), "402%c%c", 1,
+             pool[my_sit].card[index]);
+    broadcast_msg(1, msg_buf);
+    current_card = pool[my_sit].card[index];
+    for (i = 1; i <= 4; i++) {
+      if (table[i] > 1) /* clients */
+      {
+        check_card(i, current_card);
+      }
+    }
+    for (i = 1; i <= 4; i++) {
+      if (table[i] > 1)
+        for (j = 1; j < check_number; j++) {
+          if (check_flag[i][j]) {
+            snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c",
+                     check_flag[i][1] + '0', check_flag[i][2] + '0',
+                     check_flag[i][3] + '0', check_flag[i][4] + '0');
+            write_msg(player[table[i]].sockfd, msg_buf);
+            in_check[i] = 1;
+            break;
+          } else
+            in_check[i] = 0;
+        }
+    }
+    in_check[1] = 0;
+    check_on = 1;
+    current_id = 1;
+    send_card_on = 0;
+    next_player_request = 1;
+    next_player_on = 0;
+  }
+  throw_card(pool[my_sit].card[index]);
+  show_cardmsg(my_sit, pool[my_sit].card[index]);
+  pool[my_sit].card[index] =
+      pool[my_sit].card[pool[my_sit].num];
+  current_item = pool[my_sit].num;
+  pos_x = INDEX_X + 16 * 2 + 1;
+  play_mode = WAIT_CARD;
+  show_card(20, pos_x, INDEX_Y + 1, 1);
+  sort_card(0);
+  wrefresh(stdscr);
+  return_cursor();
+}
+
 void process_key() {
   int i, j, key;
   static int m, n, current_eat;
@@ -124,66 +190,7 @@ void process_key() {
             break;
           } else if (play_mode == THROW_CARD) {
           quick_throw:;
-            play_mode = WAIT_CARD;
-            in_kang = 0;
-            pool[my_sit].first_round = 0;
-            if (in_join) {
-              snprintf(msg_buf, sizeof(msg_buf), "401%c",
-                       pool[my_sit].card[current_item]);
-              write_msg(table_sockfd, msg_buf);
-              current_id = my_id;
-              current_card = pool[my_sit].card[current_item];
-            } else if (in_serv) /* need not to check card for itself */
-            {
-              pool[my_sit].time += thinktime();
-              display_time(my_sit);
-              snprintf(msg_buf, sizeof(msg_buf), "312%c%f", my_sit,
-                       pool[my_sit].time);
-              broadcast_msg(1, msg_buf);
-              snprintf(msg_buf, sizeof(msg_buf), "314%c%c", my_sit, 3);
-              broadcast_msg(1, msg_buf);
-              snprintf(msg_buf, sizeof(msg_buf), "402%c%c", 1,
-                       pool[my_sit].card[current_item]);
-              broadcast_msg(1, msg_buf);
-              current_card = pool[my_sit].card[current_item];
-              for (i = 1; i <= 4; i++) {
-                if (table[i] > 1) /* clients */
-                {
-                  check_card(i, current_card);
-                }
-              }
-              for (i = 1; i <= 4; i++) {
-                if (table[i] > 1)
-                  for (j = 1; j < check_number; j++) {
-                    if (check_flag[i][j]) {
-                      snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c",
-                               check_flag[i][1] + '0', check_flag[i][2] + '0',
-                               check_flag[i][3] + '0', check_flag[i][4] + '0');
-                      write_msg(player[table[i]].sockfd, msg_buf);
-                      in_check[i] = 1;
-                      break;
-                    } else
-                      in_check[i] = 0;
-                  }
-              }
-              in_check[1] = 0;
-              check_on = 1;
-              current_id = 1;
-              send_card_on = 0;
-              next_player_request = 1;
-              next_player_on = 0;
-            }
-            throw_card(pool[my_sit].card[current_item]);
-            show_cardmsg(my_sit, pool[my_sit].card[current_item]);
-            pool[my_sit].card[current_item] =
-                pool[my_sit].card[pool[my_sit].num];
-            current_item = pool[my_sit].num;
-            pos_x = INDEX_X + 16 * 2 + 1;
-            play_mode = WAIT_CARD;
-            show_card(20, pos_x, INDEX_Y + 1, 1);
-            sort_card(0);
-            wrefresh(stdscr);
-            return_cursor();
+            action_throw_card(current_item);
             break;
           } else
             break;

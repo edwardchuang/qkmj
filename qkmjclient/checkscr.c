@@ -18,6 +18,7 @@
 
 #include <cjson/cJSON.h>
 #include "qkmj.h"
+#include "ai_client.h"
 
 /* Prototypes for external functions */
 void wmvaddstr(WINDOW* win, int y, int x, char* str);
@@ -56,6 +57,44 @@ void init_check_mode() {
     current_mode = CHECK_MODE;
   else
     input_mode = CHECK_MODE;
+
+  if (ai_is_enabled()) {
+      ai_decision_t dec = ai_get_decision(AI_PHASE_CLAIM, current_card, card_owner);
+      int ai_check_id = 0;
+      if (dec.action == AI_ACTION_EAT) ai_check_id = EAT;
+      else if (dec.action == AI_ACTION_PONG) ai_check_id = PONG;
+      else if (dec.action == AI_ACTION_KANG) ai_check_id = KANG;
+      else if (dec.action == AI_ACTION_WIN) ai_check_id = MAKE;
+      
+      if (ai_check_id != 0 && check_flag[my_sit][ai_check_id]) {
+          if (ai_check_id == EAT) {
+              int card1 = dec.meld_cards[0];
+              int card2 = dec.meld_cards[1];
+              int type = 0;
+              if ((card1 == current_card + 1 || card2 == current_card + 1) &&
+                  (card1 == current_card + 2 || card2 == current_card + 2)) type = 7;
+              else if ((card1 == current_card - 1 || card2 == current_card - 1) &&
+                       (card1 == current_card + 1 || card2 == current_card + 1)) type = 8;
+              else if ((card1 == current_card - 2 || card2 == current_card - 2) &&
+                       (card1 == current_card - 1 || card2 == current_card - 1)) type = 9;
+              
+              if (type != 0) {
+                  write_check(type);
+                  input_mode = PLAY_MODE;
+                  return;
+              }
+          } else {
+              write_check(ai_check_id);
+              input_mode = PLAY_MODE;
+              return;
+          }
+      } else {
+          write_check(0);
+          input_mode = PLAY_MODE;
+          return;
+      }
+  }
+
   current_check = 0;
   check_x = org_check_x;
   attron(A_REVERSE);

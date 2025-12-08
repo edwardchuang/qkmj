@@ -22,6 +22,7 @@
 #include "input.h"
 #include "qkmj.h"  // Ensure qkmj.h is included to see prototypes
 #include "socket.h"
+#include "ai_client.h"
 
 /*gloable variables*/
 fd_set rfds, afds;
@@ -634,6 +635,34 @@ void gps() {
     if (FD_ISSET(0, &rfds)) {
       if (input_mode) process_key();
     }
+    
+    /* AI Hook: Discard Phase */
+    if (input_mode == PLAY_MODE && play_mode == THROW_CARD && ai_is_enabled()) {
+        ai_decision_t dec = ai_get_decision(AI_PHASE_DISCARD, current_card, 0);
+        if (dec.action == AI_ACTION_DISCARD) {
+            int idx = -1;
+            // Search in hand (cards 0 to num-1)
+            for(i=0; i<pool[my_sit].num; i++) {
+                if(pool[my_sit].card[i] == dec.card) { 
+                    idx = i; 
+                    break; 
+                }
+            }
+            // If not found, check if it's the new card (which might be at index `num` or `current_item`?)
+            // In qkmj, when we get a card, it is at `pool[my_sit].card[pool[my_sit].num]`.
+            // But `pool[my_sit].num` is usually 16. The 17th card is at index 16.
+            // `process_new_card` puts it there.
+            if (idx == -1 && pool[my_sit].card[pool[my_sit].num] == dec.card) {
+                idx = pool[my_sit].num;
+            }
+
+            if (idx != -1) {
+                current_item = idx;
+                action_throw_card(idx);
+            }
+        }
+    }
+
     /* Check for data from GPS */
     if (FD_ISSET(gps_sockfd, &rfds)) {
       if (!read_msg_id(gps_sockfd, buf)) {
@@ -803,6 +832,7 @@ int main(int argc, char** argv) {
   signal(SIGIOT, (void (*)(int))leave);
   signal(SIGPIPE, (void (*)(int))leave);
 #endif
+  ai_init();
   init_variable();
   strncpy(GPS_IP, DEFAULT_GPS_IP, sizeof(GPS_IP) - 1);
   GPS_IP[sizeof(GPS_IP) - 1] = '\0';
@@ -818,5 +848,6 @@ int main(int argc, char** argv) {
     GPS_PORT = DEFAULT_GPS_PORT;
   }
   gps();
+  ai_cleanup();
   exit(0);
 }

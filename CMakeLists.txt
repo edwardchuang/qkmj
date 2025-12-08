@@ -73,6 +73,10 @@ if(CJSON_FOUND)
     endif()
 endif()
 
+# Find CURL
+find_package(CURL REQUIRED)
+include_directories(${CURL_INCLUDE_DIR})
+
 # Find Mongo C Driver
 pkg_check_modules(MONGOC REQUIRED IMPORTED_TARGET mongoc2)
 pkg_check_modules(BSON REQUIRED IMPORTED_TARGET bson2)
@@ -116,6 +120,7 @@ target_link_libraries(mjrec
 
 # --- qkmj Target ---
 add_executable(qkmj
+    qkmjclient/ai_client.c
     qkmjclient/card.c
     qkmjclient/check.c
     qkmjclient/checkscr.c
@@ -133,4 +138,5 @@ target_link_libraries(qkmj
     ${CURSES_LINK_LIB}
     ${MATH_LIB}
     PkgConfig::CJSON
+    ${CURL_LIBRARIES}
 )
