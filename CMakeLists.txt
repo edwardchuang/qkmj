@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(qkmj C)
+project(qkmj C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -140,3 +140,36 @@ target_link_libraries(qkmj
     PkgConfig::CJSON
     ${CURL_LIBRARIES}
 )
+
+# --- Tests ---
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+enable_testing()
+
+add_executable(test_ai
+    tests/test_ai_client.cpp
+    tests/mock_qkmj.c
+    qkmjclient/ai_client.c
+)
+
+target_include_directories(test_ai PRIVATE 
+    ${CMAKE_SOURCE_DIR}/qkmjclient 
+    ${CMAKE_SOURCE_DIR}/qkmjserver
+    ${CJSON_INCLUDE_DIRS}
+    ${CURL_INCLUDE_DIR}
+)
+
+target_link_libraries(test_ai
+    gtest_main
+    PkgConfig::CJSON
+    ${CURL_LIBRARIES}
+)
+
+add_test(NAME AIClientTest COMMAND test_ai)

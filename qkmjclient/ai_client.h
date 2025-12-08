@@ -53,4 +53,20 @@ int ai_is_enabled();
  */
 ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat);
 
+/**
+ * @brief Serialize the current game state to JSON string.
+ * @param phase The current game phase.
+ * @param card The relevant card.
+ * @param from_seat The seat index of the player who discarded the card.
+ * @return Serialized JSON string (must be freed).
+ */
+char* ai_serialize_state(ai_phase_t phase, int card, int from_seat);
+
+/**
+ * @brief Parse the AI decision from JSON response.
+ * @param json_response The JSON string from AI agent.
+ * @return The parsed decision.
+ */
+ai_decision_t ai_parse_decision(const char* json_response);
+
 #endif // AI_CLIENT_H

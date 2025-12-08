@@ -119,17 +119,10 @@ void add_player_state(cJSON *players_array, int seat_idx) {
     cJSON_AddItemToArray(players_array, player_obj);
 }
 
-ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
-    ai_decision_t decision = {AI_ACTION_NONE, 0, {0, 0}};
-    CURL *curl;
-    CURLcode res;
-    struct curl_slist *headers = NULL;
-    struct memory chunk = {0};
-    char *json_payload;
+char* ai_serialize_state(ai_phase_t phase, int card, int from_seat) {
     cJSON *root, *context, *event, *players, *legal;
+    char *json_payload;
     int i;
-
-    if (!ai_enabled) return decision;
 
     // Build JSON
     root = cJSON_CreateObject();
@@ -164,11 +157,8 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
     legal = cJSON_CreateObject();
     if (phase == AI_PHASE_DISCARD) {
         cJSON_AddBoolToObject(legal, "can_discard", 1);
-        // Check for Kang (An-Kang/Jia-Kang) or Win logic here if possible
-        // Simplified: just tell AI it can discard.
         cJSON_AddBoolToObject(legal, "can_win", 0); // TODO: Check valid win
     } else {
-        // Phase B: Claim
         cJSON_AddBoolToObject(legal, "can_eat", check_flag[my_sit][1]);
         cJSON_AddBoolToObject(legal, "can_pong", check_flag[my_sit][2]);
         cJSON_AddBoolToObject(legal, "can_kang", check_flag[my_sit][3]);
@@ -178,6 +168,54 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
 
     json_payload = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
+    return json_payload;
+}
+
+ai_decision_t ai_parse_decision(const char* json_response) {
+    ai_decision_t decision = {AI_ACTION_NONE, 0, {0, 0}};
+    cJSON *resp_root = cJSON_Parse(json_response);
+    if (resp_root) {
+        cJSON *action_item = cJSON_GetObjectItem(resp_root, "action");
+        if (action_item && cJSON_IsString(action_item)) {
+            const char *act = action_item->valuestring;
+            if (strcmp(act, "discard") == 0) decision.action = AI_ACTION_DISCARD;
+            else if (strcmp(act, "eat") == 0) decision.action = AI_ACTION_EAT;
+            else if (strcmp(act, "pong") == 0) decision.action = AI_ACTION_PONG;
+            else if (strcmp(act, "kang") == 0) decision.action = AI_ACTION_KANG;
+            else if (strcmp(act, "win") == 0) decision.action = AI_ACTION_WIN;
+            else decision.action = AI_ACTION_PASS;
+        }
+        
+        cJSON *card_item = cJSON_GetObjectItem(resp_root, "card");
+        if (card_item && cJSON_IsNumber(card_item)) {
+            decision.card = card_item->valueint;
+        }
+
+        // Handle meld_cards for eat if needed
+        cJSON *meld_cards = cJSON_GetObjectItem(resp_root, "meld_cards");
+        if (meld_cards && cJSON_IsArray(meld_cards)) {
+            cJSON *mc1 = cJSON_GetArrayItem(meld_cards, 0);
+            cJSON *mc2 = cJSON_GetArrayItem(meld_cards, 1);
+            if (mc1) decision.meld_cards[0] = mc1->valueint;
+            if (mc2) decision.meld_cards[1] = mc2->valueint;
+        }
+
+        cJSON_Delete(resp_root);
+    }
+    return decision;
+}
+
+ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
+    ai_decision_t decision = {AI_ACTION_NONE, 0, {0, 0}};
+    CURL *curl;
+    CURLcode res;
+    struct curl_slist *headers = NULL;
+    struct memory chunk = {0};
+    char *json_payload;
+
+    if (!ai_enabled) return decision;
+
+    json_payload = ai_serialize_state(phase, card, from_seat);
 
     // Send Request
     curl = curl_easy_init();
@@ -195,36 +233,7 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
         res = curl_easy_perform(curl);
 
         if (res == CURLE_OK) {
-            // Parse Response
-            cJSON *resp_root = cJSON_Parse(chunk.response);
-            if (resp_root) {
-                cJSON *action_item = cJSON_GetObjectItem(resp_root, "action");
-                if (action_item && cJSON_IsString(action_item)) {
-                    const char *act = action_item->valuestring;
-                    if (strcmp(act, "discard") == 0) decision.action = AI_ACTION_DISCARD;
-                    else if (strcmp(act, "eat") == 0) decision.action = AI_ACTION_EAT;
-                    else if (strcmp(act, "pong") == 0) decision.action = AI_ACTION_PONG;
-                    else if (strcmp(act, "kang") == 0) decision.action = AI_ACTION_KANG;
-                    else if (strcmp(act, "win") == 0) decision.action = AI_ACTION_WIN;
-                    else decision.action = AI_ACTION_PASS;
-                }
-                
-                cJSON *card_item = cJSON_GetObjectItem(resp_root, "card");
-                if (card_item && cJSON_IsNumber(card_item)) {
-                    decision.card = card_item->valueint;
-                }
-
-                // Handle meld_cards for eat if needed
-                cJSON *meld_cards = cJSON_GetObjectItem(resp_root, "meld_cards");
-                if (meld_cards && cJSON_IsArray(meld_cards)) {
-                    cJSON *mc1 = cJSON_GetArrayItem(meld_cards, 0);
-                    cJSON *mc2 = cJSON_GetArrayItem(meld_cards, 1);
-                    if (mc1) decision.meld_cards[0] = mc1->valueint;
-                    if (mc2) decision.meld_cards[1] = mc2->valueint;
-                }
-
-                cJSON_Delete(resp_root);
-            }
+            decision = ai_parse_decision(chunk.response);
         } else {
             fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
         }
