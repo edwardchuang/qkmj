@@ -209,7 +209,7 @@ void show_kang(int sit)
       break;
     case 1:
       for(i=0;i<pool[sit].out_card_index;i++)
-        if(pool[sit].out_card[i][0]==11)  /* 暗杠 */
+        if(pool[sit].out_card[i][0]==11)  /* 暗槓 */
         {
           show_card(pool[sit].out_card[i][2],INDEX_X1,INDEX_Y1-i*3-1,0);
         }
@@ -532,7 +532,7 @@ void draw_playing_screen()
   wmvaddstr(stdscr,9,62,"＄");
   wmvaddstr(stdscr,11,62,"＄");
   wmvaddstr(stdscr,13,60,"0  1  2  3  4");
-  wmvaddstr(stdscr,14,60,"無 吃 碰 杠 胡");
+  wmvaddstr(stdscr,14,60,"無 吃 碰 槓 胡");
   wmvaddstr(stdscr,20,64,"┌  ┐");
   wmvaddstr(stdscr,22,64,"└  ┘");
   wrefresh(stdscr);

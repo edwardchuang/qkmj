@@ -352,7 +352,7 @@ void handle_client_message(int player_id, int msg_id, char* buf) {
       } else {
         for (i = 0; i <= 3; i++)
           pool[turn].out_card[pool[turn].out_card_index][i] = buf[i + 4];
-        if (buf[4] == 3 || buf[4] == 11) /* 杠牌 */
+        if (buf[4] == 3 || buf[4] == 11) /* 槓牌 */
         {
           pool[turn].out_card[pool[turn].out_card_index][4] = buf[7];
           pool[turn].out_card[pool[turn].out_card_index][5] = 0;

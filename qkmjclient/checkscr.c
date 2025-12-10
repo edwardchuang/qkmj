@@ -505,16 +505,16 @@ void draw_epk(int id, int kind, int card1, int card2, int card3) {
     attron(A_REVERSE);
     switch ((sit - my_sit + 4) % 4) {
       case 0:
-        wmvaddstr(stdscr, INDEX_Y, INDEX_X + i * 6, "杠");
+        wmvaddstr(stdscr, INDEX_Y, INDEX_X + i * 6, "槓");
         break;
       case 1:
-        wmvaddstr(stdscr, INDEX_Y1 - i * 3 - 1, INDEX_X1 - 2, "杠");
+        wmvaddstr(stdscr, INDEX_Y1 - i * 3 - 1, INDEX_X1 - 2, "槓");
         break;
       case 2:
-        wmvaddstr(stdscr, INDEX_Y2 + 2, INDEX_X2 - i * 6 - 2, "杠");
+        wmvaddstr(stdscr, INDEX_Y2 + 2, INDEX_X2 - i * 6 - 2, "槓");
         break;
       case 3:
-        wmvaddstr(stdscr, INDEX_Y3 + i * 3 + 1, INDEX_X3 + 4, "杠");
+        wmvaddstr(stdscr, INDEX_Y3 + i * 3 + 1, INDEX_X3 + 4, "槓");
         break;
     }
     attroff(A_REVERSE);
@@ -530,7 +530,7 @@ void draw_epk(int id, int kind, int card1, int card2, int card3) {
         if (kind == KANG || kind == 11) {
           attron(A_REVERSE);
           wmvaddstr(stdscr, INDEX_Y, INDEX_X + (16 - pool[my_sit].num) * 2,
-                    "杠");
+                    "槓");
           attroff(A_REVERSE);
         } else
           wmvaddstr(stdscr, INDEX_Y, INDEX_X + (16 - pool[my_sit].num) * 2,
@@ -551,7 +551,7 @@ void draw_epk(int id, int kind, int card1, int card2, int card3) {
         if (kind == KANG || kind == 11) {
           attron(A_REVERSE);
           wmvaddstr(stdscr, INDEX_Y1 - (16 - pool[sit].num) - 1, INDEX_X1 - 2,
-                    "杠");
+                    "槓");
           attroff(A_REVERSE);
         } else
           wmvaddstr(stdscr, INDEX_Y1 - (16 - pool[sit].num) - 1, INDEX_X1 - 2,
@@ -569,7 +569,7 @@ void draw_epk(int id, int kind, int card1, int card2, int card3) {
         if (kind == KANG || kind == 11) {
           attron(A_REVERSE);
           wmvaddstr(stdscr, INDEX_Y2 + 2, INDEX_X2 - (16 - pool[sit].num) * 2,
-                    "杠");
+                    "槓");
           attroff(A_REVERSE);
         } else
           wmvaddstr(stdscr, INDEX_Y2 + 2, INDEX_X2 - (16 - pool[sit].num) * 2,
@@ -588,7 +588,7 @@ void draw_epk(int id, int kind, int card1, int card2, int card3) {
         if (kind == KANG || kind == 11) {
           attron(A_REVERSE);
           wmvaddstr(stdscr, INDEX_Y3 + (16 - pool[sit].num) + 1, INDEX_X3 + 4,
-                    "杠");
+                    "槓");
           attroff(A_REVERSE);
         } else
           wmvaddstr(stdscr, INDEX_Y3 + (16 - pool[sit].num) + 1, INDEX_X3 + 4,
