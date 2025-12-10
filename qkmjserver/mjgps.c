@@ -756,7 +756,7 @@ void gps_processing() {
   int read_code;
   char tmp_buf[80];
   char msg_buf[1000];
-  unsigned char buf[256];
+  unsigned char buf[8192];
   struct timeval timeout;
   struct hostent* hp;
   int id;
