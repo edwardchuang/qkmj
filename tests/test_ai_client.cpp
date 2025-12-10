@@ -52,6 +52,14 @@ TEST_F(AIClientTest, ParseDecisionEat) {
     EXPECT_EQ(decision.meld_cards[1], 25);
 }
 
+TEST_F(AIClientTest, ParseDecisionWrappedArray) {
+    const char* json = "[{\"content\": {\"parts\": [{\"text\": \"{\\\"action\\\": \\\"discard\\\", \\\"card\\\": 33}\"}]}}]";
+    ai_decision_t decision = ai_parse_decision(json);
+    
+    EXPECT_EQ(decision.action, AI_ACTION_DISCARD);
+    EXPECT_EQ(decision.card, 33);
+}
+
 TEST_F(AIClientTest, ParseDecisionPass) {
     const char* json = "{\"action\": \"pass\"}";
     ai_decision_t decision = ai_parse_decision(json);

@@ -5,7 +5,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -174,3 +174,20 @@ target_link_libraries(test_ai
 )
 
 add_test(NAME AIClientTest COMMAND test_ai)
+
+add_executable(conn_test
+    tests/connection_test.c
+    qkmjclient/ai_client.c
+)
+
+target_include_directories(conn_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/qkmjclient 
+    ${CMAKE_SOURCE_DIR}/qkmjserver 
+    ${CJSON_INCLUDE_DIRS} 
+    ${CURL_INCLUDE_DIR}
+)
+
+target_link_libraries(conn_test
+    PkgConfig::CJSON
+    ${CURL_LIBRARIES}
+)

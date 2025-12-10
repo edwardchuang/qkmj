@@ -99,3 +99,8 @@ char table_card[6][17];
 void write_msg(int fd, char* msg) {
     // Mock implementation
 }
+
+void display_comment(char* msg) {
+    // Mock implementation
+    printf("MOCK DISPLAY: %s\n", msg);
+}

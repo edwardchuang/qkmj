@@ -2,16 +2,52 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <curl/curl.h>
 #include "qkmj.h"
 
 static int ai_enabled = 0;
-static char ai_endpoint[256] = "https://localhost:8888/ask";
+static int ai_debug_enabled = 0;
+static char ai_endpoint[256] = "http://localhost:8000";
+static char ai_session_id[40] = "";
+
+#define AI_LOG(...) if (ai_debug_enabled) { printf(__VA_ARGS__); }
+#define AI_ERR(...) fprintf(stderr, __VA_ARGS__)
 
 struct memory {
   char *response;
   size_t size;
 };
+
+// Helper to log to server (MongoDB)
+static void ai_send_log_to_server(const char* type, cJSON* req, cJSON* resp, const char* err) {
+    if (!ai_session_id[0]) return;
+
+    cJSON *log = cJSON_CreateObject();
+    cJSON_AddStringToObject(log, "level", "ai_trace");
+    cJSON_AddNumberToObject(log, "timestamp", (double)time(NULL) * 1000.0);
+    cJSON_AddStringToObject(log, "session_id", ai_session_id);
+    cJSON_AddStringToObject(log, "user_id", (char*)my_name);
+    cJSON_AddStringToObject(log, "type", type);
+    
+    if (req) cJSON_AddItemToObject(log, "request", cJSON_Duplicate(req, 1));
+    if (resp) cJSON_AddItemToObject(log, "response", cJSON_Duplicate(resp, 1));
+    if (err) cJSON_AddStringToObject(log, "error", err);
+
+    char *log_str = cJSON_PrintUnformatted(log);
+    if (log_str) {
+        size_t len = strlen(log_str);
+        char *msg_buf = (char*)malloc(len + 4);
+        if (msg_buf) {
+            sprintf(msg_buf, "901%s", log_str);
+            // write_msg is extern from qkmj.h
+            write_msg(gps_sockfd, msg_buf);
+            free(msg_buf);
+        }
+        free(log_str);
+    }
+    cJSON_Delete(log);
+}
 
 static size_t write_callback(void *data, size_t size, size_t nmemb, void *userp) {
   size_t realsize = size * nmemb;
@@ -24,24 +60,101 @@ static size_t write_callback(void *data, size_t size, size_t nmemb, void *userp)
   memcpy(&(mem->response[mem->size]), data, realsize);
   mem->size += realsize;
   mem->response[mem->size] = 0;
+  
+  // Debug log: print response chunk
+  AI_LOG("[AI DEBUG] Received chunk: %s\n", (char*)data);
  
   return realsize;
+}
+
+static size_t registration_write_callback(void *data, size_t size, size_t nmemb, void *userp) {
+    size_t realsize = size * nmemb;
+    AI_LOG("[AI DEBUG] Registration Response: %.*s\n", (int)realsize, (char*)data);
+    return realsize;
+}
+
+static void generate_session_id() {
+    srand((unsigned int)time(NULL) ^ (unsigned int)rand());
+    sprintf(ai_session_id, "%04x%04x-%04x-%04x-%04x-%04x%04x%04x",
+        rand() & 0xFFFF, rand() & 0xFFFF,
+        rand() & 0xFFFF,
+        ((rand() & 0x0FFF) | 0x4000), // Version 4
+        ((rand() & 0x3FFF) | 0x8000), // Variant 1
+        rand() & 0xFFFF, rand() & 0xFFFF, rand() & 0xFFFF);
+    AI_LOG("[AI DEBUG] Generated Session ID: %s\n", ai_session_id);
+}
+
+static int ai_register_session() {
+    CURL *curl;
+    CURLcode res;
+    char url[1024];
+    char *encoded_name;
+    int success = 0;
+
+    if (!ai_session_id[0]) return 0;
+
+    curl = curl_easy_init();
+    if (curl) {
+        encoded_name = curl_easy_escape(curl, (char*)my_name, 0);
+        snprintf(url, sizeof(url), "%s/apps/agent/users/%s/sessions/%s", 
+                 ai_endpoint, encoded_name ? encoded_name : "unknown", ai_session_id);
+        if (encoded_name) curl_free(encoded_name);
+
+        AI_LOG("[AI DEBUG] Registering Session. URL: %s\n", url);
+
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, ""); // Empty body
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, registration_write_callback);
+        // SSL verification off for localhost
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
+        res = curl_easy_perform(curl);
+        
+        // Log registration attempt
+        cJSON *req_json = cJSON_CreateObject();
+        cJSON_AddStringToObject(req_json, "url", url);
+        cJSON *resp_json = cJSON_CreateObject(); // Empty for now as we don't capture it easily without custom struct
+        
+        if (res != CURLE_OK) {
+            AI_ERR("[AI ERROR] AI Registration failed: %s\n", curl_easy_strerror(res));
+            ai_send_log_to_server("registration", req_json, NULL, curl_easy_strerror(res));
+        } else {
+            AI_LOG("[AI DEBUG] Session Registration Successful\n");
+            success = 1;
+            ai_send_log_to_server("registration", req_json, NULL, NULL);
+        }
+        
+        cJSON_Delete(req_json);
+        cJSON_Delete(resp_json);
+        curl_easy_cleanup(curl);
+    }
+    return success;
 }
 
 void ai_init() {
     char *env_mode = getenv("AI_MODE");
     char *env_endpoint = getenv("AI_ENDPOINT");
-
-    if (env_mode && strcmp(env_mode, "auto") == 0) {
-        ai_enabled = 1;
-    }
+    char *env_debug = getenv("AI_DEBUG");
     
     if (env_endpoint) {
         strncpy(ai_endpoint, env_endpoint, sizeof(ai_endpoint) - 1);
         ai_endpoint[sizeof(ai_endpoint) - 1] = '\0';
     }
+    
+    if (env_debug && (strcmp(env_debug, "1") == 0 || strcasecmp(env_debug, "true") == 0)) {
+        ai_debug_enabled = 1;
+    }
+
+    AI_LOG("[AI DEBUG] AI Init. Endpoint: %s\n", ai_endpoint);
 
     curl_global_init(CURL_GLOBAL_ALL);
+
+    if (env_mode && strcmp(env_mode, "auto") == 0) {
+        AI_LOG("[AI DEBUG] Auto mode detected. Enabling AI...\n");
+        ai_set_enabled(1); // Use setter to trigger session ID generation and registration
+    }
 }
 
 void ai_cleanup() {
@@ -53,6 +166,17 @@ int ai_is_enabled() {
 }
 
 void ai_set_enabled(int enabled) {
+    AI_LOG("[AI DEBUG] Setting AI enabled: %d\n", enabled);
+    if (enabled && !ai_enabled) {
+        generate_session_id();
+        if (ai_register_session()) {
+            char msg[256];
+            snprintf(msg, sizeof(msg), "AI Session Created: %s", ai_session_id);
+            display_comment(msg);
+        } else {
+            display_comment("AI Session Registration Failed!");
+        }
+    }
     ai_enabled = enabled;
 }
 
@@ -76,42 +200,22 @@ void add_player_state(cJSON *players_array, int seat_idx) {
         cJSON_AddNumberToObject(player_obj, "hand_count", pool[seat_idx].num);
     }
 
-    // Exposed melds (from out_card but need parsing logic? pool[].out_card structure)
-    // qkmj stores melds in out_card? Yes. 
-    // Structure: [type, c1, c2, c3, c4]
-    // type: 1 (chi), 2 (pong), 3 (ming-kang), 11 (an-kang), 12 (jia-kang)
+    // Exposed melds
     meld_array = cJSON_CreateArray();
     for (i = 0; i < pool[seat_idx].out_card_index; i++) {
         cJSON *meld = cJSON_CreateObject();
         int type = pool[seat_idx].out_card[i][0];
-        // Filter legitimate melds
         if (type == 1 || type == 2 || type == 3 || type == 11 || type == 12) {
              cJSON_AddNumberToObject(meld, "type", type);
-             cJSON_AddNumberToObject(meld, "card", pool[seat_idx].out_card[i][1]); // Representative card
+             cJSON_AddNumberToObject(meld, "card", pool[seat_idx].out_card[i][1]); 
              cJSON_AddItemToArray(meld_array, meld);
         }
     }
     cJSON_AddItemToObject(player_obj, "melds", meld_array);
 
-    // Discards
+    // Discards (placeholder)
     discard_array = cJSON_CreateArray();
-    for (i = 0; i < pool[seat_idx].out_card_index; i++) {
-        int type = pool[seat_idx].out_card[i][0];
-        // 7,8,9 are discards? 
-        // In qkmj:
-        // Normal discard is just put in table_card? No, check `throw_card`.
-        // It sets `table_card`.
-        // `pool` seems to track exposed cards (melds/flowers/discards?) 
-        // Let's assume `out_card` stores melds.
-        // The river is tracked in `pool` too? 
-        // `pool[sit].card` is HAND.
-        // Discards are tricky in this codebase. They might be transient or stored in `table_card` visual buffer.
-        // For AI, knowing river is important.
-        // Re-reading `qkmj.c` `throw_card`: it updates `table_card`.
-        // Recovering the exact sequence of discards from `table_card` is hard because it's a 2D grid.
-        // We might skip full discard history for this iteration or try to parse `table_card`.
-    }
-    cJSON_AddItemToObject(player_obj, "discards", discard_array); // Empty for now
+    cJSON_AddItemToObject(player_obj, "discards", discard_array); 
 
     // Flowers
     flower_array = cJSON_CreateArray();
@@ -131,6 +235,11 @@ char* ai_serialize_state(ai_phase_t phase, int card, int from_seat) {
     // Build JSON
     root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "cmd", "decision");
+    
+    // Note: session_id is now sent in the wrapper, but we can keep it here too if useful for debugging
+    if (ai_session_id[0] != '\0') {
+        cJSON_AddStringToObject(root, "session_id", ai_session_id);
+    }
 
     // Context
     context = cJSON_CreateObject();
@@ -161,7 +270,8 @@ char* ai_serialize_state(ai_phase_t phase, int card, int from_seat) {
     legal = cJSON_CreateObject();
     if (phase == AI_PHASE_DISCARD) {
         cJSON_AddBoolToObject(legal, "can_discard", 1);
-        cJSON_AddBoolToObject(legal, "can_win", 0); // TODO: Check valid win
+        cJSON_AddBoolToObject(legal, "can_win", check_flag[my_sit][4]); 
+        cJSON_AddBoolToObject(legal, "can_kang", check_flag[my_sit][3]);
     } else {
         cJSON_AddBoolToObject(legal, "can_eat", check_flag[my_sit][1]);
         cJSON_AddBoolToObject(legal, "can_pong", check_flag[my_sit][2]);
@@ -178,10 +288,55 @@ char* ai_serialize_state(ai_phase_t phase, int card, int from_seat) {
 ai_decision_t ai_parse_decision(const char* json_response) {
     ai_decision_t decision = {AI_ACTION_NONE, 0, {0, 0}};
     cJSON *resp_root = cJSON_Parse(json_response);
-    if (resp_root) {
-        cJSON *action_item = cJSON_GetObjectItem(resp_root, "action");
+    cJSON *target_root = NULL;
+    cJSON *temp_root = NULL;
+    
+    if (!resp_root) {
+        AI_LOG("[AI ERROR] Failed to parse JSON response\n");
+        return decision;
+    }
+
+    // Check if it's the specific array format from the agent
+    if (cJSON_IsArray(resp_root)) {
+        cJSON *item0 = cJSON_GetArrayItem(resp_root, 0);
+        if (item0) {
+            cJSON *content = cJSON_GetObjectItem(item0, "content");
+            if (content) {
+                cJSON *parts = cJSON_GetObjectItem(content, "parts");
+                if (parts && cJSON_IsArray(parts)) {
+                    cJSON *part0 = cJSON_GetArrayItem(parts, 0);
+                    if (part0) {
+                        cJSON *text = cJSON_GetObjectItem(part0, "text");
+                        if (text && cJSON_IsString(text)) {
+                            AI_LOG("[AI DEBUG] Found wrapped JSON string: %s\n", text->valuestring);
+                            
+                            const char *clean_json = text->valuestring;
+                            // Skip leading markdown code block markers
+                            while (*clean_json == ' ' || *clean_json == '\n' || *clean_json == '\r' || *clean_json == '\t') clean_json++;
+                            if (strncmp(clean_json, "```json", 7) == 0) clean_json += 7;
+                            else if (strncmp(clean_json, "```", 3) == 0) clean_json += 3;
+                            
+                            temp_root = cJSON_Parse(clean_json);
+                            if (temp_root) {
+                                target_root = temp_root;
+                            } else {
+                                AI_LOG("[AI ERROR] Failed to parse wrapped JSON string\n");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Fallback: maybe it's the direct object?
+        target_root = resp_root;
+    }
+
+    if (target_root) {
+        cJSON *action_item = cJSON_GetObjectItem(target_root, "action");
         if (action_item && cJSON_IsString(action_item)) {
             const char *act = action_item->valuestring;
+            AI_LOG("[AI DEBUG] Parsed Action: %s\n", act);
             if (strcmp(act, "discard") == 0) decision.action = AI_ACTION_DISCARD;
             else if (strcmp(act, "eat") == 0) decision.action = AI_ACTION_EAT;
             else if (strcmp(act, "pong") == 0) decision.action = AI_ACTION_PONG;
@@ -190,22 +345,22 @@ ai_decision_t ai_parse_decision(const char* json_response) {
             else decision.action = AI_ACTION_PASS;
         }
         
-        cJSON *card_item = cJSON_GetObjectItem(resp_root, "card");
+        cJSON *card_item = cJSON_GetObjectItem(target_root, "card");
         if (card_item && cJSON_IsNumber(card_item)) {
             decision.card = card_item->valueint;
         }
 
-        // Handle meld_cards for eat if needed
-        cJSON *meld_cards = cJSON_GetObjectItem(resp_root, "meld_cards");
+        cJSON *meld_cards = cJSON_GetObjectItem(target_root, "meld_cards");
         if (meld_cards && cJSON_IsArray(meld_cards)) {
             cJSON *mc1 = cJSON_GetArrayItem(meld_cards, 0);
             cJSON *mc2 = cJSON_GetArrayItem(meld_cards, 1);
             if (mc1) decision.meld_cards[0] = mc1->valueint;
             if (mc2) decision.meld_cards[1] = mc2->valueint;
         }
-
-        cJSON_Delete(resp_root);
     }
+
+    if (temp_root) cJSON_Delete(temp_root);
+    cJSON_Delete(resp_root);
     return decision;
 }
 
@@ -215,19 +370,44 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
     CURLcode res;
     struct curl_slist *headers = NULL;
     struct memory chunk = {0};
-    char *json_payload;
+    char *inner_json;
+    char *final_payload = NULL;
 
     if (!ai_enabled) return decision;
 
-    json_payload = ai_serialize_state(phase, card, from_seat);
+    inner_json = ai_serialize_state(phase, card, from_seat);
+
+    // Wrap the payload
+    cJSON *wrapper = cJSON_CreateObject();
+    cJSON_AddStringToObject(wrapper, "appName", "agent");
+    cJSON_AddStringToObject(wrapper, "userId", (char*)my_name);
+    cJSON_AddStringToObject(wrapper, "sessionId", ai_session_id);
+    
+    cJSON *newMessage = cJSON_CreateObject();
+    cJSON_AddStringToObject(newMessage, "role", "user");
+    
+    cJSON *parts = cJSON_CreateArray();
+    cJSON *part = cJSON_CreateObject();
+    cJSON_AddStringToObject(part, "text", inner_json);
+    cJSON_AddItemToArray(parts, part);
+    
+    cJSON_AddItemToObject(newMessage, "parts", parts);
+    cJSON_AddItemToObject(wrapper, "newMessage", newMessage);
+    
+    final_payload = cJSON_PrintUnformatted(wrapper);
+    AI_LOG("[AI DEBUG] Request Payload: %s\n", final_payload);
 
     // Send Request
     curl = curl_easy_init();
     if (curl) {
+        char run_url[300];
+        snprintf(run_url, sizeof(run_url), "%s/run", ai_endpoint);
+        AI_LOG("[AI DEBUG] Sending Decision Request to: %s\n", run_url);
+
         headers = curl_slist_append(headers, "Content-Type: application/json");
-        curl_easy_setopt(curl, CURLOPT_URL, ai_endpoint);
+        curl_easy_setopt(curl, CURLOPT_URL, run_url);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_payload);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, final_payload);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
         // SSL verification off for localhost
@@ -236,37 +416,52 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
 
         res = curl_easy_perform(curl);
 
-        if (res == CURLE_OK) {
-            char *log_str;
-            cJSON *log_root = cJSON_CreateObject();
-            cJSON_AddStringToObject(log_root, "level", "ai_trace");
-            cJSON_AddItemToObject(log_root, "request", cJSON_Parse(json_payload)); // Parse back to object to embed
-            cJSON_AddItemToObject(log_root, "response", cJSON_Parse(chunk.response));
-            cJSON_AddNumberToObject(log_root, "timestamp", (double)time(NULL)*1000.0);
-            
-            log_str = cJSON_PrintUnformatted(log_root);
-            if (log_str) {
-                char *send_buf = (char*)malloc(strlen(log_str) + 4);
-                if (send_buf) {
-                    sprintf(send_buf, "901%s", log_str);
-                    write_msg(gps_sockfd, send_buf);
-                    free(send_buf);
-                }
-                free(log_str);
-            }
-            cJSON_Delete(log_root);
+        cJSON *resp_json = NULL;
+        const char *err = NULL;
 
+        if (res == CURLE_OK) {
+            AI_LOG("[AI DEBUG] Request Successful. Response size: %zu\n", chunk.size);
+            if (chunk.response) {
+                resp_json = cJSON_Parse(chunk.response);
+                if (!resp_json) {
+                    resp_json = cJSON_CreateString(chunk.response);
+                }
+            }
             decision = ai_parse_decision(chunk.response);
         } else {
-            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            AI_ERR("[AI ERROR] curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            err = curl_easy_strerror(res);
         }
 
+        // Log decision trace
+        // Create a copy of wrapper for logging, but replace the "text" string with the actual object
+        cJSON *log_wrapper = cJSON_Duplicate(wrapper, 1);
+        cJSON *l_nm = cJSON_GetObjectItem(log_wrapper, "newMessage");
+        if (l_nm) {
+            cJSON *l_parts = cJSON_GetObjectItem(l_nm, "parts");
+            if (l_parts && cJSON_GetArraySize(l_parts) > 0) {
+                cJSON *l_part0 = cJSON_GetArrayItem(l_parts, 0);
+                if (l_part0) {
+                    cJSON *parsed_inner = cJSON_Parse(inner_json);
+                    if (parsed_inner) {
+                        cJSON_ReplaceItemInObject(l_part0, "text", parsed_inner);
+                    }
+                }
+            }
+        }
+
+        ai_send_log_to_server("decision", log_wrapper, resp_json, err);
+        cJSON_Delete(log_wrapper);
+
+        if (resp_json) cJSON_Delete(resp_json);
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
     }
     
-    free(json_payload);
-    free(chunk.response);
+    cJSON_Delete(wrapper);
+    free(inner_json); // Free the inner string as it's now in final_payload
+    if (final_payload) free(final_payload);
+    if (chunk.response) free(chunk.response);
 
     return decision;
 }
