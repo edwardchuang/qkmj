@@ -21,3 +21,5 @@ mjgps
 mjrec
 build/
 CMakeFiles/
+**/__pycache__/
+firebase-debug.log
