@@ -423,7 +423,13 @@ void handle_serv_message(int msg_id, char* buf) {
       break;
     case 130:
       if (table[buf[3] - '0']) {
-          player[table[buf[3] - '0']].is_ai = buf[4] - '0';
+          int pid = table[buf[3] - '0'];
+          player[pid].is_ai = buf[4] - '0';
+          if (in_serv) {
+              char b_msg[20];
+              snprintf(b_msg, sizeof(b_msg), "130%c%c", buf[3], buf[4]);
+              broadcast_msg(pid, b_msg);
+          }
       }
       break;
     case 199:                        // LEAVE 開桌者離開牌桌
@@ -488,7 +494,7 @@ void handle_serv_message(int msg_id, char* buf) {
     case 205: /* NOTICE: need player_in_table++ ? */
               /* NOTICE: did he get table[]???? */
       my_id = buf[3];
-      strncpy(player[my_id].name, buf + 5, sizeof(player[my_id].name) - 1);
+      strncpy(player[my_id].name, buf + 6, sizeof(player[my_id].name) - 1);
       player[my_id].name[sizeof(player[my_id].name) - 1] = '\0';
       my_sit = buf[4];
       player[my_id].sit = my_sit;
