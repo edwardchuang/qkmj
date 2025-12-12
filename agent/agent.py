@@ -33,19 +33,46 @@ See `legal_actions` for what is physically possible.
     *   **Chi Strategy**: Only Chi if it fixes a bad shape (e.g., completing a 1-3 edge wait).
 4.  **DISCARD (Tile Efficiency)**:
     *   **Goal**: Maximize "Uke-ire" (number of tiles that improve your hand).
+    *   **Definition of ISOLATED**: A number tile is isolated ONLY if you have NO other tiles in the same suit within a range of +/- 2. (e.g., if you have 25, 26, then 26 is NOT isolated. If you have 21, 25, 26, then 21 IS isolated).
     *   **Order of Discard**:
-        1.  **Isolated Honors (High Priority)**: Discard any Wind/Dragon if you hold only 1 copy and it is NOT a pair/set.
-            *   *Exception*: You may keep a value honor (Red/Green/White/Seat/Round) ONLY if you have a bad hand and need a pair. Otherwise, discard them to keep number tiles.
-        2.  **Isolated Terminals**: 1, 9.
-        3.  **Isolated Simples**: 2-8 (Discard those that overlap least with neighbors).
-        4.  **Inefficient Pairs**: If you have >1 pair, discard the one easiest to rebuild or hardest to Pong.
-        5.  **Dangerous Tiles**: If strictly defending (someone else likely Tenpai), discard "Safe" tiles (Genbutsu - tiles they threw).
-    *   **CRITICAL RULE**: Do **NOT** discard a freshly drawn number tile (Wan/Suo/Tong 1-9) if you still have an isolated Honor card in your hand. The number tile has higher connection potential. Discard the Honor first.
+        1.  **Follow Discard (Awaseuchi)**: If you hold an isolated Honor (Wind/Dragon) or Terminal, and another player JUST discarded it (or it appears in recent discards), discard it immediately. It is safe and has reduced value.
+        2.  **Isolated Honors (High Priority)**: Discard any Wind/Dragon if you hold only 1 copy.
+        3.  **Isolated Terminals**: 1 or 9 that have NO neighbors (e.g. discard 1-Wan if you don't have 2-Wan or 3-Wan).
+        4.  **Isolated Simples**: 2-8 that have NO neighbors.
+        5.  **Weakest Group**: If you have no isolated tiles, break the worst incomplete set (e.g., a "Kan-Chan" middle wait like 24 is worse than a "Ryan-Men" two-sided wait like 23).
+        6.  **Inefficient Pairs**: If you have >1 pair, discard the one easiest to rebuild.
+        7.  **Dangerous Tiles**: If strictly defending (someone else likely Tenpai), discard "Safe" tiles (Genbutsu - tiles they threw).
+    *   **CRITICAL RULE**: Do **NOT** break a connected pair or sequence (e.g., 25, 26) to keep a totally isolated tile (e.g., 21). Discard the isolated tile (21) first. Also, do **NOT** discard a freshly drawn number tile (Wan/Suo/Tong 1-9) if you still have an isolated Honor card in your hand. The number tile has higher connection potential. Discard the Honor first.
 
-## 5. Response Format (JSON ONLY)
+## 5. Pro-Level Tactics (Grandmaster Logic)
+
+### A. Defensive: The "Suji" Rule (Stripes)
+When strictly defending and you have no "Genbutsu" (Awaseuchi tiles), use Suji to find semi-safe tiles.
+*   **Theory**: If an opponent discards a number `N`, they likely cannot make a sequence using `N-3` or `N+3`.
+*   **Rule**:
+    *   Opponent discarded **4** -> **1** and **7** are safer.
+    *   Opponent discarded **5** -> **2** and **8** are safer.
+    *   Opponent discarded **6** -> **3** and **9** are safer.
+    *   *Priority*: Discard Suji tiles before random dangerous number tiles.
+
+### B. Defensive: The "Kabe" Rule (Walls)
+Check the visible count of tiles on the table.
+*   **Rule**:
+    *   If all four **2s** are visible -> **1** is very safe.
+    *   If all four **8s** are visible -> **9** is very safe.
+    *   If all four **3s** are visible -> **1** and **2** are safer.
+    *   If all four **7s** are visible -> **8** and **9** are safer.
+
+### C. Offensive: 6-Block Theory
+In 16-tile Mahjong, a winning hand needs 5 sets + 1 pair = **6 Blocks**.
+*   **Rule**: Constantly count your blocks (Completed Sets + Pairs + Neighboring Sequences).
+    *   If you have **more than 6 blocks**, identify the weakest one (e.g., a "Pen-Chan" 1-2 waiting on 3) and discard it immediately. Do not hold it "just in case".
+    *   Focus purely on completing the best 6 blocks.
+
+## 6. Response Format (JSON ONLY)
 Strictly: `{"action": "...", "card": ..., "meld_cards": [...]}`
 
-## 6. Examples (Input -> Output)
+## 7. Examples (Input -> Output)
 
 **Ex 1: Discard**
 Input: { "hand": [1,2,3, 11,12,13, 22,22, 34, 41,41,41, 5,6,7, 8], "event": {"new_card": 34}, "legal_actions": {"can_discard": true} }
