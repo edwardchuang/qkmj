@@ -96,6 +96,8 @@ int color;
 int cheat_mode;
 char table_card[6][17];
 
+WINDOW *stdscr = NULL;
+
 void write_msg(int fd, char* msg) {
     // Mock implementation
 }
@@ -104,3 +106,24 @@ void display_comment(char* msg) {
     // Mock implementation
     printf("MOCK DISPLAY: %s\n", msg);
 }
+
+void wmvaddstr(WINDOW* win, int y, int x, char* str) {
+    // Mock implementation
+}
+
+void redraw_screen() {
+    // Mock implementation
+}
+
+// Mock ncurses attribute functions
+int wattr_on(WINDOW *win, attr_t attrs, void *opts) { return 0; }
+int wattr_off(WINDOW *win, attr_t attrs, void *opts) { return 0; }
+
+#undef mvwinch
+#undef mvwaddch
+
+// Mock underlying ncurses functions used by macros
+int wmove(WINDOW *win, int y, int x) { return 0; }
+chtype winch(WINDOW *win) { return 0; }
+int waddch(WINDOW *win, const chtype ch) { return 0; }
+int wrefresh(WINDOW *win) { return 0; }

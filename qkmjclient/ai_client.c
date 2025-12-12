@@ -84,6 +84,50 @@ static void generate_session_id() {
     AI_LOG("[AI DEBUG] Generated Session ID: %s\n", ai_session_id);
 }
 
+static chtype ai_save_buf[3][20];
+static int ai_saved = 0;
+
+static void show_ai_thinking() {
+    if (!stdscr) return;
+    if (ai_saved) return;
+
+    int x = 30, y = 11;
+    int w = 20, h = 3;
+    int i, j;
+
+    for (j = 0; j < h; j++) {
+        for (i = 0; i < w; i++) {
+            ai_save_buf[j][i] = mvwinch(stdscr, y + j, x + i);
+        }
+    }
+    ai_saved = 1;
+
+    wmvaddstr(stdscr, y, x,   "+------------------+");
+    
+    attron(A_REVERSE | A_BOLD);
+    wmvaddstr(stdscr, y+1, x, "|  AI Thinking...  |");
+    attroff(A_REVERSE | A_BOLD);
+    
+    wmvaddstr(stdscr, y+2, x, "+------------------+");
+    wrefresh(stdscr);
+}
+
+static void hide_ai_thinking() {
+    if (!stdscr || !ai_saved) return;
+
+    int x = 30, y = 11;
+    int w = 20, h = 3;
+    int i, j;
+
+    for (j = 0; j < h; j++) {
+        for (i = 0; i < w; i++) {
+            mvwaddch(stdscr, y + j, x + i, ai_save_buf[j][i]);
+        }
+    }
+    ai_saved = 0;
+    wrefresh(stdscr);
+}
+
 static int ai_register_session() {
     CURL *curl;
     CURLcode res;
@@ -110,8 +154,10 @@ static int ai_register_session() {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
+        show_ai_thinking();
         res = curl_easy_perform(curl);
-        
+        hide_ai_thinking();
+
         // Log registration attempt
         cJSON *req_json = cJSON_CreateObject();
         cJSON_AddStringToObject(req_json, "url", url);
@@ -414,7 +460,9 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
+        show_ai_thinking();
         res = curl_easy_perform(curl);
+        hide_ai_thinking();
 
         cJSON *resp_json = NULL;
         const char *err = NULL;

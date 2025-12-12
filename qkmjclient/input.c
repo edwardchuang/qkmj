@@ -87,6 +87,44 @@ void action_throw_card(int index) {
   return_cursor();
 }
 
+void action_draw_card() {
+  int card, i;
+  char msg_buf[255];
+
+  play_mode = WAIT_CARD;
+  if (in_join) {
+    write_msg(table_sockfd, "313");
+  } else {
+    card = mj[card_point++];
+    current_card = card;
+    show_num(2, 70, 144 - card_point - 16, 2);
+    /* change turn */
+    card_owner = my_sit;
+    snprintf(msg_buf, sizeof(msg_buf), "305%c", (char)my_sit);
+    broadcast_msg(1, msg_buf);
+    /* show new cardback */
+    snprintf(msg_buf, sizeof(msg_buf), "314%c%c", my_sit, 2);
+    broadcast_msg(1, msg_buf);
+    /* change card number */
+    snprintf(msg_buf, sizeof(msg_buf), "306%c", card_point);
+    broadcast_msg(1, msg_buf);
+    /* get the card */
+    process_new_card(my_sit, card);
+    clear_check_flag(my_sit);
+    check_flag[my_sit][3] = check_kang(my_sit, card);
+    check_flag[my_sit][4] = check_make(my_sit, card, 0);
+    in_check[1] = 0;
+    for (i = 1; i < check_number; i++)
+      if (check_flag[my_sit][i]) {
+        getting_card = 1;
+        init_check_mode();
+        in_check[1] = 1;
+        check_on = 1;
+      }
+    gettimeofday(&before, (struct timezone*)0);
+  }
+}
+
 void process_key() {
   int i, j, key;
   static int m, n, current_eat;
@@ -154,39 +192,7 @@ void process_key() {
         case ENTER:
         case SPACE:
           if (play_mode == GET_CARD) {
-            play_mode = WAIT_CARD;
-            if (in_join) {
-              write_msg(table_sockfd, "313");
-              break;
-            } else {
-              card = mj[card_point++];
-              current_card = card;
-              show_num(2, 70, 144 - card_point - 16, 2);
-              /* change turn */
-              card_owner = my_sit;
-              snprintf(msg_buf, sizeof(msg_buf), "305%c", (char)my_sit);
-              broadcast_msg(1, msg_buf);
-              /* show new cardback */
-              snprintf(msg_buf, sizeof(msg_buf), "314%c%c", my_sit, 2);
-              broadcast_msg(1, msg_buf);
-              /* change card number */
-              snprintf(msg_buf, sizeof(msg_buf), "306%c", card_point);
-              broadcast_msg(1, msg_buf);
-              /* get the card */
-              process_new_card(my_sit, card);
-              clear_check_flag(my_sit);
-              check_flag[my_sit][3] = check_kang(my_sit, card);
-              check_flag[my_sit][4] = check_make(my_sit, card, 0);
-              in_check[1] = 0;
-              for (i = 1; i < check_number; i++)
-                if (check_flag[my_sit][i]) {
-                  getting_card = 1;
-                  init_check_mode();
-                  in_check[1] = 1;
-                  check_on = 1;
-                }
-              gettimeofday(&before, (struct timezone*)0);
-            }
+            action_draw_card();
             break;
           } else if (play_mode == THROW_CARD) {
           quick_throw:;

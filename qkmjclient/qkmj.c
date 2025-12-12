@@ -625,7 +625,16 @@ void gps() {
       nfds = serv_sockfd + 1;
     }
 
-    if (select(nfds, &rfds, (fd_set*)0, (fd_set*)0, 0) < 0) {
+    struct timeval ai_tv;
+    struct timeval *tv_ptr = 0;
+
+    if (ai_is_enabled()) {
+        ai_tv.tv_sec = 0;
+        ai_tv.tv_usec = 100000; // 0.1s timeout for AI polling
+        tv_ptr = &ai_tv;
+    }
+
+    if (select(nfds, &rfds, (fd_set*)0, (fd_set*)0, tv_ptr) < 0) {
       if (errno != EINTR) {
         display_comment("Select Error!");
         exit(0);
@@ -634,6 +643,29 @@ void gps() {
     }
     if (FD_ISSET(0, &rfds)) {
       if (input_mode) process_key();
+    }
+    
+    /* AI Hook: Auto-Draw */
+    if (input_mode == PLAY_MODE && play_mode == GET_CARD && ai_is_enabled()) {
+        action_draw_card();
+    }
+
+    /* AI Hook: Check Mode (Self-Draw Win/Kang) */
+    if (input_mode == CHECK_MODE && in_check[1] && ai_is_enabled()) {
+        ai_decision_t dec = ai_get_decision(AI_PHASE_DISCARD, current_card, 0);
+        if (dec.action == AI_ACTION_WIN) {
+             write_check(4);
+             input_mode = PLAY_MODE;
+             return_cursor();
+        } else if (dec.action == AI_ACTION_KANG) {
+             write_check(3);
+             input_mode = PLAY_MODE;
+             return_cursor();
+        } else {
+             write_check(0);
+             input_mode = PLAY_MODE;
+             return_cursor();
+        }
     }
     
     /* AI Hook: Discard Phase */
@@ -815,6 +847,11 @@ void read_qkmjrc() {
 }
 
 int main(int argc, char** argv) {
+#ifdef DEBUG
+  printf("Ready for debugger. PID: %d\nPress Enter to continue...", getpid());
+  getchar();
+#endif
+
   setlocale(LC_ALL, "");
   setenv("TERM", "xterm", 1);
 
