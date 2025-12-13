@@ -23,3 +23,5 @@ build/
 CMakeFiles/
 **/__pycache__/
 firebase-debug.log
+Testing/
+CMakeCache.txt
