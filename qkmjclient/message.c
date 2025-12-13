@@ -12,43 +12,39 @@
 
 #include "mjdef.h"
 
-#ifdef NON_WINDOWS  // Linux
-#include "curses.h"
-#else  // Cygwin
-#include "ncurses/ncurses.h"
-#endif
-
+#include "ai_client.h"
 #include "misc.h"
+#include "protocol.h"
+#include "protocol_def.h"
 #include "qkmj.h"
 
-int convert_msg_id(int player_id, unsigned char* msg) {
-  int i;
-  char msg_buf[255];
+/* Helper functions for JSON extraction */
+static const char* j_str(cJSON* json, const char* name) {
+  cJSON* item = cJSON_GetObjectItem(json, name);
+  return item ? cJSON_GetStringValue(item) : "";
+}
 
-  for (i = 0; i < 3; i++)
-    if (msg[i] < '0' || msg[i] > '9') {
-      display_comment("Invalid message id");
-      snprintf(msg_buf, sizeof(msg_buf), "From %d (%d) id=%d len=%lu %s", player_id,
-               gps_sockfd, msg[i], (unsigned long)strlen((char*)msg), msg);
-      display_comment(msg_buf);
-    }
-  return (msg[0] - '0') * 100 + (msg[1] - '0') * 10 + (msg[2] - '0');
+static int j_int(cJSON* json, const char* name) {
+  cJSON* item = cJSON_GetObjectItem(json, name);
+  return item ? item->valueint : 0;
+}
+
+static double j_double(cJSON* json, const char* name) {
+  cJSON* item = cJSON_GetObjectItem(json, name);
+  return item ? item->valuedouble : 0.0;
 }
 
 /*
  * 處理 GPS 伺服器訊息
- * 包含登入回應、密碼檢查、使用者列表等。
  */
-void handle_gps_message(int msg_id, char* buf) {
+void handle_gps_message(int msg_id, cJSON* data) {
   char msg_buf[255];
   char ans_buf[255];
   char ans_buf1[255];
-  int i;
-
-  if (msg_id != 102) read_msg(gps_sockfd, buf + 3);
+  cJSON* payload = NULL;
 
   switch (msg_id) {
-    case 2:
+    case MSG_LOGIN_OK: /* 2 */
       if (my_pass[0] != 0)
         strncpy(ans_buf, (char*)my_pass, sizeof(ans_buf) - 1);
       else {
@@ -57,19 +53,26 @@ void handle_gps_message(int msg_id, char* buf) {
         ans_buf[8] = 0;
       }
       ans_buf[sizeof(ans_buf) - 1] = '\0';
-      snprintf(msg_buf, sizeof(msg_buf), "102%s", ans_buf);
-      write_msg(gps_sockfd, msg_buf);
+
+      payload = cJSON_CreateObject();
+      cJSON_AddStringToObject(payload, "password", ans_buf);
+      send_json(gps_sockfd, MSG_CHECK_PASSWORD, payload);
+
       strncpy((char*)my_pass, ans_buf, sizeof(my_pass) - 1);
       my_pass[sizeof(my_pass) - 1] = '\0';
       break;
-    case 3:
+
+    case MSG_WELCOME: /* 3 */
       pass_login = 1;
       input_mode = TALK_MODE;
       display_comment("請打 /HELP 查看簡單指令說明，/Exit 離開");
-      snprintf(msg_buf, sizeof(msg_buf), "004%s", my_note);
-      write_msg(gps_sockfd, msg_buf);
+
+      payload = cJSON_CreateObject();
+      cJSON_AddStringToObject(payload, "note", (char*)my_note);
+      send_json(gps_sockfd, MSG_SET_NOTE, payload);
       break;
-    case 4:
+
+    case MSG_PASSWORD_FAIL: /* 4 */
       pass_count++;
       my_pass[0] = 0;
       if (pass_count == 3) leave();
@@ -78,12 +81,16 @@ void handle_gps_message(int msg_id, char* buf) {
         ask_question("密碼錯誤! 請重新輸入你的名稱：", ans_buf, 10, 1);
       } while (ans_buf[0] == 0);
       ans_buf[10] = 0;
-      snprintf(msg_buf, sizeof(msg_buf), "101%s", ans_buf);
-      write_msg(gps_sockfd, msg_buf);
+
+      payload = cJSON_CreateObject();
+      cJSON_AddStringToObject(payload, "name", ans_buf);
+      send_json(gps_sockfd, MSG_LOGIN, payload);
+
       strncpy((char*)my_name, ans_buf, sizeof(my_name) - 1);
       my_name[sizeof(my_name) - 1] = '\0';
       break;
-    case 5: /* creat a new account */
+
+    case MSG_NEW_USER: /* 5 */
       ans_buf[0] = 0;
       ask_question("看來你是個新朋友, 你要使用這個名稱嗎？(y/N)：", ans_buf, 1,
                    1);
@@ -96,8 +103,10 @@ void handle_gps_message(int msg_id, char* buf) {
         ans_buf1[8] = 0;
         while (1) {
           if (strcmp(ans_buf, ans_buf1) == 0) {
-            snprintf(msg_buf, sizeof(msg_buf), "103%s", ans_buf);
-            write_msg(gps_sockfd, msg_buf);
+            payload = cJSON_CreateObject();
+            cJSON_AddStringToObject(payload, "password", ans_buf);
+            send_json(gps_sockfd, MSG_CREATE_ACCOUNT, payload);
+
             strncpy((char*)my_pass, ans_buf, sizeof(my_pass) - 1);
             my_pass[sizeof(my_pass) - 1] = '\0';
             break;
@@ -116,50 +125,53 @@ void handle_gps_message(int msg_id, char* buf) {
           ask_question("請重新輸入你的名稱：", ans_buf, 10, 1);
         } while (ans_buf[0] == 0);
         ans_buf[10] = 0;
-        snprintf(msg_buf, sizeof(msg_buf), "101%s", ans_buf);
-        write_msg(gps_sockfd, msg_buf);
+
+        payload = cJSON_CreateObject();
+        cJSON_AddStringToObject(payload, "name", ans_buf);
+        send_json(gps_sockfd, MSG_LOGIN, payload);
+
         strncpy((char*)my_name, ans_buf, sizeof(my_name) - 1);
         my_name[sizeof(my_name) - 1] = '\0';
       }
       break;
-    case 6:
+
+    case MSG_DUPLICATE_LOGIN: /* 6 */
       ans_buf[0] = 0;
       ask_question("重覆進入! 你要殺掉另一個帳號嗎? (y/N)：", ans_buf, 1, 1);
       if (ans_buf[0] == 'y' || ans_buf[0] == 'Y') {
-        write_msg(gps_sockfd, "105");
-
+        send_json(gps_sockfd, MSG_KILL_DUPLICATE, NULL);
       } else
         leave();
       break;
-    case 10: /* 離線 */
+
+    case MSG_VERSION_ERROR: /* 10 */
       leave();
       break;
-    case 11:  // JOIN Sever
-      switch (buf[3]) {
-        case '0':
-          Tokenize(buf + 4);
-          // sprintf(msg_buf,"連往 %s port %s",cmd_argv[1],cmd_argv[2]);
-          // send_gps_line(msg_buf);
-          send_gps_line("與該桌連線中...");
 
-          int ret = init_socket((char*)cmd_argv[1], atoi((char*)cmd_argv[2]),
-                                &table_sockfd);
+    case MSG_JOIN_INFO: /* 11 */ {
+      int status = j_int(data, "status");
+      if (status == 0) {
+        const char* ip = j_str(data, "ip");
+        int port = j_int(data, "port");
 
-          FD_SET(table_sockfd, &afds);
-          in_join = 1;
-          break;
-        case '1':
-          send_gps_line("查無此桌，請重新再試。（可用 /FREE 查詢空桌）");
-          break;
-        case '2':
-          send_gps_line("無法連線");
-          break;
+        send_gps_line("與該桌連線中...");
+
+        init_socket((char*)ip, port, &table_sockfd);
+        FD_SET(table_sockfd, &afds);
+        in_join = 1;
+      } else if (status == 1) {
+        send_gps_line("查無此桌，請重新再試。（可用 /FREE 查詢空桌）");
+      } else {
+        send_gps_line("無法連線");
       }
-      break;
-    case 12:  // 開桌
+    } break;
+
+    case MSG_OPEN_OK: /* 12 */
       init_serv_socket();
-      snprintf(msg_buf, sizeof(msg_buf), "012%d", SERV_PORT - 1);
-      write_msg(gps_sockfd, msg_buf);
+      payload = cJSON_CreateObject();
+      cJSON_AddNumberToObject(payload, "port", SERV_PORT - 1);
+      send_json(gps_sockfd, MSG_OPEN_TABLE, payload);
+
       my_id = 1;
       in_serv = 1;
       on_seat = 0;
@@ -170,7 +182,7 @@ void handle_gps_message(int msg_id, char* buf) {
       strncpy(player[1].name, (char*)my_name, sizeof(player[1].name) - 1);
       player[1].name[sizeof(player[1].name) - 1] = '\0';
       my_sit = 1;
-      for (i = 0; i <= 4; i++) table[i] = 0;
+      for (int i = 0; i <= 4; i++) table[i] = 0;
       table[1] = 1;
       if (player_in_table == PLAYER_NUM) {
         init_playing_screen();
@@ -183,127 +195,189 @@ void handle_gps_message(int msg_id, char* buf) {
       send_gps_line("您已建立新桌，目前人數1人，可使用 /who 查詢本桌清單");
       send_gps_line("如要關桌請輸入 /Leave (/L) 踢除使用者請用 /Kick ");
       send_gps_line("請用 /Note <附註> 設定附註，其他人查詢空桌時將可參考。");
-    case 101:
-      send_gps_line(buf + 3);
       break;
+
+    case MSG_TEXT_MESSAGE: /* 101 */
+      send_gps_line((char*)j_str(data, "text"));
+      break;
+
+    /* case 102 (Display News) - Assuming we add MSG_DISPLAY_NEWS */
     case 102:
       display_news(gps_sockfd);
       break;
-    case 120:
-      strncpy(msg_buf, buf + 3, sizeof(msg_buf) - 1);
-      msg_buf[sizeof(msg_buf) - 1] = '\0';
-      *(msg_buf + 5) = 0;
-      new_client_id = (unsigned int)atoi(msg_buf);
-      new_client_money = atol(buf + 8);
+
+    case MSG_UPDATE_MONEY: /* 120 */
+      new_client_id = (unsigned int)j_int(data, "user_id");
+      new_client_money = (long)j_double(data, "money");
       if (!in_serv) {
         my_gps_id = new_client_id;
         my_money = new_client_money;
       }
       break;
-    case 200:
+
+    case MSG_LEAVE: /* 200 */
       close(gps_sockfd);
       endwin();
+      exit(0);
       break;
-    case 211:
-      strncpy(new_client_name, buf + 3, sizeof(new_client_name) - 1);
+
+    case MSG_JOIN_NOTIFY: /* 211 */
+      strncpy(new_client_name, j_str(data, "name"),
+              sizeof(new_client_name) - 1);
       new_client_name[sizeof(new_client_name) - 1] = '\0';
       new_client = 1;
       break;
+
     default:
-      snprintf(msg_buf, sizeof(msg_buf), "msg_id=%d", msg_id);
+      snprintf(msg_buf, sizeof(msg_buf), "Unknown msg_id=%d", msg_id);
       display_comment(msg_buf);
   }
 }
 
 /*
  * 處理其他客戶端訊息 (P2P)
- * 處理打牌、吃碰槓、胡牌等遊戲邏輯訊息。
  */
-void handle_client_message(int player_id, int msg_id, char* buf) {
+void handle_client_message(int player_id, int msg_id, cJSON* data) {
   char msg_buf[255];
-  int i, j, sit;
-
-  read_msg(player[player_id].sockfd, buf + 3);
+  int i, sit;
+  cJSON* payload = NULL;
 
   switch (msg_id) {
-    case 101:
-      send_gps_line(buf + 3);
-      broadcast_msg(player_id, buf);
+    case MSG_TEXT_MESSAGE: /* 101 */
+      send_gps_line((char*)j_str(data, "text"));
+      {
+        // Re-broadcast
+        for (int i = 2; i < MAX_PLAYER; i++) {
+          if (player[i].in_table && i != player_id) {
+            send_json(player[i].sockfd, msg_id, cJSON_Duplicate(data, 1));
+          }
+        }
+      }
       break;
-    case 102:
-      display_comment(buf + 3);
-      broadcast_msg(player_id, buf);
+
+    case MSG_ACTION_CHAT: /* 102 */
+      display_comment((char*)j_str(data, "text"));
+      /* Broadcast */
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table && i != player_id) {
+          send_json(player[i].sockfd, msg_id, cJSON_Duplicate(data, 1));
+        }
+      }
       break;
-    case 130:
-      player[player_id].is_ai = buf[3] - '0';
-      snprintf(msg_buf, sizeof(msg_buf), "130%c%c", player[player_id].sit + '0', buf[3]);
-      broadcast_msg(player_id, msg_buf);
-      // Also echo back to sender so they know it's confirmed? 
-      // Or sender updates itself locally.
-      // Usually sender updates local state when sending.
+
+    case MSG_AI_MODE: /* 130 */
+      player[player_id].is_ai = j_int(data, "enabled");
+      /* Broadcast */
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table && i != player_id) {
+          send_json(player[i].sockfd, msg_id, cJSON_Duplicate(data, 1));
+        }
+      }
       break;
-    case 200:  // Other User Leave
+
+    case MSG_LEAVE: /* 200 */
       close_client(player_id);
       break;
-    case 290:
-      broadcast_msg(player_id, buf);
+
+    case MSG_NEW_ROUND: /* 290 */
+      /* Broadcast */
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table && i != player_id) {
+          send_json(player[i].sockfd, msg_id, cJSON_Duplicate(data, 1));
+        }
+      }
       opening();
       open_deal();
       break;
-    case 313:
-      /* Send a card to client */
+
+    case MSG_REQUEST_CARD: /* 313 */
       send_card_request = 1;
       break;
-    case 315:
-      /* Client finished */
-      /* next_player_request=1; */
+
+    case MSG_FINISH: /* 315 */
       break;
-    case 401:
-      /* Others throw a card */
+
+    case MSG_THROW_CARD: /* 401 */
       pool[player[player_id].sit].time += thinktime();
       display_time(player[player_id].sit);
-      snprintf(msg_buf, sizeof(msg_buf), "312%c%f", player[player_id].sit,
-               pool[player[player_id].sit].time);
-      broadcast_msg(1, msg_buf);
+
+      /* Broadcast Time 312 */
+      payload = cJSON_CreateObject();
+      cJSON_AddNumberToObject(payload, "sit", player[player_id].sit);
+      cJSON_AddNumberToObject(payload, "time",
+                              pool[player[player_id].sit].time);
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table && i != 1) {
+          send_json(player[i].sockfd, MSG_TIME, cJSON_Duplicate(payload, 1));
+        }
+      }
+      cJSON_Delete(payload);
+
       pool[player[player_id].sit].first_round = 0;
       in_kang = 0;
       show_newcard(player[player_id].sit, 3);
-      snprintf(msg_buf, sizeof(msg_buf), "314%c%c", player[player_id].sit, 3);
-      broadcast_msg(player_id, msg_buf);
-      snprintf(msg_buf, sizeof(msg_buf), "402%c%c", player_id, buf[3]);
-      broadcast_msg(player_id, msg_buf);
+
+      /* Broadcast Show New Card 314 */
+      payload = cJSON_CreateObject();
+      cJSON_AddNumberToObject(payload, "sit", player[player_id].sit);
+      cJSON_AddNumberToObject(payload, "mode", 3);
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table && i != player_id)
+          send_json(player[i].sockfd, MSG_SHOW_NEW_CARD,
+                    cJSON_Duplicate(payload, 1));
+      }
+      cJSON_Delete(payload);
+
+      int card = j_int(data, "card");
+
+      /* Broadcast Card Thrown 402 */
+      payload = cJSON_CreateObject();
+      cJSON_AddNumberToObject(payload, "user_id", player_id);
+      cJSON_AddNumberToObject(payload, "card", card);
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table && i != player_id)
+          send_json(player[i].sockfd, MSG_CARD_THROWN,
+                    cJSON_Duplicate(payload, 1));
+      }
+      cJSON_Delete(payload);
+
       current_id = player_id;
-      current_card = buf[3];
-      show_cardmsg(player[player_id].sit, buf[3]);
-      throw_card(buf[3]);
+      current_card = card;
+      show_cardmsg(player[player_id].sit, card);
+      throw_card(card);
       return_cursor();
       sit = player[player_id].sit;
-      for (i = 0; i < pool[sit].num; i++)
+      for (int i = 0; i < pool[sit].num; i++)
         if (pool[sit].card[i] == current_card) break;
       pool[sit].card[i] = pool[sit].card[pool[sit].num];
       sort_pool(sit);
       check_on = 1;
       send_card_on = 0;
       next_player_on = 0;
-      /* set in_check flag for players except the current player */
-      for (i = 1; i <= 4; i++) {
-        if (table[i] > 0 && table[i] != player_id) check_card(i, buf[3]);
+
+      /* check_card */
+      for (int i = 1; i <= 4; i++) {
+        if (table[i] > 0 && table[i] != player_id) check_card(i, card);
       }
-      for (i = 1; i <= 4; i++) {
+      for (int i = 1; i <= 4; i++) {
         if (table[i] != 1 && i != turn)
-          for (j = 1; j < check_number; j++) {
+          for (int j = 1; j < check_number; j++) {
             if (check_flag[i][j]) {
-              snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c",
-                       check_flag[i][1] + '0', check_flag[i][2] + '0',
-                       check_flag[i][3] + '0', check_flag[i][4] + '0');
-              write_msg(player[table[i]].sockfd, msg_buf);
+              /* Send 501 Check Card */
+              payload = cJSON_CreateObject();
+              cJSON_AddNumberToObject(payload, "eat", check_flag[i][1]);
+              cJSON_AddNumberToObject(payload, "pong", check_flag[i][2]);
+              cJSON_AddNumberToObject(payload, "kang", check_flag[i][3]);
+              cJSON_AddNumberToObject(payload, "win", check_flag[i][4]);
+              send_json(player[table[i]].sockfd, MSG_CHECK_CARD, payload);
+
               in_check[i] = 1;
-              break; /* check next player */
+              break;
             } else
               in_check[i] = 0;
           }
       }
-      for (j = 1; j < check_number; j++)
+      for (int j = 1; j < check_number; j++)
         if (check_flag[my_sit][j]) {
           init_check_mode();
           in_check[1] = 1;
@@ -312,62 +386,121 @@ void handle_client_message(int player_id, int msg_id, char* buf) {
       in_check[1] = 0;
     in_check_now1:;
       break;
-    case 450:
+
+    case MSG_WAIT_HIT: /* 450 */
       wait_hit[player[player_id].sit] = 1;
       break;
-    case 501:
+
+    case MSG_CHECK_CARD: /* 501 */
       who(player[player_id].name);
       break;
-    case 510:
+
+    case MSG_CHECK_RESULT: /* 510 */
       in_check[player[player_id].sit] = 0;
-      check_for[player[player_id].sit] = buf[3] - '0';
+      check_for[player[player_id].sit] = j_int(data, "action");
       break;
-    case 515:
+
+    case MSG_NEXT_REQUEST: /* 515 */
       next_player_request = 0;
       turn = player[player_id].sit;
-      snprintf(msg_buf, sizeof(msg_buf), "310%c", turn);
-      broadcast_msg(player_id, msg_buf);
+
+      /* Broadcast 310 */
+      payload = cJSON_CreateObject();
+      cJSON_AddNumberToObject(payload, "sit", turn);
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table && i != player_id) {
+          send_json(player[i].sockfd, MSG_PLAYER_POINTER,
+                    cJSON_Duplicate(payload, 1));
+        }
+      }
+      cJSON_Delete(payload);
+
       display_point(turn);
       return_cursor();
       break;
-    case 525:
+
+    case MSG_FLOWER: /* 525 */
       send_card_request = 1;
-      draw_flower(buf[3], buf[4]);
-      broadcast_msg(player_id, buf);
+      draw_flower(j_int(data, "card"), j_int(data, "pos"));
+      /* Broadcast */
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table && i != player_id) {
+          send_json(player[i].sockfd, msg_id, cJSON_Duplicate(data, 1));
+        }
+      }
       break;
-    case 530: /* others epk a card */
+
+    case MSG_SHOW_EPK: /* 530 */
       gettimeofday(&before, (struct timezone*)0);
-      turn = player[buf[3]].sit;
+      int sit = j_int(data, "sit");
+      int type = j_int(data, "type");
+      cJSON* cards = cJSON_GetObjectItem(data, "cards");
+      int c[5] = {0};  // c[0] is card1 (buf[5]), c[1] is card2 (buf[6]), c[2]
+                       // is card3 (buf[7])
+      /* Note: original buf mapping:
+         buf[3] -> sit
+         buf[4] -> type
+         buf[5] -> card1
+         buf[6] -> card2
+         buf[7] -> card3
+      */
+      if (cards && cJSON_IsArray(cards)) {
+        for (int k = 0; k < 3; k++) {
+          cJSON* item = cJSON_GetArrayItem(cards, k);
+          if (item) c[k] = item->valueint;
+        }
+      }
+
+      turn = player[sit].sit;
       card_owner = turn;
       display_point(turn);
-      if (buf[4] == 12) {
+
+      if (type == 12) {  // Flower
         for (i = 0; i < pool[turn].out_card_index; i++)
           if (pool[turn].out_card[i][0] == 2 &&
-              pool[turn].out_card[i][1] == buf[5]) {
+              pool[turn].out_card[i][1] == c[0]) {
             pool[turn].out_card[i][0] = 12;
-            pool[turn].out_card[i][4] = buf[5];
+            pool[turn].out_card[i][4] = c[0];
             pool[turn].out_card[i][5] = 0;
             break;
           }
       } else {
         for (i = 0; i <= 3; i++)
-          pool[turn].out_card[pool[turn].out_card_index][i] = buf[i + 4];
-        if (buf[4] == 3 || buf[4] == 11) /* 槓牌 */
-        {
-          pool[turn].out_card[pool[turn].out_card_index][4] = buf[7];
-          pool[turn].out_card[pool[turn].out_card_index][5] = 0;
+          pool[turn].out_card[pool[turn].out_card_index][i] =
+              0;  // Clear or what?
+        // Original: pool[turn].out_card[pool[turn].out_card_index][i] =
+        // buf[i+4];
+        // buf[4]=type, buf[5]=c1, buf[6]=c2, buf[7]=c3
 
+        pool[turn].out_card[pool[turn].out_card_index][0] = type;
+        pool[turn].out_card[pool[turn].out_card_index][1] = c[0];
+        pool[turn].out_card[pool[turn].out_card_index][2] = c[1];
+        pool[turn].out_card[pool[turn].out_card_index][3] = c[2];
+
+        if (type == 3 || type == 11) /* 槓牌 */
+        {
+          pool[turn].out_card[pool[turn].out_card_index][4] = c[2];  // buf[7]
+          pool[turn].out_card[pool[turn].out_card_index][5] = 0;
         } else
           pool[turn].out_card[pool[turn].out_card_index][4] = 0;
         pool[turn].out_card_index++;
       }
-      draw_epk(buf[3], buf[4], buf[5], buf[6], buf[7]);
-      broadcast_msg(player_id, buf);
+
+      draw_epk(sit, type, c[0], c[1], c[2]);
+
+      /* Broadcast */
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table && i != player_id) {
+          send_json(player[i].sockfd, msg_id, cJSON_Duplicate(data, 1));
+        }
+      }
       return_cursor();
-      switch (buf[4]) {
+
+      /* Logic from original */
+      switch (type) {
         case 2:
           for (i = 0; i < pool[turn].num; i++)
-            if (pool[turn].card[i] == buf[6]) {
+            if (pool[turn].card[i] == c[1]) {
               pool[turn].card[i] = pool[turn].card[pool[turn].num - 1];
               pool[turn].card[i + 1] = pool[turn].card[pool[turn].num - 2];
               break;
@@ -378,7 +511,7 @@ void handle_client_message(int player_id, int msg_id, char* buf) {
         case 3:
         case 11:
           for (i = 0; i < pool[turn].num; i++)
-            if (pool[turn].card[i] == buf[6]) {
+            if (pool[turn].card[i] == c[1]) {
               pool[turn].card[i] = pool[turn].card[pool[turn].num - 1];
               pool[turn].card[i + 1] = pool[turn].card[pool[turn].num - 2];
               pool[turn].card[i + 2] = pool[turn].card[pool[turn].num - 3];
@@ -390,15 +523,16 @@ void handle_client_message(int player_id, int msg_id, char* buf) {
         case 7:
         case 8:
         case 9:
-          pool[turn].card[search_card(turn, buf[5])] =
+          pool[turn].card[search_card(turn, c[0])] =
               pool[turn].card[pool[turn].num - 1];
-          pool[turn].card[search_card(turn, buf[7])] =
+          pool[turn].card[search_card(turn, c[2])] =
               pool[turn].card[pool[turn].num - 2];
           pool[turn].num -= 3;
           sort_pool(turn);
           break;
       }
       break;
+
     default:
       break;
   }
@@ -406,131 +540,162 @@ void handle_client_message(int player_id, int msg_id, char* buf) {
 
 /*
  * 處理牌桌伺服器訊息
- * 處理加入/離開牌桌、開局等訊息。
  */
-void handle_serv_message(int msg_id, char* buf) {
+void handle_serv_message(int msg_id, cJSON* data) {
   char msg_buf[255];
   int i;
-
-  read_msg(table_sockfd, buf + 3);
+  cJSON* payload = NULL;
 
   switch (msg_id) {
-    case 101:
-      send_gps_line(buf + 3);
+    case MSG_TEXT_MESSAGE: /* 101 */
+      send_gps_line((char*)j_str(data, "text"));
       break;
-    case 102:
-      display_comment(buf + 3);
+
+    case MSG_ACTION_CHAT: /* 102 */
+      display_comment((char*)j_str(data, "text"));
       break;
-    case 130:
-      if (table[buf[3] - '0']) {
-          int pid = table[buf[3] - '0'];
-          player[pid].is_ai = buf[4] - '0';
-          if (in_serv) {
-              char b_msg[20];
-              snprintf(b_msg, sizeof(b_msg), "130%c%c", buf[3], buf[4]);
-              broadcast_msg(pid, b_msg);
-          }
-      }
-      break;
-    case 199:                        // LEAVE 開桌者離開牌桌
-      write_msg(gps_sockfd, "205");  // 通知 GPS Server
-      close(table_sockfd);
-      FD_CLR(table_sockfd, &afds);
-      in_join = 0;
-      input_mode = TALK_MODE;
-      init_global_screen();
-      display_comment("開桌者已離開牌桌");
-      display_comment("-------------------");
-      write_msg(gps_sockfd, "201");  // 更新一下目前線上人數跟內容
-      break;
-    case 200:                        // LEAVE 離開牌桌
-      write_msg(gps_sockfd, "205");  // 通知 GPS Server
-      close(table_sockfd);
-      FD_CLR(table_sockfd, &afds);
-      in_join = 0;
-      input_mode = TALK_MODE;
-      init_global_screen();
-      write_msg(gps_sockfd, "201");  // 更新一下目前線上人數跟內容
-      break;
-    case 201: /* get the new comer's info */
-      strncpy(player[buf[3]].name, buf + 6, sizeof(player[buf[3]].name) - 1);
-      player[buf[3]].name[sizeof(player[buf[3]].name) - 1] = '\0';
-      player[buf[3]].in_table = 1;
-      player[buf[3]].sit = buf[4];
-      player_in_table = buf[5];
-      if (strcmp((char*)my_name, player[buf[3]].name) == 0) {
-        snprintf(msg_buf, sizeof(msg_buf), "您已加入此桌，目前人數 %d ",
-                 player_in_table);
-      } else {
-        snprintf(msg_buf, sizeof(msg_buf), "%s 加入此桌，目前人數 %d ",
-                 player[buf[3]].name, player_in_table);
-      }
-      send_gps_line(msg_buf);
-      if (player[buf[3]].sit) table[player[buf[3]].sit] = buf[3];
-      break;
-    case 202:
-      strncpy(msg_buf, buf + 4, sizeof(msg_buf) - 1);
-      msg_buf[sizeof(msg_buf) - 1] = '\0';
-      *(msg_buf + 5) = 0;
-      player[buf[3]].id = (unsigned int)atoi(msg_buf);
-      player[buf[3]].money = atol(buf + 9);
-      break;
-    case 203: /* get others info */
-      strncpy(player[buf[3]].name, buf + 5, sizeof(player[buf[3]].name) - 1);
-      player[buf[3]].name[sizeof(player[buf[3]].name) - 1] = '\0';
-      player[buf[3]].sit = buf[4];
-      player[buf[3]].in_table = 1;
-      table[buf[4]] = buf[3];
-      break;
-    case 204:
-      for (i = 1; i <= 4; i++) {
-        table[i] = buf[2 + i] - '0';
-        if (table[i]) {
-          player[table[i]].sit = i;
-          on_seat++;
+
+    case MSG_AI_MODE: /* 130 */ {
+      int sit = j_int(data, "sit");
+      int enabled = j_int(data, "enabled");
+      if (table[sit]) {
+        int pid = table[sit];
+        player[pid].is_ai = enabled;
+        if (in_serv) {
+          /* Broadcast to self? No, this is FROM_SERV, so I am client. */
         }
       }
+    } break;
+
+    case MSG_LEADER_LEAVE: /* 199 */
+    case MSG_LEAVE:        /* 200 */
+      send_json(gps_sockfd, MSG_LEAVE_TABLE_GPS, NULL);
+      close(table_sockfd);
+      FD_CLR(table_sockfd, &afds);
+      in_join = 0;
+      input_mode = TALK_MODE;
+      init_global_screen();
+      if (msg_id == MSG_LEADER_LEAVE) display_comment("開桌者已離開牌桌");
+      send_json(gps_sockfd, MSG_STATUS, NULL);
       break;
-    case 205: /* NOTICE: need player_in_table++ ? */
-              /* NOTICE: did he get table[]???? */
-      my_id = buf[3];
-      strncpy(player[my_id].name, buf + 6, sizeof(player[my_id].name) - 1);
+
+    case MSG_NEW_COMER_INFO: /* 201 */ {
+      int user_id = j_int(data, "user_id");
+      int sit = j_int(data, "sit");
+      int count = j_int(data, "count");
+      const char* name = j_str(data, "name");
+
+      strncpy(player[user_id].name, name, sizeof(player[user_id].name) - 1);
+      player[user_id].name[sizeof(player[user_id].name) - 1] = '\0';
+      player[user_id].in_table = 1;
+      player[user_id].sit = sit;
+      player_in_table = count;
+
+      if (strcmp((char*)my_name, player[user_id].name) == 0) {
+        snprintf(msg_buf, sizeof(msg_buf),
+                 "您已加入此桌，目前人數 %d ", player_in_table);
+      } else {
+        snprintf(msg_buf, sizeof(msg_buf),
+                 "%s 加入此桌，目前人數 %d ", player[user_id].name,
+                 player_in_table);
+      }
+      send_gps_line(msg_buf);
+      if (player[user_id].sit) table[player[user_id].sit] = user_id;
+    } break;
+
+    case MSG_UPDATE_MONEY_P2P: /* 202 */ {
+      int user_id = j_int(data, "user_id");
+      long money = (long)j_double(data, "money");
+      player[user_id].id = j_int(data, "id");
+      player[user_id].id = (unsigned int)j_int(data, "db_id");
+      player[user_id].money = money;
+    } break;
+
+    case MSG_OTHER_INFO: /* 203 */ {
+      int user_id = j_int(data, "user_id");
+      int sit = j_int(data, "sit");
+      const char* name = j_str(data, "name");
+      strncpy(player[user_id].name, name, sizeof(player[user_id].name) - 1);
+      player[user_id].name[sizeof(player[user_id].name) - 1] = '\0';
+      player[user_id].sit = sit;
+      player[user_id].in_table = 1;
+      table[sit] = user_id;
+    } break;
+
+    case MSG_TABLE_INFO: /* 204 */ {
+      cJSON* tbl = cJSON_GetObjectItem(data, "table");
+      if (cJSON_IsArray(tbl)) {
+        for (i = 1; i <= 4; i++) {
+          cJSON* item = cJSON_GetArrayItem(tbl, i - 1);
+          if (item) {
+            table[i] = item->valueint;
+            if (table[i]) {
+              player[table[i]].sit = i;
+              on_seat++;
+            }
+          }
+        }
+      }
+    } break;
+
+    case MSG_MY_INFO: /* 205 */
+      my_id = j_int(data, "user_id");
+      my_sit = j_int(data, "sit");
+
+      strncpy(player[my_id].name, j_str(data, "name"),
+              sizeof(player[my_id].name) - 1);
       player[my_id].name[sizeof(player[my_id].name) - 1] = '\0';
-      my_sit = buf[4];
+
       player[my_id].sit = my_sit;
       player[my_id].in_table = 1;
       player[my_id].id = my_gps_id;
       player[my_id].money = my_money;
       table[my_sit] = my_id;
       break;
-    case 206:
+
+    case MSG_PLAYER_LEAVE: /* 206 */ {
+      int user_id = j_int(data, "user_id");
+      int count = j_int(data, "count");
+
       if (player_in_table == 4) {
         init_global_screen();
         input_mode = TALK_MODE;
       }
-      player_in_table = buf[4];
-      snprintf(msg_buf, sizeof(msg_buf), "%s 離開此桌，目前人數剩下 %d 人",
-               player[buf[3]].name, player_in_table);
+      player_in_table = count;
+      snprintf(msg_buf, sizeof(msg_buf),
+               "%s 離開此桌，目前人數剩下 %d 人", player[user_id].name,
+               player_in_table);
       display_comment(msg_buf);
-      player[buf[3]].in_table = 0;
-      break;
-    case 290:
+      player[user_id].in_table = 0;
+    } break;
+
+    case MSG_NEW_ROUND: /* 290 */
       opening();
       break;
-    case 300:
+
+    case MSG_INIT_SCREEN: /* 300 */
       if (screen_mode == GLOBAL_SCREEN_MODE) {
         init_playing_screen();
       }
       opening();
       break;
-    case 301: /* change card */
-      change_card(buf[3], buf[4]);
+
+    case MSG_CHANGE_CARD: /* 301 */
+      change_card(j_int(data, "pos"), j_int(data, "card"));
       break;
-    case 302: /* get 16 cards */
-      for (i = 0; i < 16; i++) pool[my_sit].card[i] = buf[i + 3];
-      sort_card(0);
-      break;
-    case 303: /* can get a card */
+
+    case MSG_DEAL_CARDS: /* 302 */ {
+      cJSON* cards = cJSON_GetObjectItem(data, "cards");
+      if (cJSON_IsArray(cards)) {
+        for (i = 0; i < 16; i++) {
+          cJSON* item = cJSON_GetArrayItem(cards, i);
+          if (item) pool[my_sit].card[i] = item->valueint;
+        }
+        sort_card(0);
+      }
+    } break;
+
+    case MSG_CAN_GET: /* 303 */
       play_mode = GET_CARD;
       attron(A_REVERSE);
       show_card(10, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
@@ -539,35 +704,43 @@ void handle_serv_message(int msg_id, char* buf) {
       beep1();
       return_cursor();
       break;
-    case 304: /* get a card */
-      process_new_card(my_sit, buf[3]);
+
+    case MSG_GET_CARD: /* 304 */
+      process_new_card(my_sit, j_int(data, "card"));
       break;
-    case 305:
-      card_owner = buf[3];
+
+    case MSG_CARD_OWNER: /* 305 */
+      card_owner = j_int(data, "sit");
       if (card_owner != my_sit) show_cardmsg(card_owner, 0);
       break;
-    case 306: /* others got a card ---> change the card number */
-      card_point = buf[3];
+
+    case MSG_CARD_POINT: /* 306 */
+      card_point = j_int(data, "count");
       show_num(2, 70, 144 - card_point - 16, 2);
       return_cursor();
       break;
-    case 308: /* sort cards */
-      sort_card(buf[3] - '0');
+
+    case MSG_SORT_CARD: /* 308 */
+      sort_card(j_int(data, "mode"));
       break;
-    case 310: /* Player pointer ---  point to new player */
-      turn = buf[3];
-      display_point(buf[3]);
+
+    case MSG_PLAYER_POINTER: /* 310 */
+      turn = j_int(data, "sit");
+      display_point(turn);
       return_cursor();
       break;
-    case 312:
-      pool[buf[3]].time = atof(buf + 4);
-      display_time(buf[3]);
+
+    case MSG_TIME: /* 312 */
+      pool[j_int(data, "sit")].time = j_double(data, "time");
+      display_time(j_int(data, "sit"));
       break;
-    case 314: /* process new cardback */
-      show_newcard(buf[3], buf[4]);
+
+    case MSG_SHOW_NEW_CARD: /* 314 */
+      show_newcard(j_int(data, "sit"), j_int(data, "mode"));
       return_cursor();
       break;
-    case 330: /* 海底流局 */
+
+    case MSG_SEA_BOTTOM: /* 330 */
       for (i = 1; i <= 4; i++) {
         if (table[i] && i != my_sit) {
           show_allcard(i);
@@ -580,71 +753,126 @@ void handle_serv_message(int msg_id, char* buf) {
       return_cursor();
       wait_a_key(PRESS_ANY_KEY_TO_CONTINUE);
       break;
-    case 402: /* others throw a card */
+
+    case MSG_CARD_THROWN: /* 402 */
       in_kang = 0;
-      pool[player[buf[3]].sit].first_round = 0;
-      show_cardmsg(player[buf[3]].sit, buf[4]);
-      current_card = buf[4];
-      throw_card(buf[4]);
-      return_cursor();
-      current_id = buf[3];
+      {
+        int uid = j_int(data, "user_id");
+        int card = j_int(data, "card");
+
+        /* Need to check bounds/validity */
+        if (uid < 0 || uid >= MAX_PLAYER) break;
+
+        pool[player[uid].sit].first_round = 0;
+        show_cardmsg(player[uid].sit, card);
+        current_card = card;
+        throw_card(card);
+        return_cursor();
+        current_id = uid;
+      }
       break;
-    case 501: /* ask for check card */
+
+    case MSG_CHECK_CARD: /* 501 */
       go_to_check = 0;
+      check_flag[my_sit][1] = j_int(data, "eat");
+      check_flag[my_sit][2] = j_int(data, "pong");
+      check_flag[my_sit][3] = j_int(data, "kang");
+      check_flag[my_sit][4] = j_int(data, "win");
+
       for (i = 1; i <= 4; i++) {
-        check_flag[my_sit][i] = buf[2 + i] - '0';
         if (check_flag[my_sit][i]) go_to_check = 1;
       }
+
       if (go_to_check) init_check_mode();
       go_to_check = 0;
       break;
-    case 518:
-      for (i = 1; i <= 4; i++) pool[i].door_wind = buf[2 + i];
-      wmvaddstr(stdscr, 2, 64, sit_name[pool[my_sit].door_wind]);
-      return_cursor();
+
+    case MSG_WIND_INFO: /* 518 */ {
+      cJSON* winds = cJSON_GetObjectItem(data, "winds");
+      if (cJSON_IsArray(winds)) {
+        for (i = 1; i <= 4; i++) {
+          cJSON* item = cJSON_GetArrayItem(winds, i - 1);
+          if (item) pool[i].door_wind = item->valueint;
+        }
+        wmvaddstr(stdscr, 2, 64, sit_name[pool[my_sit].door_wind]);
+        return_cursor();
+      }
+    } break;
+
+    case MSG_EPK: /* 520 */
+      process_epk(j_int(data, "card"));
       break;
-    case 520:
-      process_epk(buf[3]);
+
+    case MSG_POOL_INFO: /* 521 */ {
+      cJSON* p = cJSON_GetObjectItem(data, "pool");
+      if (cJSON_IsArray(p)) {
+        for (int k = 0; k < 4; k++) {
+          cJSON* hand = cJSON_GetArrayItem(p, k);
+          if (cJSON_IsArray(hand)) {
+            for (int m = 0; m < pool[k + 1].num; m++) {
+              cJSON* c = cJSON_GetArrayItem(hand, m);
+              if (c) pool[k + 1].card[m] = c->valueint;
+            }
+          }
+        }
+      }
+    } break;
+
+    case MSG_MAKE: /* 522 */
+      process_make(j_int(data, "user_id"), j_int(data, "type"));
       break;
-    case 521:
-      for (i = 0; i < pool[1].num; i++) pool[1].card[i] = buf[3 + i];
-      for (i = 0; i < pool[2].num; i++) pool[2].card[i] = buf[19 + i];
-      for (i = 0; i < pool[3].num; i++) pool[3].card[i] = buf[35 + i];
-      for (i = 0; i < pool[4].num; i++) pool[4].card[i] = buf[51 + i];
+
+    case MSG_FLOWER: /* 525 */
+      draw_flower(j_int(data, "card"), j_int(data, "pos"));
       break;
-    case 522:
-      process_make(buf[3], buf[4]);
-      break;
-    case 525:
-      draw_flower(buf[3], buf[4]);
-      break;
-    case 530: /* from server */
-      turn = player[buf[3]].sit;
+
+    case MSG_SHOW_EPK: /* 530 */ {
+      int sit = j_int(data, "sit");
+      int type = j_int(data, "type");
+      cJSON* cards = cJSON_GetObjectItem(data, "cards");
+      int c[5] = {0};
+      if (cards) {
+        for (int k = 0; k < 3; k++) {
+          cJSON* item = cJSON_GetArrayItem(cards, k);
+          if (item) c[k] = item->valueint;
+        }
+      }
+
+      turn = player[sit].sit;
       card_owner = turn;
       display_point(turn);
-      if (buf[4] == 12) {
+
+      if (type == 12) {
         for (i = 0; i < pool[turn].out_card_index; i++)
-          if (pool[turn].out_card[i][1] == buf[5] &&
-              pool[turn].out_card[i][2] == buf[6]) {
+          if (pool[turn].out_card[i][1] == c[0] &&
+              pool[turn].out_card[i][2] == c[1]) {
             pool[turn].out_card[i][0] = 12;
-            pool[turn].out_card[i][4] = buf[5];
+            pool[turn].out_card[i][4] = c[0];
             pool[turn].out_card[i][5] = 0;
+            break;
           }
-        draw_epk(buf[3], buf[4], buf[5], buf[6], buf[7]);
       } else {
+        // ... Logic similar to client msg 530 ...
         for (i = 0; i <= 3; i++)
-          pool[turn].out_card[pool[turn].out_card_index][i] = buf[i + 4];
-        if (buf[4] == 3 || buf[4] == 11) {
-          pool[turn].out_card[pool[turn].out_card_index][4] = buf[7];
+          pool[turn].out_card[pool[turn].out_card_index][i] = 0;
+        pool[turn].out_card[pool[turn].out_card_index][0] = type;
+        pool[turn].out_card[pool[turn].out_card_index][1] = c[0];
+        pool[turn].out_card[pool[turn].out_card_index][2] = c[1];
+        pool[turn].out_card[pool[turn].out_card_index][3] = c[2];
+
+        if (type == 3 || type == 11) {
+          pool[turn].out_card[pool[turn].out_card_index][4] = c[2];
           pool[turn].out_card[pool[turn].out_card_index][5] = 0;
         } else
           pool[turn].out_card[pool[turn].out_card_index][4] = 0;
-        draw_epk(buf[3], buf[4], buf[5], buf[6], buf[7]);
+
+        draw_epk(sit, type, c[0], c[1], c[2]);
         pool[turn].out_card_index++;
         pool[turn].num -= 3;
       }
       return_cursor();
-      break;
+    } break;
+
     default:
       break;
   }
@@ -652,25 +880,17 @@ void handle_serv_message(int msg_id, char* buf) {
 
 /*
  * 處理訊息分發 (Message Dispatcher)
- * 根據 msg_type (來源) 將訊息分發給對應的處理函式。
  */
-void process_msg(int player_id, unsigned char* id_buf, int msg_type) {
-  int msg_id;
-  unsigned char buf[255];
-
-  strncpy((char*)buf, (char*)id_buf, sizeof(buf) - 1);
-  buf[sizeof(buf) - 1] = '\0';
-  msg_id = convert_msg_id(player_id, id_buf);
-
+void process_msg(int player_id, int msg_id, cJSON* data, int msg_type) {
   switch (msg_type) {
     case (FROM_GPS):
-      handle_gps_message(msg_id, (char*)buf);
+      handle_gps_message(msg_id, data);
       break;
     case (FROM_CLIENT):
-      handle_client_message(player_id, msg_id, (char*)buf);
+      handle_client_message(player_id, msg_id, data);
       break;
     case (FROM_SERV):
-      handle_serv_message(msg_id, (char*)buf);
+      handle_serv_message(msg_id, data);
       break;
     default:
       break;

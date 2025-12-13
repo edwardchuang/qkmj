@@ -13,13 +13,9 @@
 
 #include "mjdef.h"
 
-#ifdef NON_WINDOWS  // Linux
-#include "curses.h"
-#else  // Cygwin
-#include "ncurses/ncurses.h"
-#endif
-
 #include "input.h"
+#include "protocol.h"
+#include "protocol_def.h"
 #include "qkmj.h"  // Ensure qkmj.h is included to see prototypes
 #include "socket.h"
 #include "ai_client.h"
@@ -152,100 +148,116 @@ char table_card[6][17];
 /* Request a card */
 int request_card() {
   if (in_join) {
-    write_msg(table_sockfd, "313");
-    return (0);
+    send_json(table_sockfd, MSG_REQUEST_CARD, NULL);
+    return 0;
   } else {
-    return (mj[card_point++]);
+    return mj[card_point++];
   }
 }
 
 /* Change a card */
-void change_card(int position, int card)
-{
-  int i;
-
-  i=(16-pool[my_sit].num+position)*2;
-  if(position==pool[my_sit].num)
-    i++;
-  pool[my_sit].card[position]=(char)card;
-  show_card(20,INDEX_X+i,INDEX_Y+1,1);
+void change_card(int position, int card) {
+  int i = (16 - pool[my_sit].num + position) * 2;
+  if (position == pool[my_sit].num) i++;
+  pool[my_sit].card[position] = (char)card;
+  show_card(20, INDEX_X + i, INDEX_Y + 1, 1);
   wrefresh(stdscr);
-  show_card(card,INDEX_X+i,INDEX_Y+1,1);
+  show_card(card, INDEX_X + i, INDEX_Y + 1, 1);
   wrefresh(stdscr);
 }
 
 /* Get a card */
-void get_card(int card)
-{
-  pool[my_sit].card[pool[my_sit].num]=(char)card;
-  show_card(20,INDEX_X+16*2+1,INDEX_Y+1,1);
+void get_card(int card) {
+  pool[my_sit].card[pool[my_sit].num] = (char)card;
+  show_card(20, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
   wrefresh(stdscr);
-  show_card(card,INDEX_X+16*2+1,INDEX_Y+1,1);
+  show_card(card, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
   wrefresh(stdscr);
 }
 
-void process_new_card(int sit, int card)
-{
-  char msg_buf[255];
-
-  current_card=card;
-  show_cardmsg(sit,0);
-  pool[sit].card[pool[sit].num]=(char)card;
+void process_new_card(int sit, int card) {
+  current_card = card;
+  show_cardmsg(sit, 0);
+  pool[sit].card[pool[sit].num] = (char)card;
   get_card(card);
   return_cursor();
-  if(!check_flower(sit,card))
-    play_mode=THROW_CARD;
+  if (!check_flower(sit, card)) play_mode = THROW_CARD;
 }
 
 /* Throw cards to the table */
-void throw_card(int card)
-{
-  int x,y;
-  if(card==20)   
-  {
+void throw_card(int card) {
+  int x, y;
+  if (card == 20) {
     card_count--;
   }
-  table_card[card_count/17][card_count%17]=(char)card;
-  x=THROW_X+(card_count%17)*2;
-  y=THROW_Y+card_count/17*2;
-  if(y%4==3)
-  {
-    if(!color)
-      attron(A_BOLD); 
-    show_card(card,x,y,1);
-    if(!color)
-      attroff(A_BOLD);
-  }
-  else
-    show_card(card,x,y,1);
-  if(card!=20)
-  {
+  table_card[card_count / 17][card_count % 17] = (char)card;
+  x = THROW_X + (card_count % 17) * 2;
+  y = THROW_Y + card_count / 17 * 2;
+  if (y % 4 == 3) {
+    if (!color) attron(A_BOLD); 
+    show_card(card, x, y, 1);
+    if (!color) attroff(A_BOLD);
+  } else
+    show_card(card, x, y, 1);
+  if (card != 20) {
     card_count++;
   }
 }
 
-void send_one_card(int id)
-{
-  char msg_buf[255];
+void send_one_card(int id) {
   char card;
   char sit;
   int i;
+  cJSON *payload;
 
   sit=(char)player[id].sit;
   card = mj[card_point++];
   current_card = card;
   pool[sit].card[pool[sit].num] = card;
   show_num(2, 70, 144 - card_point - 16, 2);
-  snprintf(msg_buf, sizeof(msg_buf), "314%c%c", sit, 2);
-  broadcast_msg(id, msg_buf);
+
+  /* 314 MSG_SHOW_NEW_CARD */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "sit", sit);
+  cJSON_AddNumberToObject(payload, "mode", 2);
+  /* Broadcast to everyone except 'id' (Wait, original said broadcast_msg(id, ...)) 
+     broadcast_msg(id, msg) means send to everyone EXCEPT id.
+     So we broadcast to everyone except id.
+  */
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != id) {
+        send_json(player[i].sockfd, MSG_SHOW_NEW_CARD, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
   show_newcard(sit, 2);
   return_cursor();
-  snprintf(msg_buf, sizeof(msg_buf), "306%c", card_point);
-  broadcast_msg(1, msg_buf);
+
+  /* 306 MSG_CARD_POINT */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "count", card_point);
+  /* broadcast_msg(1, ...) -> except me (1) */
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_CARD_POINT, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
   show_cardmsg(sit, 0);
   card_owner = sit;
-  snprintf(msg_buf, sizeof(msg_buf), "305%c", (char)sit);
-  broadcast_msg(1, msg_buf);
+
+  /* 305 MSG_CARD_OWNER */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "sit", sit);
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_CARD_OWNER, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
   clear_check_flag(sit);
   check_flag[sit][3] = check_kang(sit, card);
   check_flag[sit][4] = check_make(sit, card, 0);
@@ -255,27 +267,46 @@ void send_one_card(int id)
       getting_card = 1;
       in_check[sit] = 1;
       check_on = 1;
-      snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c",
-               check_flag[sit][1] + '0', check_flag[sit][2] + '0',
-               check_flag[sit][3] + '0', check_flag[sit][4] + '0');
-      write_msg(player[table[sit]].sockfd, msg_buf);
+      
+      /* 501 MSG_CHECK_CARD */
+      payload = cJSON_CreateObject();
+      cJSON_AddNumberToObject(payload, "eat", check_flag[sit][1]);
+      cJSON_AddNumberToObject(payload, "pong", check_flag[sit][2]);
+      cJSON_AddNumberToObject(payload, "kang", check_flag[sit][3]);
+      cJSON_AddNumberToObject(payload, "win", check_flag[sit][4]);
+      send_json(player[table[sit]].sockfd, MSG_CHECK_CARD, payload);
       break;
     }
-  snprintf(msg_buf, sizeof(msg_buf), "304%c", card);
-  write_msg(player[id].sockfd, msg_buf);
+  
+  /* 304 MSG_GET_CARD */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "card", card);
+  send_json(player[id].sockfd, MSG_GET_CARD, payload);
+
   gettimeofday(&before, (struct timezone*)0);
 }
 
 void next_player() {
-  char msg_buf[255];
+  cJSON *payload;
+  int i;
   turn = next_turn(turn);
-  snprintf(msg_buf, sizeof(msg_buf), "310%c", turn);
-  broadcast_msg(1, msg_buf);
+
+  /* 310 MSG_PLAYER_POINTER */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "sit", turn);
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_PLAYER_POINTER, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
   display_point(turn);
   return_cursor();
   if (table[turn] != 1) {
-    strcpy(msg_buf, "303");
-    write_msg(player[table[turn]].sockfd, msg_buf);
+    /* 303 MSG_CAN_GET */
+    send_json(player[table[turn]].sockfd, MSG_CAN_GET, NULL);
+    
     show_newcard(turn, 1);
     return_cursor();
   } else {
@@ -287,8 +318,17 @@ void next_player() {
     play_mode = GET_CARD;
     beep1();
   }
-  snprintf(msg_buf, sizeof(msg_buf), "314%c%c", turn, 1);
-  broadcast_msg(table[turn], msg_buf);
+  
+  /* 314 MSG_SHOW_NEW_CARD */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "sit", turn);
+  cJSON_AddNumberToObject(payload, "mode", 1);
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != table[turn]) {
+        send_json(player[i].sockfd, MSG_SHOW_NEW_CARD, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
 }
 
 int next_turn(int current_turn) {
@@ -364,7 +404,6 @@ void new_game() {
 }
 
 void opening() {
-  char msg_buf[255];
   int i, j;
 
   new_game();
@@ -394,9 +433,9 @@ void opening() {
 }
 
 void open_deal() {
-  char msg_buf[255];
   int i, j, sit;
   char card;
+  cJSON *payload, *winds, *cards;
 
   turn = info.dealer;
   i = generate_random(4);
@@ -404,37 +443,72 @@ void open_deal() {
   pool[(i + 1) % 4 + 1].door_wind = 2;
   pool[(i + 2) % 4 + 1].door_wind = 3;
   pool[(i + 3) % 4 + 1].door_wind = 4;
-  snprintf(msg_buf, sizeof(msg_buf), "518%c%c%c%c", pool[1].door_wind,
-           pool[2].door_wind, pool[3].door_wind, pool[4].door_wind);
-  broadcast_msg(1, msg_buf);
+  
+  /* 518 MSG_WIND_INFO */
+  payload = cJSON_CreateObject();
+  winds = cJSON_CreateArray();
+  cJSON_AddItemToArray(winds, cJSON_CreateNumber(pool[1].door_wind));
+  cJSON_AddItemToArray(winds, cJSON_CreateNumber(pool[2].door_wind));
+  cJSON_AddItemToArray(winds, cJSON_CreateNumber(pool[3].door_wind));
+  cJSON_AddItemToArray(winds, cJSON_CreateNumber(pool[4].door_wind));
+  cJSON_AddItemToObject(payload, "winds", winds);
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_WIND_INFO, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
   wmvaddstr(stdscr, 2, 64, sit_name[pool[my_sit].door_wind]);
   if (!table[turn]) turn = next_turn(turn);
   card_owner = turn;
-  snprintf(msg_buf, sizeof(msg_buf), "310%c", turn);
-  broadcast_msg(1, msg_buf);
-  snprintf(msg_buf, sizeof(msg_buf), "305%c", card_owner);
-  broadcast_msg(1, msg_buf);
+  
+  /* 310 MSG_PLAYER_POINTER */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "sit", turn);
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_PLAYER_POINTER, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
+  /* 305 MSG_CARD_OWNER */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "sit", card_owner);
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_CARD_OWNER, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
   display_point(turn);
   card_point = 0;
   card_index = 143;
-  strncpy(msg_buf, "302", sizeof(msg_buf) - 1);
-  msg_buf[sizeof(msg_buf) - 1] = '\0';
+
   generate_card();
   /* send 16 cards to 4 people */
   for (j = 1; j <= 4; j++) {
     if (table[j]) {
       pool[j].first_round = 1;
+      
+      cards = cJSON_CreateArray();
       for (i = 0; i < 16; i++) {
         card = mj[card_point++];
         pool[j].card[i] = card;
-        msg_buf[3 + i] = card;
+        cJSON_AddItemToArray(cards, cJSON_CreateNumber(card));
       }
       sort_pool(j);
-      msg_buf[3 + 16] = '\0';
+      
       if (table[j] != 1) /* not server */
       {
-        write_msg(player[table[j]].sockfd, msg_buf);
+        /* 302 MSG_DEAL_CARDS */
+        payload = cJSON_CreateObject();
+        cJSON_AddItemToObject(payload, "cards", cards);
+        send_json(player[table[j]].sockfd, MSG_DEAL_CARDS, payload);
       } else {
+        cJSON_Delete(cards);
         sort_card(0);
       }
     }
@@ -442,11 +516,16 @@ void open_deal() {
   /* send an additional card to dealer */
   card = mj[card_point++];
   current_card = card;
-  snprintf(msg_buf, sizeof(msg_buf), "304%c", card);
+
+  /* 304 MSG_GET_CARD */
   if (table[turn] != 1) {
     show_newcard(turn, 2);
     return_cursor();
-    write_msg(player[table[turn]].sockfd, msg_buf);
+    
+    payload = cJSON_CreateObject();
+    cJSON_AddNumberToObject(payload, "card", card);
+    send_json(player[table[turn]].sockfd, MSG_GET_CARD, payload);
+
     pool[turn].card[pool[turn].num] = card;
   }
   if (table[turn] == 1) /* turn==server */
@@ -458,8 +537,18 @@ void open_deal() {
     return_cursor();
     play_mode = THROW_CARD;
   }
-  snprintf(msg_buf, sizeof(msg_buf), "314%c%c", turn, 2);
-  broadcast_msg(table[turn], msg_buf);
+  
+  /* 314 MSG_SHOW_NEW_CARD */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "sit", turn);
+  cJSON_AddNumberToObject(payload, "mode", 2);
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != table[turn]) {
+        send_json(player[i].sockfd, MSG_SHOW_NEW_CARD, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
   in_play = 1;
   /* check for flowers for 4 players */
   sit = turn; /* check dealer first */
@@ -476,8 +565,17 @@ void open_deal() {
   current_card = pool[turn].card[16];
   show_num(2, 70, 144 - card_point - 16, 2);
   return_cursor();
-  snprintf(msg_buf, sizeof(msg_buf), "306%c", card_point);
-  broadcast_msg(1, msg_buf);
+  
+  /* 306 MSG_CARD_POINT */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "count", card_point);
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_CARD_POINT, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
   clear_check_flag(turn);
   check_flag[turn][3] = check_kang(turn, current_card);
   check_flag[turn][4] = check_make(turn, current_card, 0);
@@ -490,14 +588,34 @@ void open_deal() {
       if (in_serv) {
         init_check_mode();
       } else {
-        snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c", '0', '0',
-                 check_flag[turn][3] + '0', check_flag[turn][4] + '0');
-        write_msg(player[table[turn]].sockfd, msg_buf);
+        /* 501 MSG_CHECK_CARD */
+        payload = cJSON_CreateObject();
+        cJSON_AddNumberToObject(payload, "eat", 0);
+        cJSON_AddNumberToObject(payload, "pong", 0);
+        cJSON_AddNumberToObject(payload, "kang", check_flag[turn][3]);
+        cJSON_AddNumberToObject(payload, "win", check_flag[turn][4]);
+        send_json(player[table[turn]].sockfd, MSG_CHECK_CARD, payload);
       }
     }
   }
-  broadcast_msg(table[turn], "3080");
-  if (turn != my_sit) write_msg(player[table[turn]].sockfd, "3081");
+  
+  /* 308 MSG_SORT_CARD */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "mode", 0);
+  for (i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != table[turn]) {
+        send_json(player[i].sockfd, MSG_SORT_CARD, cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
+  if (turn != my_sit) {
+      /* 308 for turn player (mode 1) */
+      payload = cJSON_CreateObject();
+      cJSON_AddNumberToObject(payload, "mode", 1);
+      send_json(player[table[turn]].sockfd, MSG_SORT_CARD, payload);
+  }
+
   if (turn == my_sit)
     sort_card(1);
   else
@@ -570,6 +688,7 @@ void gps() {
   char msg_buf[255];
   char buf[128];
   char ans_buf[255];
+  cJSON *payload;
 
   init_global_screen();
   input_mode = 0;
@@ -582,17 +701,24 @@ void gps() {
     endwin();
     exit(0);
   }
-  snprintf(msg_buf, sizeof(msg_buf),
+  snprintf(msg_buf, sizeof(msg_buf), 
            "歡迎來到 QKMJ 休閑麻將 Ver %c.%2s 特別板 ", QKMJ_VERSION[0],
            QKMJ_VERSION + 1);
   display_comment(msg_buf);
   display_comment("原作者 sywu (吳先祐 Shian-Yow Wu) ");
   display_comment("Forked Source: https://github.com/gjchentw/qkmj");
   get_my_info();
-  snprintf(msg_buf, sizeof(msg_buf), "100%s", QKMJ_VERSION);
-  write_msg(gps_sockfd, msg_buf);
-  snprintf(msg_buf, sizeof(msg_buf), "099%s", my_username);
-  write_msg(gps_sockfd, msg_buf);
+
+  /* 100 MSG_CHECK_VERSION */
+  payload = cJSON_CreateObject();
+  cJSON_AddStringToObject(payload, "version", QKMJ_VERSION);
+  send_json(gps_sockfd, MSG_CHECK_VERSION, payload);
+
+  /* 99 MSG_GET_USERNAME */
+  payload = cJSON_CreateObject();
+  cJSON_AddStringToObject(payload, "username", my_username);
+  send_json(gps_sockfd, MSG_GET_USERNAME, payload);
+
   pass_count = 0;
   if (my_name[0] != 0 && my_pass[0] != 0)
     strncpy(ans_buf, (char*)my_name, sizeof(ans_buf) - 1);
@@ -604,8 +730,12 @@ void gps() {
     ans_buf[10] = 0;
   }
   ans_buf[sizeof(ans_buf) - 1] = '\0';
-  snprintf(msg_buf, sizeof(msg_buf), "101%s", ans_buf);
-  write_msg(gps_sockfd, msg_buf);
+
+  /* 101 MSG_LOGIN */
+  payload = cJSON_CreateObject();
+  cJSON_AddStringToObject(payload, "name", ans_buf);
+  send_json(gps_sockfd, MSG_LOGIN, payload);
+
   strncpy((char*)my_name, ans_buf, sizeof(my_name) - 1);
   my_name[sizeof(my_name) - 1] = '\0';
   nfds = getdtablesize();
@@ -697,7 +827,9 @@ void gps() {
 
     /* Check for data from GPS */
     if (FD_ISSET(gps_sockfd, &rfds)) {
-      if (!read_msg_id(gps_sockfd, buf)) {
+      int msg_id_val = 0;
+      cJSON *data = NULL;
+      if (!recv_json(gps_sockfd, &msg_id_val, &data)) {
         display_comment("Closed by QKMJ Server.");
         shutdown(gps_sockfd, 2);
         if (in_join) close_join();
@@ -705,8 +837,8 @@ void gps() {
         endwin();
         exit(0);
       } else {
-        process_msg(0, (unsigned char*)buf, FROM_GPS);
-        buf[0] = '	';
+        process_msg(0, msg_id_val, data, FROM_GPS);
+        if (data) cJSON_Delete(data);
       }
     }
     if (in_serv) {
@@ -720,10 +852,15 @@ void gps() {
       for (i = 2; i < MAX_PLAYER; i++) {
         if (player[i].in_table) {
           if (FD_ISSET(player[i].sockfd, &rfds)) {
-            if (read_msg_id(player[i].sockfd, buf) == 0)
+            int msg_id_val = 0;
+            cJSON *data = NULL;
+            if (!recv_json(player[i].sockfd, &msg_id_val, &data)) {
               close_client(i);
-            else
-              process_msg(i, (unsigned char*)buf, FROM_CLIENT);
+              if (data) cJSON_Delete(data);
+            } else {
+              process_msg(i, msg_id_val, data, FROM_CLIENT);
+              if (data) cJSON_Delete(data);
+            }
           }
         }
       }
@@ -733,7 +870,12 @@ void gps() {
           if (table[i] && !wait_hit[i]) goto continue_waiting;
         }
         waiting = 0;
-        broadcast_msg(1, "290");
+        /* Broadcast 290 MSG_NEW_ROUND */
+        for (i = 2; i < MAX_PLAYER; i++) {
+            if (player[i].in_table && i != 1) {
+                send_json(player[i].sockfd, MSG_NEW_ROUND, NULL);
+            }
+        }
         opening();
         open_deal();
       }
@@ -760,12 +902,18 @@ void gps() {
           }
           info.cont_dealer++;
           send_pool_card();
-          broadcast_msg(1, "330");
+          /* Broadcast 330 MSG_SEA_BOTTOM */
+          for (i = 2; i < MAX_PLAYER; i++) {
+             if (player[i].in_table && i != 1) send_json(player[i].sockfd, MSG_SEA_BOTTOM, NULL);
+          }
           clear_screen_area(THROW_Y, THROW_X, 8, 34);
           wmvaddstr(stdscr, THROW_Y + 3, THROW_X + 12, "海 底 流 局");
           return_cursor();
           wait_a_key(PRESS_ANY_KEY_TO_CONTINUE);
-          broadcast_msg(1, "290");
+          /* Broadcast 290 MSG_NEW_ROUND */
+          for (i = 2; i < MAX_PLAYER; i++) {
+             if (player[i].in_table && i != 1) send_json(player[i].sockfd, MSG_NEW_ROUND, NULL);
+          }
           opening();
           open_deal();
         } else {
@@ -780,14 +928,19 @@ void gps() {
     }
     if (in_join) {
       if (FD_ISSET(table_sockfd, &rfds)) {
-        if (!read_msg_id(table_sockfd, buf)) {
+        int msg_id_val = 0;
+        cJSON *data = NULL;
+        if (!recv_json(table_sockfd, &msg_id_val, &data)) {
           close(table_sockfd);
           FD_CLR(table_sockfd, &afds);
           in_join = 0;
           input_mode = TALK_MODE;
           init_global_screen();
-        } else
-          process_msg(1, (unsigned char*)buf, FROM_SERV);
+          if (data) cJSON_Delete(data);
+        } else {
+          process_msg(1, msg_id_val, data, FROM_SERV);
+          if (data) cJSON_Delete(data);
+        }
       }
     }
   }

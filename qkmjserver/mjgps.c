@@ -27,6 +27,8 @@
 
 #include "mjgps_mongo_helpers.h"
 #include "mongo.h"
+#include "protocol.h"
+#include "protocol_def.h"
 
 /*
  * Global variables
@@ -61,6 +63,22 @@ struct ask_mode_info ask;
 
 struct rlimit fd_limit;
 
+/* Helper functions for JSON extraction */
+static const char* j_str(cJSON *json, const char *name) {
+    cJSON *item = cJSON_GetObjectItem(json, name);
+    return item ? cJSON_GetStringValue(item) : "";
+}
+
+static int j_int(cJSON *json, const char *name) {
+    cJSON *item = cJSON_GetObjectItem(json, name);
+    return item ? item->valueint : 0;
+}
+
+static double j_double(cJSON *json, const char *name) {
+    cJSON *item = cJSON_GetObjectItem(json, name);
+    return item ? item->valuedouble : 0.0;
+}
+
 int err(char* errmsg) {
   bson_t* doc;
 
@@ -82,157 +100,63 @@ int game_log(char* gamemsg) {
   return 0;
 }
 
-/*
- * 讀取訊息
- * 從 socket 讀取資料，直到遇到 NULL 字元。
- * 包含 5 秒逾時機制與錯誤處理。
- */
-int read_msg(int fd, char* msg) {
-  int n;
-  char msg_buf[1000];
-  ssize_t read_code;
-  int log = 0;
-
-  n = 0;
-  if (Check_for_data(fd) == 0) {
-    err("WRONG READ\n");
-    return 2;
-  }
-  timeup = 0;
-  alarm(5);
-  do {
-    while (1) {
-      read_code = read(fd, msg, 1);
-      if (read_code != -1) break;
-      if (errno != EWOULDBLOCK) {
-        snprintf(msg_buf, sizeof(msg_buf), "fail in read_msg,errno = %d",
-                 errno);
-        err(msg_buf);
-        alarm(0);
-        return 0;
-      } else if (timeup) {
-        alarm(0);
-        err("TIME UP!\n");
-        return 0;
-      }
-    }
-    if (read_code == 0) {
-      alarm(0);
-      return 0;
-    } else {
-      n++;
-    }
-    if (n > 8000) {
-      alarm(0);
-      return 0;
-    }
-  } while (*msg++ != '\0');
-  alarm(0);
-  return 1;
-}
-
-/*
- * 發送訊息
- * 將訊息寫入 socket。如果失敗則關閉連線。
- */
-void write_msg(int fd, char* msg) {
-  size_t n;
-
-  n = strlen(msg);
-  if (write(fd, msg, n) < 0) {
-    close(fd);
-    FD_CLR(fd, &afds);
-  }
-  if (write(fd, msg + n, 1) < 0) {
-    close(fd);
-    FD_CLR(fd, &afds);
-  }
-}
-
 void display_msg(int player_id, char* msg) {
-  char msg_buf[1000];
-
-  snprintf(msg_buf, sizeof(msg_buf), "101%s", msg);
-  write_msg(player[player_id].sockfd, msg_buf);
-}
-
-int Check_for_data(int fd)
-/*
- * Checks the socket descriptor fd to see if any incoming data has
- * arrived.  If yes, then returns 1.  If no, then returns 0.
- * If an error, returns -1 and stores the error message in socket_error.
- */
-{
-  int status;        /* return code from Select call. */
-  fd_set wait_set;   /* A set representing the connections that
-                      * have been established.
-                      */
-  struct timeval tm; /* A timelimit of zero for polling for new
-                      * connections.
-                      */
-
-  FD_ZERO(&wait_set);
-  FD_SET(fd, &wait_set);
-
-  tm.tv_sec = 0;
-  tm.tv_usec = 0;
-  status = select(FD_SETSIZE, &wait_set, (fd_set*)0, (fd_set*)0, &tm);
-
-  /*
-   * if (status < 0)
-   * sprintf (socket_error, "Error in select: %s", sys_errlist[errno]);
-   */
-
-  return (status);
-}
-
-int convert_msg_id(int player_id, char* msg) {
-  int i;
-  char msg_buf[1000];
-
-  if (strlen(msg) < 3) {
-    snprintf(msg_buf, sizeof(msg_buf), "Error msg: %s", msg);
-    err(msg_buf);
-    return 0;
-  }
-  for (i = 0; i < 3; i++)
-    if (msg[i] < '0' || msg[i] > '9') {
-      snprintf(msg_buf, sizeof(msg_buf), "%d", msg[i]);
-      err(msg_buf);
-    }
-  return (msg[0] - '0') * 100 + (msg[1] - '0') * 10 + (msg[2] - '0');
+  cJSON *payload = cJSON_CreateObject();
+  cJSON_AddStringToObject(payload, "text", msg);
+  send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
 }
 
 void list_player(int fd) {
   int i;
   char msg_buf[1000];
   int total_num = 0;
+  
+  cJSON *payload;
 
-  write_msg(fd, "101-------------    目前上線使用者    --------------- ");
-  strcpy(msg_buf, "101");
+  display_msg(find_user_name(player[fd].name), "-------------    目前上線使用者    --------------- "); /* Hacky way to find id? 'fd' passed here is actually sockfd, wait. */
+  /* list_player(player[player_id].sockfd) was called. So 'fd' is sockfd. 
+     display_msg takes player_id. 
+     This helper function should just send_json to fd.
+  */
+  
+  payload = cJSON_CreateObject();
+  cJSON_AddStringToObject(payload, "text", "-------------    目前上線使用者    --------------- ");
+  send_json(fd, MSG_TEXT_MESSAGE, payload);
+
+  strcpy(msg_buf, "");
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].login == 2) {
       total_num++;
       if ((strlen(msg_buf) + strlen(player[i].name)) > 50) {
-        write_msg(fd, msg_buf);
-        strcpy(msg_buf, "101");
+        payload = cJSON_CreateObject();
+        cJSON_AddStringToObject(payload, "text", msg_buf);
+        send_json(fd, MSG_TEXT_MESSAGE, payload);
+        strcpy(msg_buf, "");
       }
       strcat(msg_buf, player[i].name);
       strcat(msg_buf, "  ");
     }
   }
-  write_msg(fd, "101--------------------------------------------------");
-  snprintf(msg_buf, sizeof(msg_buf), "101共 %d 人", total_num);
-  write_msg(fd, msg_buf);
+  
+  payload = cJSON_CreateObject();
+  cJSON_AddStringToObject(payload, "text", "--------------------------------------------------");
+  send_json(fd, MSG_TEXT_MESSAGE, payload);
+  
+  snprintf(msg_buf, sizeof(msg_buf), "共 %d 人", total_num);
+  payload = cJSON_CreateObject();
+  cJSON_AddStringToObject(payload, "text", msg_buf);
+  send_json(fd, MSG_TEXT_MESSAGE, payload);
 }
 
 void list_table(int fd, int mode) {
   int i;
   char msg_buf[1000];
   int total_num = 0;
+  cJSON *payload;
 
-  write_msg(fd, "101   桌長       人數  附註");
-  write_msg(fd, "101--------------------------------------------------");
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "   桌長       人數  附註"); send_json(fd, MSG_TEXT_MESSAGE, payload);
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "--------------------------------------------------"); send_json(fd, MSG_TEXT_MESSAGE, payload);
+
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].login && player[i].serv > 0) {
       if (player[i].serv > 4) {
@@ -247,14 +171,21 @@ void list_table(int fd, int mode) {
       }
       if (mode == 2 && player[i].serv >= 4) continue;
       total_num++;
-      snprintf(msg_buf, sizeof(msg_buf), "101   %-10s %-4s  %s", player[i].name,
+      snprintf(msg_buf, sizeof(msg_buf), "   %-10s %-4s  %s", player[i].name,
                number_map[player[i].serv], player[i].note);
-      write_msg(fd, msg_buf);
+      
+      payload = cJSON_CreateObject();
+      cJSON_AddStringToObject(payload, "text", msg_buf);
+      send_json(fd, MSG_TEXT_MESSAGE, payload);
     }
   }
-  write_msg(fd, "101--------------------------------------------------");
-  snprintf(msg_buf, sizeof(msg_buf), "101共 %d 桌", total_num);
-  write_msg(fd, msg_buf);
+  
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "--------------------------------------------------"); send_json(fd, MSG_TEXT_MESSAGE, payload);
+  
+  snprintf(msg_buf, sizeof(msg_buf), "共 %d 桌", total_num);
+  payload = cJSON_CreateObject();
+  cJSON_AddStringToObject(payload, "text", msg_buf);
+  send_json(fd, MSG_TEXT_MESSAGE, payload);
 }
 
 void list_stat(int fd, char* name) {
@@ -263,21 +194,23 @@ void list_stat(int fd, char* name) {
   char order_buf[30];
   int total_num = 0;
   int order = 1;
-  struct player_record tmp_rec;
+  cJSON *payload;
 
-  // MongoDB variables
+  /* MongoDB variables */
   bson_t* query;
-  mongoc_cursor_t* cursor;
-  const bson_t* doc;
+  /* mongoc_cursor_t* cursor; */
+  /* const bson_t* doc; */
 
   if (!read_user_name(name)) {
-    write_msg(fd, "101找不到這個人!");
+    payload = cJSON_CreateObject();
+    cJSON_AddStringToObject(payload, "text", "找不到這個人!");
+    send_json(fd, MSG_TEXT_MESSAGE, payload);
     return;
   }
-  snprintf(msg_buf, sizeof(msg_buf), "101◇名稱:%s ", record.name);
+  snprintf(msg_buf, sizeof(msg_buf), "◇名稱:%s ", record.name);
 
   if (record.game_count >= 16) {
-    // Count players with more money and >= 16 games
+    /* Count players with more money and >= 16 games */
     query = BCON_NEW("game_count", BCON_INT32(16), "money", "{", "$gt",
                      BCON_INT64(record.money), "}");
     order = (int)mongo_count_documents(MONGO_DB_NAME, MONGO_COLLECTION_USERS,
@@ -285,7 +218,7 @@ void list_stat(int fd, char* name) {
             1;
     bson_destroy(query);
 
-    // Count total players with >= 16 games
+    /* Count total players with >= 16 games */
     query = BCON_NEW("game_count", BCON_INT32(16));
     total_num = (int)mongo_count_documents(MONGO_DB_NAME,
                                            MONGO_COLLECTION_USERS, query);
@@ -297,16 +230,18 @@ void list_stat(int fd, char* name) {
   else
     snprintf(order_buf, sizeof(order_buf), "%d/%d", order, total_num);
   snprintf(msg_buf1, sizeof(msg_buf1),
-           "101◇金額:%ld 排名:%s 上線次數:%d 已玩局數:%d", record.money,
+           "◇金額:%ld 排名:%s 上線次數:%d 已玩局數:%d", record.money,
            order_buf, record.login_count, record.game_count);
-  write_msg(fd, msg_buf);
-  write_msg(fd, msg_buf1);
+  
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf1); send_json(fd, MSG_TEXT_MESSAGE, payload);
 }
 
 void who(int fd, char* name) {
   char msg_buf[1000];
   int i;
   int serv_id = -1;
+  cJSON *payload;
 
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].login && player[i].serv) {
@@ -317,47 +252,53 @@ void who(int fd, char* name) {
     }
   }
   if (serv_id == -1) {
-    write_msg(fd, "101找不到此桌");
+    payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "找不到此桌"); send_json(fd, MSG_TEXT_MESSAGE, payload);
     return;
   }
-  snprintf(msg_buf, sizeof(msg_buf), "101%s  ", player[serv_id].name);
-  write_msg(fd, "101----------------   此桌使用者   ------------------");
+  snprintf(msg_buf, sizeof(msg_buf), "%s  ", player[serv_id].name);
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "----------------   此桌使用者   ------------------"); send_json(fd, MSG_TEXT_MESSAGE, payload);
+  
+  strcpy(msg_buf, "");
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].join == serv_id) {
       if ((strlen(msg_buf) + strlen(player[i].name)) > 53) {
-        write_msg(fd, msg_buf);
-        strcpy(msg_buf, "101");
+        payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
+        strcpy(msg_buf, "");
       }
       strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
       strncat(msg_buf, "   ", sizeof(msg_buf) - strlen(msg_buf) - 1);
     }
   }
-  if (strlen(msg_buf) > 4) {
-    write_msg(fd, msg_buf);
+  if (strlen(msg_buf) > 0) {
+    payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
   }
-  write_msg(fd, "101--------------------------------------------------");
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "--------------------------------------------------"); send_json(fd, MSG_TEXT_MESSAGE, payload);
 }
 
 void lurker(int fd) {
   int i, total_num = 0;
   char msg_buf[1000];
+  cJSON *payload;
 
-  strcpy(msg_buf, "101");
-  write_msg(fd, "101-------------   目前□置之使用者   --------------- ");
+  strcpy(msg_buf, "");
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "-------------   目前□置之使用者   --------------- "); send_json(fd, MSG_TEXT_MESSAGE, payload);
   for (i = 1; i < MAX_PLAYER; i++)
     if (player[i].login == 2 && (player[i].join == 0 && player[i].serv == 0)) {
       total_num++;
       if ((strlen(msg_buf) + strlen(player[i].name)) > 53) {
-        write_msg(fd, msg_buf);
-        strcpy(msg_buf, "101");
+        payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
+        strcpy(msg_buf, "");
       }
       strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
       strncat(msg_buf, "  ", sizeof(msg_buf) - strlen(msg_buf) - 1);
     }
-  if (strlen(msg_buf) > 4) write_msg(fd, msg_buf);
-  write_msg(fd, "101--------------------------------------------------");
-  snprintf(msg_buf, sizeof(msg_buf), "101共 %d 人", total_num);
-  write_msg(fd, msg_buf);
+  if (strlen(msg_buf) > 0) {
+      payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
+  }
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "--------------------------------------------------"); send_json(fd, MSG_TEXT_MESSAGE, payload);
+  
+  snprintf(msg_buf, sizeof(msg_buf), "共 %d 人", total_num);
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
 }
 
 void find_user(int fd, char* name) {
@@ -365,49 +306,53 @@ void find_user(int fd, char* name) {
   char msg_buf[1000];
   int id;
   char last_login_time[80];
+  cJSON *payload;
 
   id = find_user_name(name);
   if (id > 0) {
     if (player[id].login == 2) {
       if (player[id].join == 0 && player[id].serv == 0) {
-        snprintf(msg_buf, sizeof(msg_buf), "101◇%s □置中", name);
-        write_msg(fd, msg_buf);
+        snprintf(msg_buf, sizeof(msg_buf), "◇%s □置中", name);
+        payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
       }
       if (player[id].join) {
-        snprintf(msg_buf, sizeof(msg_buf), "101◇%s 在 %s 桌內", name,
+        snprintf(msg_buf, sizeof(msg_buf), "◇%s 在 %s 桌內", name,
                  player[player[id].join].name);
-        write_msg(fd, msg_buf);
+        payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
       }
       if (player[id].serv) {
-        snprintf(msg_buf, sizeof(msg_buf), "101◇%s 在 %s 桌內", name,
+        snprintf(msg_buf, sizeof(msg_buf), "◇%s 在 %s 桌內", name,
                  player[id].name);
-        write_msg(fd, msg_buf);
+        payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
       }
       return;
     }
   }
   if (!read_user_name(name)) {
-    snprintf(msg_buf, sizeof(msg_buf), "101◇沒有 %s 這個人", name);
-    write_msg(fd, msg_buf);
+    snprintf(msg_buf, sizeof(msg_buf), "◇沒有 %s 這個人", name);
+    payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
   } else {
-    snprintf(msg_buf, sizeof(msg_buf), "101◇%s 不在線上", name);
-    write_msg(fd, msg_buf);
+    snprintf(msg_buf, sizeof(msg_buf), "◇%s 不在線上", name);
+    payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
+    
     strcpy(last_login_time, ctime(&record.last_login_time));
     last_login_time[strlen(last_login_time) - 1] = 0;
-    snprintf(msg_buf, sizeof(msg_buf), "101◇上次連線時間: %s", last_login_time);
-    write_msg(fd, msg_buf);
+    snprintf(msg_buf, sizeof(msg_buf), "◇上次連線時間: %s", last_login_time);
+    payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
   }
 }
 
 void broadcast(int player_id, char* msg) {
   int i;
   char msg_buf[1000];
+  cJSON *payload;
 
   if (strcmp(player[player_id].name, ADMIN_USER) != 0) return;
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].login == 2) {
-      snprintf(msg_buf, sizeof(msg_buf), "101%s", msg);
-      write_msg(player[i].sockfd, msg_buf);
+      payload = cJSON_CreateObject();
+      cJSON_AddStringToObject(payload, "text", msg);
+      send_json(player[i].sockfd, MSG_TEXT_MESSAGE, payload);
     }
   }
 }
@@ -416,34 +361,52 @@ void send_msg(int player_id, char* msg) {
   char *str1, *str2;
   int i;
   char msg_buf[1000];
+  cJSON *payload;
 
-  str1 = strtok(msg, " ");
-  str2 = msg + strlen(str1) + 1;
+  /* msg format: "to msg" ?? No, in gps_processing I see:
+     "009%s" where buf+3 was sent.
+     In mjgps.c original `send_msg(player_id, (char *)buf + 3)`.
+     buf+3 contained "name message".
+     Here, 'msg' contains "name message".
+  */
+  str1 = strtok(msg, " "); /* name */
+  if (str1 == NULL) return;
+  str2 = msg + strlen(str1) + 1; /* message */
+  
   for (i = 1; i < MAX_PLAYER; i++)
     if (player[i].login == 2 && strcmp(player[i].name, str1) == 0) {
-      snprintf(msg_buf, sizeof(msg_buf), "101*%s* %s", player[player_id].name,
-               str2);
-      write_msg(player[i].sockfd, msg_buf);
+      snprintf(msg_buf, sizeof(msg_buf), "*%s* %s", player[player_id].name, str2);
+      payload = cJSON_CreateObject();
+      cJSON_AddStringToObject(payload, "text", msg_buf);
+      send_json(player[i].sockfd, MSG_TEXT_MESSAGE, payload);
       return;
     }
-  write_msg(player[player_id].sockfd, "101找不到這個人");
+  
+  payload = cJSON_CreateObject();
+  cJSON_AddStringToObject(payload, "text", "找不到這個人");
+  send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
 }
 
 void invite(int player_id, char* name) {
   int i;
   char msg_buf[1000];
+  cJSON *payload;
 
   for (i = 1; i < MAX_PLAYER; i++)
     if (player[i].login == 2 && strcmp(player[i].name, name) == 0) {
-      snprintf(msg_buf, sizeof(msg_buf), "101%s 邀請你加入 %s",
+      snprintf(msg_buf, sizeof(msg_buf), "%s 邀請你加入 %s",
                player[player_id].name,
                (player[player_id].join == 0)
                    ? player[player_id].name
                    : player[player[player_id].join].name);
-      write_msg(player[i].sockfd, msg_buf);
+      payload = cJSON_CreateObject();
+      cJSON_AddStringToObject(payload, "text", msg_buf);
+      send_json(player[i].sockfd, MSG_TEXT_MESSAGE, payload);
       return;
     }
-  write_msg(player[player_id].sockfd, "101找不到這個人");
+  payload = cJSON_CreateObject();
+  cJSON_AddStringToObject(payload, "text", "找不到這個人");
+  send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
 }
 
 void init_socket() {
@@ -519,7 +482,7 @@ int read_user_name(char* name) {
 
 int read_user_name_update(char* name, int player_id) {
   if (read_user_name(name)) {
-    if (player[player_id].id == record.id) {  // double check
+    if (player[player_id].id == record.id) {  /* double check */
       player[player_id].id = record.id;
       player[player_id].money = record.money;
     }
@@ -543,14 +506,7 @@ void read_user_id(unsigned int id) {
 }
 
 int add_user(int player_id, char* name, char* passwd) {
-  bson_t* doc;
   int64_t new_id;
-
-  // Check if user exists by name (empty name check in original code??)
-  // Original code: if (!read_user_name("")) record.id = ...
-  // This logic seems to be "if empty name user doesn't exist, set ID".
-  // Actually original logic was checking for ID generation.
-  // Here we use counter.
 
   new_id = mongo_get_next_sequence(MONGO_DB_NAME, MONGO_SEQUENCE_USERID);
   if (new_id < 0) {
@@ -586,7 +542,6 @@ int add_user(int player_id, char* name, char* passwd) {
 }
 
 int check_user(int player_id) {
-  char msg_buf[1000];
   char from[80];
   char email[80];
 
@@ -594,10 +549,6 @@ int check_user(int player_id) {
   from[sizeof(from) - 1] = '\0';
   snprintf(email, sizeof(email), "%s@", player[player_id].username);
   strncat(email, from, sizeof(email) - strlen(email) - 1);
-
-  // Query badusers collection
-  // Schema: { "pattern": "string" }
-  // If match found, return 0.
 
   bson_t* query = BCON_NEW("pattern", "{", "$in", "[", BCON_UTF8(email),
                            BCON_UTF8(player[player_id].username), "]", "}");
@@ -625,22 +576,23 @@ void write_record() {
 }
 
 void print_news(int fd, char* name) {
-  // Ignore 'name' (filename) and read from 'news' collection
+  /* Ignore 'name' (filename) and read from 'news' collection */
   bson_t* query = bson_new();
   bson_t* opts =
-      BCON_NEW("sort", "{", "date", BCON_INT32(-1), "}");  // Show newest first
+      BCON_NEW("sort", "{", "date", BCON_INT32(-1), "}");  /* Show newest first */
 
   mongoc_cursor_t* cursor = mongo_find_documents(MONGO_DB_NAME, "news", query);
   const bson_t* doc;
-  char msg_buf[1000];
+  cJSON *payload;
 
   if (cursor) {
     while (mongoc_cursor_next(cursor, &doc)) {
       bson_iter_t iter;
       if (bson_iter_init_find(&iter, doc, "content")) {
         const char* content = bson_iter_utf8(&iter, NULL);
-        snprintf(msg_buf, sizeof(msg_buf), "101%s", content);
-        write_msg(fd, msg_buf);
+        payload = cJSON_CreateObject();
+        cJSON_AddStringToObject(payload, "text", content);
+        send_json(fd, MSG_TEXT_MESSAGE, payload);
       }
     }
     mongoc_cursor_destroy(cursor);
@@ -651,52 +603,43 @@ void print_news(int fd, char* name) {
 
 void welcome_user(int player_id) {
   char msg_buf[1000];
-  int fd;
-  int i;
-  struct player_record tmp_rec;
+  cJSON *payload;
 
-  fd = player[player_id].sockfd;
   if (strcmp(player[player_id].version, "093") < 0 ||
       player[player_id].version[0] == 0) {
-    write_msg(player[player_id].sockfd,
-              "101請使用 QKMJ Ver 0.93 Beta 以上版本上線");
-    write_msg(player[player_id].sockfd, "010");
+    payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "請使用 QKMJ Ver 0.93 Beta 以上版本上線"); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+    send_json(player[player_id].sockfd, MSG_VERSION_ERROR, NULL);
     return;
   }
-  snprintf(msg_buf, sizeof(msg_buf), "101★★★★★　歡迎 %s 來到ＱＫ麻將  ★★★★★",
+  snprintf(msg_buf, sizeof(msg_buf), "★★★★★　歡迎 %s 來到ＱＫ麻將  ★★★★★",
            player[player_id].name);
-  write_msg(player[player_id].sockfd, msg_buf);
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+  
   print_news(player[player_id].sockfd, NEWS_FILE);
-  /*
-   if (record.money < 15000 && record.game_count >= 16)
-   {
-   record.money = 15000;
-   write_msg (fd, "101運氣不太好是嗎? 將你的金額提升為 15000, 好好加油!");
-   write_record ();
-   }
-   */
+
   player[player_id].id = record.id;
   player[player_id].money = record.money;
   player[player_id].login = 2;
   player[player_id].note[0] = 0;
   show_online_users(player_id);
   list_stat(player[player_id].sockfd, player[player_id].name);
-  write_msg(player[player_id].sockfd, "003");
-  snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id,
-           player[player_id].money);
-  write_msg(player[player_id].sockfd, msg_buf);
+  send_json(player[player_id].sockfd, MSG_WELCOME, NULL);
+  
+  /* 120 Update Money */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "user_id", player[player_id].id);
+  cJSON_AddNumberToObject(payload, "money", player[player_id].money);
+  send_json(player[player_id].sockfd, MSG_UPDATE_MONEY, payload);
+  
   player[player_id].input_mode = CMD_MODE;
 }
 
 void show_online_users(int player_id) {
   char msg_buf[1000];
-  int fd;
   int total_num = 0;
   int online_num = 0;
   int i;
-  struct player_record tmp_rec;
-
-  fd = player[player_id].sockfd;
+  cJSON *payload;
 
   bson_t* query = bson_new();
   total_num =
@@ -707,28 +650,29 @@ void show_online_users(int player_id) {
     if (player[i].login == 2) online_num++;
   }
   snprintf(msg_buf, sizeof(msg_buf),
-           "101◇目前上線人數: %d 人       注冊人數: %d 人", online_num,
+           "◇目前上線人數: %d 人       注冊人數: %d 人", online_num,
            total_num);
-  write_msg(player[player_id].sockfd, msg_buf);
+  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
 }
-void show_current_state(int player_id) {
-  char msg_buf[1000];
-  int fd;
-  int i;
 
+void show_current_state(int player_id) {
+  cJSON *payload;
   show_online_users(player_id);
   list_stat(player[player_id].sockfd, player[player_id].name);
-  write_msg(player[player_id].sockfd, "003");
-  snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id,
-           player[player_id].money);
-  write_msg(player[player_id].sockfd, msg_buf);
+  send_json(player[player_id].sockfd, MSG_WELCOME, NULL);
+  
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "user_id", player[player_id].id);
+  cJSON_AddNumberToObject(payload, "money", player[player_id].money);
+  send_json(player[player_id].sockfd, MSG_UPDATE_MONEY, payload);
 }
 
 void update_client_money(int player_id) {
-  char msg_buf[1000];
-  snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld", player[player_id].id,
-           player[player_id].money);
-  write_msg(player[player_id].sockfd, msg_buf);
+  cJSON *payload;
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "user_id", player[player_id].id);
+  cJSON_AddNumberToObject(payload, "money", player[player_id].money);
+  send_json(player[player_id].sockfd, MSG_UPDATE_MONEY, payload);
 }
 
 int find_user_name(char* name) {
@@ -738,464 +682,6 @@ int find_user_name(char* name) {
     if (strcmp(player[i].name, name) == 0) return i;
   }
   return -1;
-}
-
-/*
- * 主伺服器迴圈 (Main Loop)
- * 使用 select() 監聽所有連線。
- * 處理新的連線請求 (accept_new_connection)。
- * 處理已連線客戶端的訊息 (process_client_message)。
- */
-void gps_processing() {
-  int alen;
-  int fd, nfds;
-  int player_id;
-  int player_num = 0;
-  int i, j;
-  int msg_id;
-  int read_code;
-  char tmp_buf[80];
-  char msg_buf[1000];
-  unsigned char buf[8192];
-  struct timeval timeout;
-  struct hostent* hp;
-  int id;
-  struct timeval tm;
-  long current_time;
-  struct tm* tim;
-  int find_duplicated;
-
-  log_level = 0;
-  nfds = getdtablesize();
-  nfds = 256;
-  printf("%d\n", nfds);
-  FD_ZERO(&afds);
-  FD_SET(gps_sockfd, &afds);
-  memmove((char*)&rfds, (char*)&afds, sizeof(rfds));
-  tm.tv_sec = 0;
-  tm.tv_usec = 0;
-  /*
-   * 等待連線 (Waiting for connections)
-   * 使用 select 模型同時處理新連線與現有連線的資料。
-   */
-  for (;;) {
-    memmove((char*)&rfds, (char*)&afds, sizeof(rfds));
-    if (select(nfds, &rfds, (fd_set*)0, (fd_set*)0, 0) < 0) {
-      snprintf(msg_buf, sizeof(msg_buf), "select: %d %s\n", errno,
-               strerror(errno));
-      err(msg_buf);
-      continue;
-    }
-    if (FD_ISSET(gps_sockfd, &rfds)) {
-      /*
-       * 處理新連線 (Handle new connection)
-       * 接受連線，檢查人數上限，並記錄來源 IP。
-       */
-      for (player_num = 1; player_num < MAX_PLAYER; player_num++)
-        if (!player[player_num].login) break;
-      if (player_num == MAX_PLAYER - 1) err("Too many users");
-      player_id = player_num;
-      alen = sizeof(player[player_num].addr);
-      player[player_id].sockfd =
-          accept(gps_sockfd, (struct sockaddr*)&player[player_num].addr,
-                 (socklen_t*)&alen);
-
-      if (player[player_id].sockfd < 0) {
-        err("accept failed");
-        continue;  // Don't break the loop
-      }
-
-      FD_SET(player[player_id].sockfd, &afds);
-      fcntl(player[player_id].sockfd, F_SETFL, FNDELAY);
-      player[player_id].login = 1;
-      strncpy(climark, lookup(&(player[player_id].addr)), sizeof(climark) - 1);
-      climark[sizeof(climark) - 1] = '\0';
-      snprintf(msg_buf, sizeof(msg_buf), "Connectted with %s\n", climark);
-      err(msg_buf);
-
-      time(&current_time);
-      tim = localtime(&current_time);
-
-      if (player_id > login_limit) {
-        if (strcmp(climark, "ccsun34") != 0) {
-          write_msg(player[player_id].sockfd,
-                    "101對不起,目前使用人數超過上限, 請稍後再進來.");
-          print_news(player[player_id].sockfd, "server.lst");
-          close_id(player_id);
-        }
-      }
-    }
-    for (player_id = 1; player_id < MAX_PLAYER; player_id++) {
-      if (player[player_id].login) {
-        if (FD_ISSET(player[player_id].sockfd, &rfds)) {
-          /*
-           * Processing the player's information
-           */
-          read_code = read_msg(player[player_id].sockfd, (char*)buf);
-          if (!read_code) {
-            err(("cant read code!"));
-            close_id(player_id);
-          } else if (read_code == 1) {
-            msg_id = convert_msg_id(player_id, (char*)buf);
-            switch (msg_id) {
-              case 99: /*
-                        * get username
-                        */
-                buf[15] = 0;
-                strncpy(player[player_id].username, (char*)buf + 3,
-                        sizeof(player[player_id].username) - 1);
-                player[player_id]
-                    .username[sizeof(player[player_id].username) - 1] = '\0';
-                break;
-              case 100: /*
-                         * check version
-                         */
-                *(buf + 6) = 0;
-                strncpy(player[player_id].version, (char*)buf + 3,
-                        sizeof(player[player_id].version) - 1);
-                player[player_id]
-                    .version[sizeof(player[player_id].version) - 1] = '\0';
-                break;
-              case 101: /*
-                         * user login
-                         */
-                buf[13] = 0;
-                strncpy(player[player_id].name, (char*)buf + 3,
-                        sizeof(player[player_id].name) - 1);
-                player[player_id].name[sizeof(player[player_id].name) - 1] =
-                    '\0';
-                for (i = 0; i < strlen((char*)buf) - 3; i++) {
-                  if (buf[3 + i] <= 32 && buf[3 + i] != 0) {
-                    write_msg(player[player_id].sockfd, "101Invalid username!");
-                    close_id(player_id);
-                    break;
-                  }
-                }
-                if (read_user_name(player[player_id].name)) {
-                  write_msg(player[player_id].sockfd, "002");
-                } else {
-                  write_msg(player[player_id].sockfd, "005");
-                }
-                break;
-              case 102:
-                /*
-                 * Check password
-                 */
-                if (read_user_name(player[player_id].name)) {
-                  *(buf + 11) = 0;
-                  if (checkpasswd(record.password, (char*)buf + 3)) {
-                    find_duplicated = 0;
-                    for (i = 1; i < MAX_PLAYER; i++) {
-                      if ((player[i].login == 2 || player[i].login == 3) &&
-                          strcmp(player[i].name, player[player_id].name) == 0) {
-                        write_msg(player[player_id].sockfd, "006");
-                        player[player_id].login = 3;
-                        find_duplicated = 1;
-                        break;
-                      }
-                    }
-                    if (find_duplicated) {
-                      break;
-                    }
-
-                    time(&record.last_login_time);
-                    record.last_login_from[0] = 0;
-                    if (player[player_id].username[0] != 0) {
-                      snprintf(record.last_login_from,
-                               sizeof(record.last_login_from), "%s@",
-                               player[player_id].username);
-                    }
-                    strncat(record.last_login_from,
-                            lookup(&player[player_id].addr),
-                            sizeof(record.last_login_from) -
-                                strlen(record.last_login_from) - 1);
-                    record.login_count++;
-                    write_record();
-                    if (check_user(player_id))
-                      welcome_user(player_id);
-                    else
-                      close_id(player_id);
-                  } else {
-                    write_msg(player[player_id].sockfd, "004");
-                  }
-                }
-                break;
-              case 103: /*
-                         * Create new account
-                         */
-                *(buf + 11) = 0;
-                if (!add_user(player_id, player[player_id].name,
-                              (char*)buf + 3)) {
-                  close_id(player_id);
-                  break;
-                }
-                welcome_user(player_id);
-                break;
-              case 104: /*
-                         * Change password
-                         */
-                *(buf + 11) = 0;
-                read_user_name(player[player_id].name);
-                strncpy(record.password, genpasswd((char*)buf + 3),
-                        sizeof(record.password) - 1);
-                record.password[sizeof(record.password) - 1] = '\0';
-                write_record();
-                break;
-              case 105:
-                if (read_user_name(player[player_id].name) &&
-                    player[player_id].login == 3) {
-                  *(buf + 11) = 0;
-                  for (i = 1; i < MAX_PLAYER; i++) {
-                    if ((player[i].login == 2 || player[i].login == 3) &&
-                        (i != player_id) &&
-                        strcmp(player[i].name, player[player_id].name) == 0) {
-                      close_id(i);
-                      break;
-                    }
-                  }
-                  time(&record.last_login_time);
-                  record.last_login_from[0] = 0;
-                  if (player[player_id].username[0] != 0) {
-                    snprintf(record.last_login_from,
-                             sizeof(record.last_login_from), "%s@",
-                             player[player_id].username);
-                  }
-                  strncat(record.last_login_from,
-                          lookup(&player[player_id].addr),
-                          sizeof(record.last_login_from) -
-                              strlen(record.last_login_from) - 1);
-                  record.login_count++;
-                  write_record();
-                  if (check_user(player_id))
-                    welcome_user(player_id);
-                  else
-                    close_id(player_id);
-                }
-                break;
-              case 2:
-                list_player(player[player_id].sockfd);
-                break;
-              case 3:
-                list_table(player[player_id].sockfd, 1);
-                break;
-              case 4:
-                strncpy(player[player_id].note, (char*)buf + 3,
-                        sizeof(player[player_id].note) - 1);
-                player[player_id].note[sizeof(player[player_id].note) - 1] =
-                    '\0';
-                break;
-              case 5:
-                show_online_users(player_id);
-                list_stat(player[player_id].sockfd, (char*)buf + 3);
-
-                break;
-              case 6:
-                who(player[player_id].sockfd, (char*)buf + 3);
-                break;
-              case 7:  // 廣播，GM 功能。
-                broadcast(player_id, (char*)buf + 3);
-                break;
-              case 8:
-                invite(player_id, (char*)buf + 3);
-                break;
-              case 9:
-                send_msg(player_id, (char*)buf + 3);
-                break;
-              case 10:
-                lurker(player[player_id].sockfd);
-                break;
-              case 11:  // JOIN
-                /*
-                 * Check for table server
-                 */
-                if (!read_user_name_update(player[player_id].name, player_id)) {
-                  snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
-                  write_msg(player[player_id].sockfd, msg_buf);
-                  break;
-                }
-                update_client_money(player_id);
-                if (player[player_id].money <= MIN_JOIN_MONEY) {
-                  snprintf(msg_buf, sizeof(msg_buf),
-                           "101您的賭幣（%ld）不足，必須超過 %d 元才能加入牌桌",
-                           player[player_id].money, MIN_JOIN_MONEY);
-                  write_msg(player[player_id].sockfd, msg_buf);
-                  break;
-                }
-                for (i = 1; i < MAX_PLAYER; i++) {
-                  if (player[i].login == 2 && player[i].serv) {
-                    /*
-                     * Find the name of table server
-                     */
-                    if (strcmp(player[i].name, (char*)buf + 3) == 0) {
-                      if (player[i].serv >= 4) {
-                        write_msg(player[player_id].sockfd, "101此桌人數已滿!");
-                        break;
-                      }
-                      snprintf(msg_buf, sizeof(msg_buf), "120%5d%ld",
-                               player[player_id].id, player[player_id].money);
-                      write_msg(player[i].sockfd, msg_buf);
-                      snprintf(msg_buf, sizeof(msg_buf), "211%s",
-                               player[player_id].name);
-                      write_msg(player[i].sockfd, msg_buf);
-                      snprintf(msg_buf, sizeof(msg_buf), "0110%s %d",
-                               inet_ntoa(player[i].addr.sin_addr),
-                               player[i].port);
-                      write_msg(player[player_id].sockfd, msg_buf);
-                      player[player_id].join = i;
-                      player[player_id].serv = 0;
-                      player[i].serv++;
-                      break;
-                    }
-                  }
-                }
-                if (i == MAX_PLAYER)
-                  write_msg(player[player_id].sockfd, "0111");
-                break;
-              case 12:
-                if (!read_user_name_update(player[player_id].name, player_id)) {
-                  snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
-                  write_msg(player[player_id].sockfd, msg_buf);
-                  break;
-                }
-                update_client_money(player_id);
-                if (player[player_id].money <= MIN_JOIN_MONEY) {
-                  snprintf(msg_buf, sizeof(msg_buf),
-                           "101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
-                           player[player_id].money, MIN_JOIN_MONEY);
-                  write_msg(player[player_id].sockfd, msg_buf);
-                  break;
-                }
-                player[player_id].port = atoi((char*)buf + 3);
-                if (player[player_id].join) {
-                  if (player[player[player_id].join].serv > 0)
-                    player[player[player_id].join].serv--;
-                  player[player_id].join = 0;
-                }
-                /*
-                 * clear all client
-                 */
-                for (i = 1; i < MAX_PLAYER; i++) {
-                  if (player[i].join == player_id) player[i].join = 0;
-                }
-                player[player_id].serv = 1;
-                break;
-              case 13:
-                list_table(player[player_id].sockfd, 2);
-                break;
-              case 14:  // 檢查開桌資格
-                if (!read_user_name_update(player[player_id].name, player_id)) {
-                  snprintf(msg_buf, sizeof(msg_buf), "101查無此人");
-                  write_msg(player[player_id].sockfd, msg_buf);
-                  break;
-                }
-                update_client_money(player_id);
-                if (player[player_id].money <= MIN_JOIN_MONEY) {
-                  snprintf(msg_buf, sizeof(msg_buf),
-                           "101您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
-                           player[player_id].money, MIN_JOIN_MONEY);
-                  write_msg(player[player_id].sockfd, msg_buf);
-                  break;
-                }
-                write_msg(player[player_id].sockfd, "012");  // 確認開桌
-                break;
-              case 20:  // WIN GAME
-                strncpy(msg_buf, (char*)buf + 3, sizeof(msg_buf) - 1);
-                msg_buf[sizeof(msg_buf) - 1] = '\0';
-                *(msg_buf + 5) = 0;
-                id = atoi(msg_buf);
-                read_user_id((unsigned int)id);
-                record.money = atol((char*)buf + 8);
-                record.game_count++;
-                write_record();
-                for (i = 1; i < MAX_PLAYER; i++) {
-                  if (player[i].login == 2 && player[i].id == id) {
-                    player[i].money = record.money;
-                    break;
-                  }
-                }
-                break;
-              case 21: /*
-                        * FIND
-                        */
-                find_user(player[player_id].sockfd, (char*)buf + 3);
-                break;
-              case 900:  // Game record
-                err("get game record\n");
-                game_log((char*)buf + 3);
-                err("get game record end\n");
-                break;
-              case 901: // AI Log
-                {
-                    bson_t *doc = bson_new_from_json((const uint8_t *)buf + 3, -1, NULL);
-                    if (doc) {
-                        mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
-                        bson_destroy(doc);
-                    } else {
-                        // Fallback if not valid JSON, just log as message
-                        bson_t *fallback = BCON_NEW("level", BCON_UTF8("ai_trace_raw"), 
-                                                    "message", BCON_UTF8((char*)buf + 3),
-                                                    "timestamp", BCON_DATE_TIME(time(NULL) * 1000));
-                        mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, fallback);
-                        bson_destroy(fallback);
-                    }
-                }
-                break;
-              case 111:
-                /*
-                 * player[player_id].serv++;
-                 */
-                break;
-              case 200:  // 使用者離開遊戲(/LEAVE)
-                close_id(player_id);
-                break;
-              case 202:
-                if (strcmp(player[player_id].name, ADMIN_USER) != 0) break;
-                id = find_user_name((char*)buf + 3);
-                if (id >= 0) {
-                  write_msg(player[id].sockfd, "200");
-                  close_id(id);
-                }
-                break;
-              case 205:  // LEAVE 離開牌桌
-                if (player[player_id].serv) {
-                  /*
-                   * clear all client
-                   */
-                  for (i = 1; i < MAX_PLAYER; i++) {
-                    if (player[i].join == player_id) player[i].join = 0;
-                  }
-                  player[player_id].serv = 0;
-                  player[player_id].join = 0;
-                } else if (player[player_id].join) {
-                  if (player[player[player_id].join].serv > 0)
-                    player[player[player_id].join].serv--;
-                  player[player_id].join = 0;
-                }
-                break;
-              case 201:  // 顯示目前狀態
-                show_current_state(player_id);
-              case 500:
-                if (strcmp(player[player_id].name, ADMIN_USER) == 0)
-                  shutdown_server();
-                break;
-              default:
-                snprintf(msg_buf, sizeof(msg_buf),
-                         "### cmd=%d player_id=%d sockfd=%d ###\n", msg_id,
-                         player_id, player[player_id].sockfd);
-                err(msg_buf);
-                close_connection(player_id);
-                snprintf(msg_buf, sizeof(msg_buf),
-                         "Connection to %s error, closed it\n",
-                         lookup(&(player[player_id].addr)));
-                err(msg_buf);
-                break;
-            }
-            buf[0] = '\0';
-          }
-        }
-      }
-    }
-  }
 }
 
 void close_id(int player_id) {
@@ -1233,6 +719,442 @@ void shutdown_server() {
   err(msg_buf);
   mongo_disconnect();
   exit(0);
+}
+
+/*
+ * 主伺服器迴圈 (Main Loop)
+ */
+void gps_processing() {
+  int alen;
+  int nfds;
+  int player_id;
+  int player_num = 0;
+  int i;
+  int msg_id;
+  char msg_buf[1000];
+  struct timeval tm;
+  long current_time;
+  struct tm* tim;
+  int find_duplicated;
+  cJSON *data = NULL;
+  cJSON *payload = NULL;
+
+  log_level = 0;
+  nfds = getdtablesize();
+  nfds = 256;
+  printf("%d\n", nfds);
+  FD_ZERO(&afds);
+  FD_SET(gps_sockfd, &afds);
+  memmove((char*)&rfds, (char*)&afds, sizeof(rfds));
+  tm.tv_sec = 0;
+  tm.tv_usec = 0;
+  
+  for (;;) {
+    memmove((char*)&rfds, (char*)&afds, sizeof(rfds));
+    if (select(nfds, &rfds, (fd_set*)0, (fd_set*)0, 0) < 0) {
+      snprintf(msg_buf, sizeof(msg_buf), "select: %d %s\n", errno,
+               strerror(errno));
+      err(msg_buf);
+      continue;
+    }
+    if (FD_ISSET(gps_sockfd, &rfds)) {
+      /*
+       * 處理新連線 (Handle new connection)
+       */
+      for (player_num = 1; player_num < MAX_PLAYER; player_num++)
+        if (!player[player_num].login) break;
+      if (player_num == MAX_PLAYER - 1) err("Too many users");
+      player_id = player_num;
+      alen = sizeof(player[player_num].addr);
+      player[player_id].sockfd =
+          accept(gps_sockfd, (struct sockaddr*)&player[player_num].addr,
+                 (socklen_t*)&alen);
+
+      if (player[player_id].sockfd < 0) {
+        err("accept failed");
+        continue;  /* Don't break the loop */
+      }
+
+      FD_SET(player[player_id].sockfd, &afds);
+      fcntl(player[player_id].sockfd, F_SETFL, FNDELAY);
+      player[player_id].login = 1;
+      strncpy(climark, lookup(&(player[player_id].addr)), sizeof(climark) - 1);
+      climark[sizeof(climark) - 1] = '\0';
+      snprintf(msg_buf, sizeof(msg_buf), "Connectted with %s\n", climark);
+      err(msg_buf);
+
+      time(&current_time);
+      tim = localtime(&current_time);
+
+      if (player_id > login_limit) {
+        if (strcmp(climark, "ccsun34") != 0) {
+          payload = cJSON_CreateObject();
+          cJSON_AddStringToObject(payload, "text", "對不起,目前使用人數超過上限, 請稍後再進來.");
+          send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+          print_news(player[player_id].sockfd, "server.lst");
+          close_id(player_id);
+        }
+      }
+    }
+    for (player_id = 1; player_id < MAX_PLAYER; player_id++) {
+      if (player[player_id].login) {
+        if (FD_ISSET(player[player_id].sockfd, &rfds)) {
+          /*
+           * Processing the player's information
+           */
+          if (!recv_json(player[player_id].sockfd, &msg_id, &data)) {
+            err(("cant read code or conn closed!"));
+            close_id(player_id);
+            if (data) cJSON_Delete(data);
+          } else {
+            switch (msg_id) {
+              case MSG_GET_USERNAME: /* 99 */
+                strncpy(player[player_id].username, j_str(data, "username"),
+                        sizeof(player[player_id].username) - 1);
+                player[player_id].username[sizeof(player[player_id].username) - 1] = '\0';
+                break;
+              case MSG_CHECK_VERSION: /* 100 */
+                strncpy(player[player_id].version, j_str(data, "version"),
+                        sizeof(player[player_id].version) - 1);
+                player[player_id].version[sizeof(player[player_id].version) - 1] = '\0';
+                break;
+              case MSG_LOGIN: /* 101 */
+                {
+                    const char *name = j_str(data, "name");
+                    strncpy(player[player_id].name, name, sizeof(player[player_id].name) - 1);
+                    player[player_id].name[sizeof(player[player_id].name) - 1] = '\0';
+                    
+                    for (i = 0; i < strlen(name); i++) {
+                      if (name[i] <= 32 && name[i] != 0) {
+                        payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "Invalid username!"); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+                        close_id(player_id);
+                        break;
+                      }
+                    }
+                    if (read_user_name(player[player_id].name)) {
+                      send_json(player[player_id].sockfd, MSG_LOGIN_OK, NULL);
+                    } else {
+                      send_json(player[player_id].sockfd, MSG_NEW_USER, NULL);
+                    }
+                }
+                break;
+              case MSG_CHECK_PASSWORD: /* 102 */
+                if (read_user_name(player[player_id].name)) {
+                  if (checkpasswd(record.password, (char*)j_str(data, "password"))) {
+                    find_duplicated = 0;
+                    for (i = 1; i < MAX_PLAYER; i++) {
+                      if ((player[i].login == 2 || player[i].login == 3) &&
+                          strcmp(player[i].name, player[player_id].name) == 0) {
+                        send_json(player[player_id].sockfd, MSG_DUPLICATE_LOGIN, NULL);
+                        player[player_id].login = 3;
+                        find_duplicated = 1;
+                        break;
+                      }
+                    }
+                    if (find_duplicated) {
+                      break;
+                    }
+
+                    time(&record.last_login_time);
+                    record.last_login_from[0] = 0;
+                    if (player[player_id].username[0] != 0) {
+                      snprintf(record.last_login_from,
+                               sizeof(record.last_login_from), "%s@",
+                               player[player_id].username);
+                    }
+                    strncat(record.last_login_from,
+                            lookup(&player[player_id].addr),
+                            sizeof(record.last_login_from) -
+                                strlen(record.last_login_from) - 1);
+                    record.login_count++;
+                    write_record();
+                    if (check_user(player_id))
+                      welcome_user(player_id);
+                    else
+                      close_id(player_id);
+                  } else {
+                    send_json(player[player_id].sockfd, MSG_PASSWORD_FAIL, NULL);
+                  }
+                }
+                break;
+              case MSG_CREATE_ACCOUNT: /* 103 */
+                if (!add_user(player_id, player[player_id].name,
+                              (char*)j_str(data, "password"))) {
+                  close_id(player_id);
+                  break;
+                }
+                welcome_user(player_id);
+                break;
+              case MSG_CHANGE_PASSWORD: /* 104 */
+                read_user_name(player[player_id].name);
+                strncpy(record.password, genpasswd((char*)j_str(data, "new_password")),
+                        sizeof(record.password) - 1);
+                record.password[sizeof(record.password) - 1] = '\0';
+                write_record();
+                break;
+              case MSG_KILL_DUPLICATE: /* 105 */
+                if (read_user_name(player[player_id].name) &&
+                    player[player_id].login == 3) {
+                  for (i = 1; i < MAX_PLAYER; i++) {
+                    if ((player[i].login == 2 || player[i].login == 3) &&
+                        (i != player_id) &&
+                        strcmp(player[i].name, player[player_id].name) == 0) {
+                      close_id(i);
+                      break;
+                    }
+                  }
+                  time(&record.last_login_time);
+                  record.last_login_from[0] = 0;
+                  if (player[player_id].username[0] != 0) {
+                    snprintf(record.last_login_from,
+                             sizeof(record.last_login_from), "%s@",
+                             player[player_id].username);
+                  }
+                  strncat(record.last_login_from,
+                          lookup(&player[player_id].addr),
+                          sizeof(record.last_login_from) -
+                              strlen(record.last_login_from) - 1);
+                  record.login_count++;
+                  write_record();
+                  if (check_user(player_id))
+                    welcome_user(player_id);
+                  else
+                    close_id(player_id);
+                }
+                break;
+              case MSG_LIST_PLAYERS: /* 2 */
+                list_player(player[player_id].sockfd);
+                break;
+              case MSG_LIST_TABLES: /* 3 */
+                list_table(player[player_id].sockfd, 1);
+                break;
+              case MSG_SET_NOTE: /* 4 */
+                strncpy(player[player_id].note, j_str(data, "note"),
+                        sizeof(player[player_id].note) - 1);
+                player[player_id].note[sizeof(player[player_id].note) - 1] = '\0';
+                break;
+              case MSG_USER_INFO: /* 5 */
+                show_online_users(player_id);
+                list_stat(player[player_id].sockfd, (char*)j_str(data, "name"));
+                break;
+              case MSG_WHO_IN_TABLE: /* 6 */
+                who(player[player_id].sockfd, (char*)j_str(data, "table_leader"));
+                break;
+              case MSG_BROADCAST: /* 7 */
+                broadcast(player_id, (char*)j_str(data, "msg"));
+                break;
+              case MSG_INVITE: /* 8 */
+                invite(player_id, (char*)j_str(data, "name"));
+                break;
+              case MSG_SEND_MESSAGE: /* 9 */
+                /* Reconstruct message "name msg" for send_msg */
+                {
+                    char combined[1024];
+                    snprintf(combined, sizeof(combined), "%s %s", j_str(data, "to"), j_str(data, "msg"));
+                    send_msg(player_id, combined);
+                }
+                break;
+              case MSG_LURKER_LIST: /* 10 */
+                lurker(player[player_id].sockfd);
+                break;
+              case MSG_JOIN_TABLE: /* 11 */
+                if (!read_user_name_update(player[player_id].name, player_id)) {
+                  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "查無此人"); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+                  break;
+                }
+                update_client_money(player_id);
+                if (player[player_id].money <= MIN_JOIN_MONEY) {
+                  snprintf(msg_buf, sizeof(msg_buf),
+                           "您的賭幣（%ld）不足，必須超過 %d 元才能加入牌桌",
+                           player[player_id].money, MIN_JOIN_MONEY);
+                  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+                  break;
+                }
+                for (i = 1; i < MAX_PLAYER; i++) {
+                  if (player[i].login == 2 && player[i].serv) {
+                    if (strcmp(player[i].name, j_str(data, "table_leader")) == 0) {
+                      if (player[i].serv >= 4) {
+                        payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "此桌人數已滿!"); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+                        break;
+                      }
+                      
+                      payload = cJSON_CreateObject();
+                      cJSON_AddNumberToObject(payload, "user_id", player[player_id].id);
+                      cJSON_AddNumberToObject(payload, "money", player[player_id].money);
+                      send_json(player[i].sockfd, MSG_UPDATE_MONEY, payload);
+                      
+                      payload = cJSON_CreateObject();
+                      cJSON_AddStringToObject(payload, "name", player[player_id].name);
+                      send_json(player[i].sockfd, MSG_JOIN_NOTIFY, payload);
+                      
+                      payload = cJSON_CreateObject();
+                      cJSON_AddNumberToObject(payload, "status", 0);
+                      cJSON_AddStringToObject(payload, "ip", inet_ntoa(player[i].addr.sin_addr));
+                      cJSON_AddNumberToObject(payload, "port", player[i].port);
+                      send_json(player[player_id].sockfd, MSG_JOIN_INFO, payload);
+                      
+                      player[player_id].join = i;
+                      player[player_id].serv = 0;
+                      player[i].serv++;
+                      break;
+                    }
+                  }
+                }
+                if (i == MAX_PLAYER) {
+                  payload = cJSON_CreateObject();
+                  cJSON_AddNumberToObject(payload, "status", 1); /* 1 = full/not found? Client says "查無此桌" */
+                  send_json(player[player_id].sockfd, MSG_JOIN_INFO, payload);
+                }
+                break;
+              case MSG_OPEN_TABLE: /* 12 */
+                if (!read_user_name_update(player[player_id].name, player_id)) {
+                  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "查無此人"); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+                  break;
+                }
+                update_client_money(player_id);
+                if (player[player_id].money <= MIN_JOIN_MONEY) {
+                  snprintf(msg_buf, sizeof(msg_buf),
+                           "您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
+                           player[player_id].money, MIN_JOIN_MONEY);
+                  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+                  break;
+                }
+                player[player_id].port = j_int(data, "port");
+                if (player[player_id].join) {
+                  if (player[player[player_id].join].serv > 0)
+                    player[player[player_id].join].serv--;
+                  player[player_id].join = 0;
+                }
+                /*
+                 * clear all client
+                 */
+                for (i = 1; i < MAX_PLAYER; i++) {
+                  if (player[i].join == player_id) player[i].join = 0;
+                }
+                player[player_id].serv = 1;
+                break;
+              case MSG_LIST_TABLES_FREE: /* 13 */
+                list_table(player[player_id].sockfd, 2);
+                break;
+              case MSG_CHECK_OPEN: /* 14 */
+                if (!read_user_name_update(player[player_id].name, player_id)) {
+                  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "查無此人"); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+                  break;
+                }
+                update_client_money(player_id);
+                if (player[player_id].money <= MIN_JOIN_MONEY) {
+                  snprintf(msg_buf, sizeof(msg_buf),
+                           "您的賭幣（%ld）不足，必須超過 %d 元才能開桌",
+                           player[player_id].money, MIN_JOIN_MONEY);
+                  payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
+                  break;
+                }
+                send_json(player[player_id].sockfd, MSG_OPEN_OK, NULL);
+                break;
+              case MSG_WIN_GAME: /* 20 */
+                {
+                    int id = j_int(data, "winner_id");
+                    read_user_id((unsigned int)id);
+                    record.money = (long)j_double(data, "money");
+                    record.game_count++;
+                    write_record();
+                    for (i = 1; i < MAX_PLAYER; i++) {
+                      if (player[i].login == 2 && player[i].id == id) {
+                        player[i].money = record.money;
+                        break;
+                      }
+                    }
+                }
+                break;
+              case MSG_FIND_USER: /* 21 */
+                find_user(player[player_id].sockfd, (char*)j_str(data, "name"));
+                break;
+              case MSG_GAME_RECORD: /* 900 */
+                {
+                    /* We assume data has "record" which is a JSON object. 
+                       Original code just passed string.
+                       Now we might pass the JSON stringified?
+                       Or we can just log the 'data' part.
+                    */
+                    char *json_str = cJSON_PrintUnformatted(data);
+                    if (json_str) {
+                        game_log(json_str);
+                        free(json_str);
+                    }
+                }
+                break;
+              case 901: /* AI Log */
+                {
+                    /* Just pass the whole data object to mongo helper */
+                    /* bson_t *doc = bson_new_from_json ... */
+                    /* Since we have cJSON, we can serialize it to string then to BSON, 
+                       or just use the string. */
+                    char *json_str = cJSON_PrintUnformatted(data);
+                    if (json_str) {
+                        bson_t *doc = bson_new_from_json((const uint8_t *)json_str, -1, NULL);
+                        if (doc) {
+                            mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
+                            bson_destroy(doc);
+                        }
+                        free(json_str);
+                    }
+                }
+                break;
+              case 111:
+                /*
+                 * player[player_id].serv++;
+                 */
+                break;
+              case MSG_LEAVE: /* 200 */
+                close_id(player_id);
+                break;
+              case MSG_KICK_USER: /* 202 */
+                if (strcmp(player[player_id].name, ADMIN_USER) != 0) break;
+                {
+                    int id = find_user_name((char*)j_str(data, "name"));
+                    if (id >= 0) {
+                      send_json(player[id].sockfd, MSG_LEAVE, NULL);
+                      close_id(id);
+                    }
+                }
+                break;
+              case MSG_LEAVE_TABLE_GPS: /* 205 */
+                if (player[player_id].serv) {
+                  for (i = 1; i < MAX_PLAYER; i++) {
+                    if (player[i].join == player_id) player[i].join = 0;
+                  }
+                  player[player_id].serv = 0;
+                  player[player_id].join = 0;
+                } else if (player[player_id].join) {
+                  if (player[player[player_id].join].serv > 0)
+                    player[player[player_id].join].serv--;
+                  player[player_id].join = 0;
+                }
+                break;
+              case MSG_STATUS: /* 201 */
+                show_current_state(player_id);
+              case MSG_SHUTDOWN: /* 500 */
+                if (strcmp(player[player_id].name, ADMIN_USER) == 0)
+                  shutdown_server();
+                break;
+              default:
+                snprintf(msg_buf, sizeof(msg_buf),
+                         "### cmd=%d player_id=%d sockfd=%d ###\n", msg_id,
+                         player_id, player[player_id].sockfd);
+                err(msg_buf);
+                close_connection(player_id);
+                snprintf(msg_buf, sizeof(msg_buf),
+                         "Connection to %s error, closed it\n",
+                         lookup(&(player[player_id].addr)));
+                err(msg_buf);
+                break;
+            }
+            if (data) cJSON_Delete(data);
+          }
+        }
+      }
+    }
+  }
 }
 
 void core_dump(int signo) {
@@ -1296,10 +1218,10 @@ int safe_strcmp(const char* s1, const char* s2) {
     s1++;
     s2++;
   }
-  // If lengths differ, *s1 or *s2 will be 0, result |= non-zero.
-  // Also ensure both are at end.
+  /* If lengths differ, *s1 or *s2 will be 0, result |= non-zero. */
+  /* Also ensure both are at end. */
   result |= (*s1 ^ *s2);
-  return result == 0;  // Returns 1 (true) if equal, 0 (false) if not
+  return result == 0;  /* Returns 1 (true) if equal, 0 (false) if not */
 }
 
 /*
@@ -1343,7 +1265,7 @@ int main(int argc, char** argv) {
   strncpy(gps_ip, DEFAULT_GPS_IP, sizeof(gps_ip) - 1);
   gps_ip[sizeof(gps_ip) - 1] = '\0';
 
-  // Init Mongo
+  /* Init Mongo */
   mongo_uri = getenv("MONGO_URI");
   if (!mongo_uri) {
     mongo_uri = "mongodb://localhost:27017";

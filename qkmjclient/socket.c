@@ -13,26 +13,9 @@
 
 #include "mjdef.h"
 
-#ifdef NON_WINDOWS  // Linux
-#include "curses.h"
-#else  // Cygwin
-#include "ncurses/ncurses.h"
-#endif
-
+#include "protocol.h"
+#include "protocol_def.h"
 #include "qkmj.h"
-
-/* Prototypes */
-void err(char* errmsg);
-void send_gps_line(char* msg);
-void init_playing_screen();
-void opening();
-void open_deal();
-void init_global_screen();
-void display_comment(char* comment);
-void close_client(int player_id);
-int leave();
-void write_msg(int fd, char* msg);
-void broadcast_msg(int id, char* msg);
 
 struct passwd* userdata;
 
@@ -116,11 +99,13 @@ int init_socket(char* host, int portnum, int* sockfd) {
 
 void accept_new_client() {
   int alen;
-  int i, player_id;
+  int player_id;
   char msg_buf[255];
+  cJSON* payload;
 
   /* Find a free space */
-  for (i = 2; i < MAX_PLAYER; i++)
+  int i = 2;
+  for (; i < MAX_PLAYER; i++)
     if (!player[i].in_table) break;
   if (i == MAX_PLAYER) err("Too many players!");
   player_id = i;
@@ -136,10 +121,10 @@ void accept_new_client() {
   player_in_table++;
   /* assign a sit to the new comer */
   if (player_in_table <= PLAYER_NUM) {
-    for (i = 1; i <= 4; i++) {
-      if (!table[i]) {
-        player[player_id].sit = i;
-        table[i] = player_id;
+    for (int j = 1; j <= 4; j++) {
+      if (!table[j]) {
+        player[player_id].sit = j;
+        table[j] = player_id;
         break;
       }
     }
@@ -152,95 +137,109 @@ void accept_new_client() {
   player[player_id].name[sizeof(player[player_id].name) - 1] = '\0';
   player[player_id].id = new_client_id;
   player[player_id].money = new_client_money;
-  /* Send the info of new comer to everyone */
-  snprintf(msg_buf, sizeof(msg_buf), "201%c%c%c%s", (char)player_id,
-           player[player_id].sit, player_in_table, player[player_id].name);
-  broadcast_msg(1, msg_buf); /* NOTICE:including the new comer!!! */
-  msg_buf[2] = '5';          /* Set msg_id to 205 */
-  /* send to himself */
-  /* NOTICE: player doesn't know his own table[i], right? */
-  write_msg(player[player_id].sockfd, msg_buf);
-  /* Send more info of new comer */
-  snprintf(msg_buf, sizeof(msg_buf), "202%c%5d%ld", player_id, new_client_id,
-           new_client_money);
-  broadcast_msg(1, msg_buf);
+
+  /* 201 MSG_NEW_COMER_INFO */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "user_id", player_id);
+  cJSON_AddNumberToObject(payload, "sit", player[player_id].sit);
+  cJSON_AddNumberToObject(payload, "count", player_in_table);
+  cJSON_AddStringToObject(payload, "name", player[player_id].name);
+  /* Broadcast to everyone (except 1 which is me, wait, new comer needs this
+     too?) Original: broadcast_msg(1, ...). accept_new_client calls
+     broadcast_msg(1, ..). broadcast_msg(id, ..) sends to everyone EXCEPT id. So
+     it sends to 2..MAX_PLAYER except 1. This INCLUDES the new player
+     (player_id). So new player receives 201.
+  */
+  for (int j = 2; j < MAX_PLAYER; j++) {
+    if (player[j].in_table) {
+      /* Need to clone payload for each send, or reuse? send_json deletes it. */
+      send_json(player[j].sockfd, MSG_NEW_COMER_INFO,
+                cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
+  /* 205 MSG_MY_INFO */
+  /* Send to new player only */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "user_id", player_id);
+  cJSON_AddNumberToObject(payload, "sit", player[player_id].sit);
+  cJSON_AddStringToObject(payload, "name", player[player_id].name);
+  send_json(player[player_id].sockfd, MSG_MY_INFO, payload);
+
+  /* 202 MSG_UPDATE_MONEY_P2P */
+  /* Broadcast new player money to everyone */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "user_id", player_id);
+  cJSON_AddNumberToObject(payload, "money", new_client_money);
+  cJSON_AddNumberToObject(payload, "db_id", new_client_id);
+  for (int j = 2; j < MAX_PLAYER; j++) {
+    if (player[j].in_table) {
+      send_json(player[j].sockfd, MSG_UPDATE_MONEY_P2P,
+                cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
   new_client = 0;
-  write_msg(gps_sockfd, "111"); /* Add one new player into the table */
+  /* write_msg(gps_sockfd, "111"); Removed */
+
   /* Send all player info to the new player */
-  for (i = 1; i < MAX_PLAYER; i++) {
-    if (player[i].in_table && i != player_id) {
-      /* Let the new comer know everyone */
-      snprintf(msg_buf, sizeof(msg_buf), "203%c%c%s", i, player[i].sit,
-               player[i].name);
-      write_msg(player[player_id].sockfd, msg_buf);
-      snprintf(msg_buf, sizeof(msg_buf), "202%c%5d%ld", i, player[i].id,
-               player[i].money);
-      write_msg(player[player_id].sockfd, msg_buf);
+  for (int j = 1; j < MAX_PLAYER; j++) {
+    if (player[j].in_table && j != player_id) {
+      /* 203 MSG_OTHER_INFO */
+      payload = cJSON_CreateObject();
+      cJSON_AddNumberToObject(payload, "user_id", j);
+      cJSON_AddNumberToObject(payload, "sit", player[j].sit);
+      cJSON_AddStringToObject(payload, "name", player[j].name);
+      send_json(player[player_id].sockfd, MSG_OTHER_INFO, payload);
+
+      /* 202 MSG_UPDATE_MONEY_P2P */
+      payload = cJSON_CreateObject();
+      cJSON_AddNumberToObject(payload, "user_id", j);
+      cJSON_AddNumberToObject(payload, "money", player[j].money);
+      cJSON_AddNumberToObject(payload, "db_id", player[j].id);
+      send_json(player[player_id].sockfd, MSG_UPDATE_MONEY_P2P, payload);
     }
   }
   /* Check the number of player in table */
   if (player_in_table == PLAYER_NUM) {
     init_playing_screen();
-    broadcast_msg(1, "300");
+
+    /* 300 MSG_INIT_SCREEN */
+    for (int j = 2; j < MAX_PLAYER; j++) {
+      if (player[j].in_table) {
+        send_json(player[j].sockfd, MSG_INIT_SCREEN, NULL);
+      }
+    }
+
     opening();
     open_deal();
-  }
-
-  /* Send table info to the new player */
-  /*
-    sprintf(msg_buf,"204");
-    for(i=1;i<=4;i++)
-      msg_buf[2+i]=(char) table[i]+'0';
-    write_msg(player[player_id].sockfd,msg_buf);
-  */
-}
-
-int read_msg(int fd, char* msg) {
-  do {
-    if (read(fd, msg, 1) <= 0) return 0;
-  } while (*msg++ != '\0');
-  return 1;
-}
-
-int read_msg_id(int fd, char* msg) {
-  int i;
-
-  for (i = 0; i < 3; i++) {
-    if (read(fd, msg, 1) <= 0) return 0;
-    if (*msg++ == 0) return 0;
-  }
-  return 1;
-}
-
-void write_msg(int fd, char* msg) {
-  int n;
-  n = strlen(msg);
-  if (write(fd, msg, n) < 0) {
-    return;
-  }
-  if (write(fd, msg + n, 1) < 0) {
-    return;
-  }
-}
-
-/* Command for server */
-void broadcast_msg(int id, char* msg) {
-  int i;
-  for (i = 2; i < MAX_PLAYER; i++) {
-    if (player[i].in_table && i != id) write_msg(player[i].sockfd, msg);
   }
 }
 
 void close_client(int player_id) {
   char msg_buf[255];
+  cJSON* payload;
 
   if (player_in_table == 4) {
     init_global_screen();
     input_mode = TALK_MODE;
   }
   player_in_table--;
-  snprintf(msg_buf, sizeof(msg_buf), "206%c%c", player_id, player_in_table);
-  broadcast_msg(player_id, msg_buf);
+
+  /* 206 MSG_PLAYER_LEAVE */
+  payload = cJSON_CreateObject();
+  cJSON_AddNumberToObject(payload, "user_id", player_id);
+  cJSON_AddNumberToObject(payload, "count", player_in_table);
+  for (int i = 2; i < MAX_PLAYER; i++) {
+    if (player[i].in_table && i != player_id) {
+      send_json(player[i].sockfd, MSG_PLAYER_LEAVE,
+                cJSON_Duplicate(payload, 1));
+    }
+  }
+  cJSON_Delete(payload);
+
   snprintf(msg_buf, sizeof(msg_buf), "%s 離開此桌，目前人數剩下 %d 人",
            player[player_id].name, player_in_table);
   display_comment(msg_buf);
@@ -252,7 +251,7 @@ void close_client(int player_id) {
 
 void close_join() {
   in_join = 0;
-  write_msg(table_sockfd, "200");
+  send_json(table_sockfd, MSG_LEAVE, NULL);
   close(table_sockfd);
   FD_CLR(table_sockfd, &afds);
   /*
@@ -261,12 +260,11 @@ void close_join() {
 }
 
 void close_serv() {
-  int i;
   in_serv = 0;
-  for (i = 2; i < MAX_PLAYER; i++)  // Note that i start from 2
+  for (int i = 2; i < MAX_PLAYER; i++)  // Note that i start from 2
   {
     if (player[i].in_table) {
-      write_msg(player[i].sockfd, "199");
+      send_json(player[i].sockfd, MSG_LEADER_LEAVE, NULL);
       close_client(i);
       /*
             shutdown(player[i].sockfd,2);
@@ -278,9 +276,7 @@ void close_serv() {
 
 int leave() /* the ^C trap. */
 {
-  int i;
-
-  write_msg(gps_sockfd, "200");
+  send_json(gps_sockfd, MSG_LEAVE, NULL);
   /*
     shutdown(gps_sockfd,2);
   */

@@ -7,18 +7,13 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
-#include "curses.h"
 #include "mjdef.h"
 #include "qkmj.h"
-#define NO_SUN_HP 1
 
 /* Prototypes */
 int my_getch();
 
 float thinktime() {
-  float t;
-  char msg_buf[80];
-
   gettimeofday(&after, (struct timezone*)0);
   after.tv_sec -= before.tv_sec;
   after.tv_usec -= before.tv_usec;
@@ -26,8 +21,8 @@ float thinktime() {
     after.tv_sec--;
     after.tv_usec += 1000000;
   }
-  t = (float)after.tv_sec + (float)after.tv_usec / 1000000;
-  return (t);
+  float t = (float)after.tv_sec + (float)after.tv_usec / 1000000;
+  return t;
 }
 
 void beep1() {
@@ -43,7 +38,6 @@ void mvwgetstring(WINDOW* win, int y, int x, int max_len,
   int ch;
   unsigned char ch_buf[2];
   int org_x, org_y;
-  int i;
 
   keypad(win, TRUE);
   meta(win, TRUE);
@@ -73,7 +67,7 @@ void mvwgetstring(WINDOW* win, int y, int x, int max_len,
         break;
       case CTRL_U:
         wmove(win, y, org_x);
-        for (i = 0; i < x - org_x; i++) waddch(win, ' ');
+        for (int i = 0; i < x - org_x; i++) waddch(win, ' ');
         wmove(win, y, org_x);
         str_buf[0] = 0;
         x = org_x;

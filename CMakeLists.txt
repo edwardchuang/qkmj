@@ -95,6 +95,7 @@ add_executable(mjgps
     qkmjserver/mjgps.c
     qkmjserver/mongo.c
     qkmjserver/mjgps_mongo_helpers.c
+    qkmjclient/protocol.c
 )
 
 target_link_libraries(mjgps
@@ -132,6 +133,7 @@ add_executable(qkmj
     qkmjclient/qkmj.c
     qkmjclient/screen.c
     qkmjclient/socket.c
+    qkmjclient/protocol.c
 )
 
 target_link_libraries(qkmj
@@ -158,6 +160,7 @@ add_executable(test_ai
     tests/test_ai_client.cpp
     tests/mock_qkmj.c
     qkmjclient/ai_client.c
+    qkmjclient/protocol.c
 )
 
 target_include_directories(test_ai PRIVATE 
@@ -178,6 +181,7 @@ add_test(NAME AIClientTest COMMAND test_ai)
 add_executable(conn_test
     tests/connection_test.c
     qkmjclient/ai_client.c
+    qkmjclient/protocol.c
 )
 
 target_include_directories(conn_test PRIVATE

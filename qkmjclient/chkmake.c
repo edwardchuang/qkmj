@@ -5,22 +5,17 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+
+#include "mjdef.h"
+#include "qkmj.h"
+
 #define THREE_CARD 1
 #define STRAIGHT_CARD 2
 #define PAIR_CARD 3
-#include "mjdef.h"
 
-#ifdef NON_WINDOWS  // Linux
-#include "curses.h"
-#else  // Cygwin
-#include "ncurses/ncurses.h"
-#endif
+/*******************  Definition of variables  **********************/
 
-#include "qkmj.h"
-
-/*******************  Denifition of variables  **********************/
-
-struct nodetype {
+typedef struct nodetype {
   char info[5];
   int end;
   int type;
@@ -28,8 +23,7 @@ struct nodetype {
   struct nodetype* straight; /* 順子 */
   struct nodetype* pair;     /* 對子 */
   struct nodetype* father;
-};
-typedef struct nodetype* NODEPTR;
+} * NODEPTR;
 
 struct card_info_type {
   int info;
@@ -37,6 +31,19 @@ struct card_info_type {
 };
 struct card_info_type card_info[20];
 
+struct component_type {
+  int type;
+  /* 0:invalid   1:no card   2:normal   3:one pair  4:more than one pair */
+  char info[10][5];
+};
+struct component_type card_component[6][50];
+
+char pool_buf[20];
+int comb_count[6];
+int count2;
+int suit;
+
+/* Forward declarations */
 NODEPTR make_three(NODEPTR node);
 NODEPTR make_straight(NODEPTR node);
 NODEPTR make_pair(NODEPTR node);
@@ -52,7 +59,7 @@ void check_tai4(int sit, int comb);
 void check_tai5(int sit, int comb);
 void check_tai6(int sit, int comb);
 void check_tai7(int sit, int comb);
-void check_tai8(int sit, int comb);
+// void check_tai8(int sit, int comb); // Empty
 void check_tai9(int sit, int comb);
 void check_tai10(int sit, int comb);
 void check_tai11(int sit, int comb);
@@ -61,10 +68,10 @@ void check_tai13(int sit, int comb);
 void check_tai14(int sit, int comb);
 void check_tai15(int sit, int comb);
 void check_tai16(int sit, int comb);
-void check_tai17(int sit, int comb);
-void check_tai18(int sit, int comb);
-void check_tai19(int sit, int comb);
-void check_tai20(int sit, int comb);
+// void check_tai17(int sit, int comb); // Empty
+// void check_tai18(int sit, int comb); // Empty
+// void check_tai19(int sit, int comb); // Empty
+// void check_tai20(int sit, int comb); // Empty
 void check_tai21(int sit, int comb);
 void check_tai22(int sit, int comb);
 void check_tai23(int sit, int comb);
@@ -72,9 +79,9 @@ void check_tai24(int sit, int comb, int make_card);
 void check_tai25(int sit, int comb);
 void check_tai26(int sit, int comb);
 void check_tai27(int sit, int comb);
-void check_tai28(int sit, int comb);
-void check_tai29(int sit, int comb);
-void check_tai30(int sit, int comb);
+// void check_tai28(int sit, int comb); // Empty
+// void check_tai29(int sit, int comb); // Empty
+// void check_tai30(int sit, int comb); // Empty
 void check_tai31(int sit, int comb);
 void check_tai32(int sit, int comb);
 void check_tai33(int sit, int comb);
@@ -82,51 +89,35 @@ void check_tai34(int sit, int comb);
 void check_tai35(int sit, int comb);
 void check_tai36(int sit, int comb);
 void check_tai37(int sit, int comb);
-void check_tai38(int sit, int comb);
+// void check_tai38(int sit, int comb); // Empty
 void check_tai39(int sit, int comb);
 void check_tai40(int sit, int comb);
 void check_tai41(int sit, int comb);
 void check_tai42(int sit, int comb);
 void check_tai43(int sit, int comb);
-void check_tai44(int sit, int comb);
+// void check_tai44(int sit, int comb); // Empty
 void check_tai45(int sit, int comb, int make_card);
 void check_tai46(int sit, int comb);
 void check_tai47(int sit, int comb);
-void check_tai48(int sit, int comb);
+// void check_tai48(int sit, int comb); // Empty
 void check_tai49(int sit, int comb);
 void check_tai50(int sit, int comb);
 void check_tai51(int sit, int comb);
 void check_tai52(int sit, int comb);
 
-char pool_buf[20];
-struct component_type {
-  int type;
-  /* 0:invalid   1:no card   2:normal   3:one pair  4:more than one pair */
-  char info[10][5];
-};
-struct component_type card_component[6][50];
-int comb_count[6];
-int count2;
-int suit;
-
 /********************************************************************/
 
 NODEPTR getnode() {
-  NODEPTR p;
-  p = (NODEPTR)malloc(sizeof(struct nodetype));
+  NODEPTR p = (NODEPTR)malloc(sizeof(struct nodetype));
   if (p == NULL) {
-    // Ideally log error and exit, or handle gracefully.
-    // For this legacy app, exit is probably safest to avoid crash.
     fprintf(stderr, "Out of memory\n");
     exit(1);
   }
-  return (p);
+  return p;
 }
 
 NODEPTR maketree(NODEPTR node) {
-  NODEPTR p;
-
-  p = getnode();
+  NODEPTR p = getnode();
   p->info[0] = 0;
   p->type = 0;
   p->end = 0;
@@ -134,30 +125,29 @@ NODEPTR maketree(NODEPTR node) {
   p->straight = NULL;
   p->pair = NULL;
   p->father = node;
-  return (p);
+  return p;
 }
 
 void build_tree(NODEPTR node) {
   node->three = make_three(node); /* It will check if it's end */
-  if (!node->end)
+  if (!node->end) {
     node->straight = make_straight(node);
-  else
+  } else {
     node->straight = NULL;
-  if (!node->end && node->three == NULL) /* add pair into tree if no three */
+  }
+  if (!node->end && node->three == NULL) { /* add pair into tree if no three */
     node->pair = make_pair(node);
-  else
+  } else {
     node->pair = NULL;
+  }
 }
 
 void mark_card(NODEPTR node) {
-  int i, j;
-
-  if (node->father == NULL) /* The top of the tree */
-  {
+  if (node->father == NULL) { /* The top of the tree */
     return;
   } else {
-    i = 0;
-    for (j = 0; card_info[j].info; j++) {
+    int i = 0;
+    for (int j = 0; card_info[j].info; j++) {
       if (node->info[i] == card_info[j].info && card_info[j].flag) {
         i++;
         card_info[j].flag = 0; /*  Mark this card as chosen */
@@ -173,74 +163,65 @@ void mark_card(NODEPTR node) {
 
 /* Find the leading card */
 int find_lead() {
-  int i, lead;
-
-  for (i = 0; card_info[i].info; i++) {
+  int lead = 0;
+  for (int i = 0; card_info[i].info; i++) {
     if (card_info[i].flag) {
       lead = card_info[i].info;
-      goto found_leading_card;
+      break;
     }
   }
-  return (0);
-found_leading_card:;
-  return (lead);
+  return lead;
 }
 
 NODEPTR make_three(NODEPTR node) {
-  int i, j;
-  int lead;
-  NODEPTR p;
-
   /* Reset the flag */
-  for (i = 0; card_info[i].info; i++) card_info[i].flag = 1;
+  for (int i = 0; card_info[i].info; i++) {
+    card_info[i].flag = 1;
+  }
   mark_card(node);
-  lead = find_lead();
+  int lead = find_lead();
   if (lead == 0) {
     /* no more cards can be checked */
     node->end = 1;
-    return (NULL);
+    return NULL;
   }
-  p = maketree(node);
+  NODEPTR p = maketree(node);
 
   /* Get three same cards */
-  j = 0;
-for(i=0;card_info[i].info;i++)
-  {
-    if(card_info[i].flag && card_info[i].info==lead)
-    {
-      p->info[j++]=(char)lead;
-      card_info[i].flag=0;
+  int j = 0;
+  for (int i = 0; card_info[i].info; i++) {
+    if (card_info[i].flag && card_info[i].info == lead) {
+      p->info[j++] = (char)lead;
+      card_info[i].flag = 0;
     }
-    if(j==3) goto found_three;
+    if (j == 3) goto found_three;
   }
   /* can't find 3 cards */
   free(p);
-  return (NULL);
+  return NULL;
 found_three:;
   p->info[j] = 0;
   p->type = THREE_CARD;
   build_tree(p);
-  return (p);
+  return p;
 }
 
 NODEPTR make_straight(NODEPTR node) {
-  int i, j;
-  int lead;
-  NODEPTR p;
-
   /* Reset the flag */
-  for (i = 0; card_info[i].info; i++) card_info[i].flag = 1;
+  for (int i = 0; card_info[i].info; i++) {
+    card_info[i].flag = 1;
+  }
   mark_card(node);
-  lead = find_lead();
+  int lead = find_lead();
   if (lead == 0) {
     node->end = 1;
-    return (NULL);
+    return NULL;
   }
-  p = maketree(node);
+  NODEPTR p = maketree(node);
 
   /* Get three straight cards */
-  j = 0;
-  for (i = 0; card_info[i].info; i++) {
+  int j = 0;
+  for (int i = 0; card_info[i].info; i++) {
     if (card_info[i].flag && card_info[i].info == lead) {
       p->info[j++] = (char)lead;
       card_info[i].flag = 0;
@@ -249,32 +230,30 @@ NODEPTR make_straight(NODEPTR node) {
     if (j == 3 && lead < 31) goto found_straight;
   }
   free(p);
-  return (NULL);
+  return NULL;
 found_straight:;
   p->info[j] = 0;
   p->type = STRAIGHT_CARD;
   build_tree(p);
-  return (p);
+  return p;
 }
 
 NODEPTR make_pair(NODEPTR node) {
-  int i, j;
-  int lead;
-  NODEPTR p;
-
   /* Reset the flag */
-  for (i = 0; card_info[i].info; i++) card_info[i].flag = 1;
+  for (int i = 0; card_info[i].info; i++) {
+    card_info[i].flag = 1;
+  }
   mark_card(node);
-  lead = find_lead();
+  int lead = find_lead();
   if (lead == 0) {
     node->end = 1;
-    return (NULL);
+    return NULL;
   }
-  p = maketree(node);
+  NODEPTR p = maketree(node);
 
   /* Get two same cards */
-  j = 0;
-  for (i = 0; card_info[i].info; i++) {
+  int j = 0;
+  for (int i = 0; card_info[i].info; i++) {
     if (card_info[i].flag && card_info[i].info == lead) {
       p->info[j++] = (char)lead;
       card_info[i].flag = 0;
@@ -282,28 +261,27 @@ NODEPTR make_pair(NODEPTR node) {
     if (j == 2) goto found_two;
   }
   free(p);
-  return (NULL);
+  return NULL;
 found_two:;
   p->info[j] = 0;
   p->type = PAIR_CARD;
   build_tree(p);
-  return (p);
+  return p;
 }
 
 /* Find a valid tree and copy it to the array */
 void list_path(NODEPTR p) {
-  int i;
-
-  i = 0;
+  int i = 0;
   while (p->info[i]) {
     card_component[suit][comb_count[suit]].info[count2][i] = p->info[i];
     i++;
   }
   if (p->type == PAIR_CARD) {
-    if (card_component[suit][comb_count[suit]].type >= 3)
+    if (card_component[suit][comb_count[suit]].type >= 3) {
       card_component[suit][comb_count[suit]].type = 4;
-    else
+    } else {
       card_component[suit][comb_count[suit]].type = 3;
+    }
   }
   card_component[suit][comb_count[suit]].info[count2][i] = 0;
   count2++;
@@ -347,8 +325,7 @@ int check_make(int sit, int card,
                int method) /* 0 for general check, 1 for complete check */
 {
   NODEPTR p[6]; /* p[0]=萬 p[1]=筒 p[2]=索 p[3]=風牌 p[4]=三元牌 */
-  int i, j, k, l, len, pair, make, tmp;
-  char msg_buf[80];
+  int i;
 
   /* Copy the pool to buffer */
   for (i = 0; i < pool[sit].num; i++) pool_buf[i] = pool[sit].card[i];
@@ -356,25 +333,25 @@ int check_make(int sit, int card,
   pool_buf[i + 1] = 0;
   /* Sort buffer */
   for (i = 0; i <= pool[sit].num; i++)
-    for (j = 0; j < pool[sit].num - i; j++)
+    for (int j = 0; j < pool[sit].num - i; j++)
       if (pool_buf[j] > pool_buf[j + 1]) {
-        tmp = pool_buf[j];
+        char tmp = pool_buf[j];
         pool_buf[j] = pool_buf[j + 1];
-        pool_buf[j + 1] = (char)tmp;
+        pool_buf[j + 1] = tmp;
       }
   for (i = 0; i < 5; i++) {
-    for (j = 0; j < 20; j++) {
+    for (int j = 0; j < 20; j++) {
       card_component[i][j].type = 0;
-      for (k = 0; k < 10; k++) card_component[i][j].info[k][0] = 0;
+      for (int k = 0; k < 10; k++) card_component[i][j].info[k][0] = 0;
     }
     comb_count[i] = 0;
   }
   /****** Build tree for each suits ******/
   /* j: the pointer of cards */
   /* card_info: each suit of cards */
-  j = 0;
+  int j = 0;
   for (suit = 0; suit < 5; suit++) {
-    k = 0;
+    int k = 0;
     while (pool_buf[j] < suit * 10 + 10 && pool_buf[j] > suit * 10) {
       card_info[k].info = pool_buf[j];
       card_info[k].flag = 1;
@@ -390,8 +367,8 @@ int check_make(int sit, int card,
     free_tree(p[suit]);
   }
 
-  pair = 0;
-  make = 1;
+  int pair = 0;
+  int make = 1;
   for (i = 0; i < 5; i++) /* Check for 5 suits */
   {
     switch (card_component[i][0].type) {
@@ -431,10 +408,9 @@ int valid_type(int type) {
 /* Find the combination of the card with the highest score */
 void full_check(int sit, int make_card) {
   int i, j;
-  int suit_count[6], set1, set2, card, count, score;
-  char msg_buf[80];
+  int suit_count[6], set1, set2, card;
 
-  count = 0;
+  int count = 0;
   for (i = 0; i < 5; i++) {
     card_comb[i].set_count = 0;
     suit_count[i] = 0;
@@ -487,53 +463,52 @@ void full_check(int sit, int make_card) {
 
 /* return the number of the card found */
 int exist_card(int sit, int card) {
-  int i, j, exist = 0;
+  int exist = 0;
 
-  for (i = 0; i <= pool[sit].num; i++) {
+  for (int i = 0; i <= pool[sit].num; i++) {
     if (pool_buf[i] == card) {
       exist++;
     }
   }
-  for (i = 0; i < pool[sit].out_card_index; i++) {
-    j = 1;
+  for (int i = 0; i < pool[sit].out_card_index; i++) {
+    int j = 1;
     while (pool[sit].out_card[i][j]) {
       if (pool[sit].out_card[i][j] == card) exist++;
       j++;
     }
   }
-  return (exist);
+  return exist;
 }
 
 int exist_3(int sit, int card, int comb) {
-  int i, set, exist = 0;
+  int exist = 0;
 
-  set = 0;
+  int set = 0;
   while (card_comb[comb].info[set][0]) {
     if (card_comb[comb].info[set][0] == 2 &&
         card_comb[comb].info[set][1] == card)
       exist++;
     set++;
   }
-  for (i = 0; i < pool[sit].out_card_index; i++) {
+  for (int i = 0; i < pool[sit].out_card_index; i++) {
     if (pool[sit].out_card[i][1] == card && pool[sit].out_card[i][2] == card &&
         pool[sit].out_card[i][3] == card)
       exist++;
   }
-  return (exist);
+  return exist;
 }
 
 int exist_straight(int sit, int card, int comb) {
-  int i, set, exist = 0;
+  int exist = 0;
 
-  set = 0;
+  int set = 0;
   while (card_comb[comb].info[set][0]) {
     if (card_comb[comb].info[set][0] == 1 &&
         card_comb[comb].info[set][1] == card)
       exist++;
     set++;
   }
-  set = 0;
-  for (i = 0; i < pool[sit].out_card_index; i++) {
+  for (int i = 0; i < pool[sit].out_card_index; i++) {
     if (pool[sit].out_card[i][0] == 7 && pool[sit].out_card[i][2] == card)
       exist++;
     if (pool[sit].out_card[i][0] == 8 && pool[sit].out_card[i][1] == card)
@@ -541,13 +516,11 @@ int exist_straight(int sit, int card, int comb) {
     if (pool[sit].out_card[i][0] == 9 && pool[sit].out_card[i][1] == card)
       exist++;
   }
-  return (exist);
+  return exist;
 }
 
 void check_tai(int sit, int comb, int make_card) {
-  int i;
-
-  for (i = 0; i < 100; i++) card_comb[comb].tai_score[i] = 0;
+  for (int i = 0; i < 100; i++) card_comb[comb].tai_score[i] = 0;
   check_tai0(sit, comb);
   check_tai1(sit, comb);
   check_tai2(sit, comb);
@@ -556,7 +529,7 @@ void check_tai(int sit, int comb, int make_card) {
   check_tai5(sit, comb);
   check_tai6(sit, comb);
   check_tai7(sit, comb);
-  check_tai8(sit, comb);
+  // check_tai8(sit, comb);
   check_tai9(sit, comb);
   check_tai10(sit, comb);
   check_tai11(sit, comb);
@@ -572,7 +545,7 @@ void check_tai(int sit, int comb, int make_card) {
   check_tai25(sit, comb);
   check_tai26(sit, comb);
   check_tai27(sit, comb);
-  check_tai30(sit, comb);
+  // check_tai30(sit, comb);
   check_tai31(sit, comb);
   check_tai32(sit, comb);
   check_tai33(sit, comb);
@@ -585,11 +558,11 @@ void check_tai(int sit, int comb, int make_card) {
   check_tai41(sit, comb);
   check_tai42(sit, comb);
   check_tai43(sit, comb);
-  check_tai44(sit, comb);
+  // check_tai44(sit, comb);
   check_tai45(sit, comb, make_card);
   check_tai46(sit, comb);
   check_tai47(sit, comb);
-  check_tai48(sit, comb);
+  // check_tai48(sit, comb);
   check_tai49(sit, comb);
   check_tai50(sit, comb);
   check_tai51(sit, comb);
@@ -623,21 +596,20 @@ void check_tai3(int sit, int comb) {
 
 /* 雙龍抱 */
 void check_tai4(int sit, int comb) {
-  int i;
   int straight[30], double_straight_num = 0;
 
   if (pool[sit].num != 16) /* 必須門清 */
     return;
-  for (i = 0; i < 30; i++) straight[i] = 0;
-  for (i = 0; i < card_comb[comb].set_count; i++) {
+  for (int i = 0; i < 30; i++) straight[i] = 0;
+  for (int i = 0; i < card_comb[comb].set_count; i++) {
     if (card_comb[comb].info[i][0] == 1) straight[card_comb[comb].info[i][1]]++;
   }
-  for (i = 0; i < pool[sit].out_card_index; i++) {
+  for (int i = 0; i < pool[sit].out_card_index; i++) {
     if (pool[sit].out_card[i][0] == 7) straight[pool[sit].out_card[i][2]]++;
     if (pool[sit].out_card[i][0] == 8) straight[pool[sit].out_card[i][1]]++;
     if (pool[sit].out_card[i][0] == 9) straight[pool[sit].out_card[i][1]]++;
   }
-  for (i = 0; i < 30; i++) {
+  for (int i = 0; i < 30; i++) {
     if (straight[i] >= 2) double_straight_num++;
   }
   if (double_straight_num == 1) card_comb[comb].tai_score[4] = tai[4].score;
@@ -660,9 +632,6 @@ void check_tai7(int sit, int comb) {
   if ((144 - card_point) == 16 && sit != card_owner)
     card_comb[comb].tai_score[7] = tai[7].score;
 }
-
-/* 搶杠 */
-void check_tai8(int sit, int comb) {}
 
 /* 東風 */
 void check_tai9(int sit, int comb) {
@@ -738,18 +707,6 @@ void check_tai16(int sit, int comb) {
     card_comb[comb].tai_score[16] += tai[16].score;
 }
 
-/* 東風東 */
-void check_tai17(int sit, int comb) {}
-
-/* 西風西 */
-void check_tai18(int sit, int comb) {}
-
-/* 南風南 */
-void check_tai19(int sit, int comb) {}
-
-/* 北風北 */
-void check_tai20(int sit, int comb) {}
-
 /* 春夏秋冬 */
 void check_tai21(int sit, int comb) {
   if (pool[sit].flower[0] && pool[sit].flower[1] && pool[sit].flower[2] &&
@@ -776,7 +733,7 @@ void check_tai23(int sit, int comb) {
 
 /* 平胡 */
 void check_tai24(int sit, int comb, int make_card) {
-  int i, j;
+  int i;
 
   /* 花牌 */
   for (i = 0; i < 8; i++)
@@ -852,9 +809,9 @@ fail25:;
 
 /* 三色同順 */
 void check_tai26(int sit, int comb) {
-  int i, num;
+  int num;
 
-  for (i = 0; i < card_comb[comb].set_count; i++) {
+  for (int i = 0; i < card_comb[comb].set_count; i++) {
     if (card_comb[comb].info[i][0] == 1) {
       num = card_comb[comb].info[i][1] % 10;
       if (exist_straight(sit, num, comb) &&
@@ -865,7 +822,7 @@ void check_tai26(int sit, int comb) {
       }
     }
   }
-  for (i = 0; i < pool[sit].out_card_index; i++) {
+  for (int i = 0; i < pool[sit].out_card_index; i++) {
     if (pool[sit].out_card[i][0] >= 7 && pool[sit].out_card[i][0] <= 9) {
       if (pool[sit].out_card[i][0] == 7)
         num = pool[sit].out_card[i][2] % 10;
@@ -886,8 +843,6 @@ finish26:;
 
 /* 一條龍 */
 void check_tai27(int sit, int comb) {
-  int i;
-
   if (exist_straight(sit, 1, comb) && exist_straight(sit, 4, comb) &&
       exist_straight(sit, 7, comb))
     card_comb[comb].tai_score[27] = tai[27].score;
@@ -901,20 +856,11 @@ void check_tai27(int sit, int comb) {
     card_comb[comb].tai_score[27] -= 1;
 }
 
-/* 雙雙龍抱 */
-void check_tai28(int sit, int comb) {}
-
-/* 三暗刻 */
-void check_tai29(int sit, int comb) {}
-
-/* 三杠子 */
-void check_tai30(int sit, int comb) {}
-
 /* 三色同刻 */
 void check_tai31(int sit, int comb) {
-  int i, num;
+  int num;
 
-  for (i = 0; i < card_comb[comb].set_count; i++) {
+  for (int i = 0; i < card_comb[comb].set_count; i++) {
     if (card_comb[comb].info[i][0] == 2) {
       num = card_comb[comb].info[i][1] % 10;
       if (exist_3(sit, num, comb) && exist_3(sit, num + 10, comb) &&
@@ -924,7 +870,7 @@ void check_tai31(int sit, int comb) {
       }
     }
   }
-  for (i = 0; i < pool[sit].out_card_index; i++) {
+  for (int i = 0; i < pool[sit].out_card_index; i++) {
     if (pool[sit].out_card[i][1] == pool[sit].out_card[i][2] &&
         pool[sit].out_card[i][1] == pool[sit].out_card[i][3]) {
       num = pool[sit].out_card[i][1] % 10;
@@ -949,12 +895,10 @@ void check_tai32(int sit, int comb) {
 
 /* 碰碰胡 */
 void check_tai33(int sit, int comb) {
-  int i;
-
-  for (i = 0; i < card_comb[comb].set_count; i++) {
+  for (int i = 0; i < card_comb[comb].set_count; i++) {
     if (card_comb[comb].info[i][0] == 1) goto fail33;
   }
-  for (i = 0; i < pool[sit].out_card_index; i++) {
+  for (int i = 0; i < pool[sit].out_card_index; i++) {
     if (pool[sit].out_card[i][1] != pool[sit].out_card[i][2]) {
       goto fail33;
     }
@@ -965,7 +909,7 @@ fail33:;
 
 /* 混一色 */
 void check_tai34(int sit, int comb) {
-  int i, j, kind;
+  int i, kind;
 
   card_comb[comb].tai_score[34] = tai[34].score;
   for (i = 0; i <= pool[sit].num; i++) {
@@ -996,7 +940,7 @@ fail34:;
 
 /* 純帶麼 */
 void check_tai35(int sit, int comb) {
-  int i;
+  int i, exist19 = 0;
 
   for (i = 0; i < card_comb[comb].set_count; i++) {
     if (card_comb[comb].info[i][1] > 30) goto fail35;
@@ -1029,7 +973,7 @@ fail35:;
 
 /* 混老頭 */
 void check_tai36(int sit, int comb) {
-  int i, j, exist19 = 0;
+  int i, exist19 = 0;
 
   for (i = 0; i <= pool[sit].num; i++) {
     if (pool_buf[i] < 30) {
@@ -1073,14 +1017,11 @@ void check_tai37(int sit, int comb) {
   }
 }
 
-/* 四暗刻 */
-void check_tai38(int sit, int comb) {}
-
 /* 四杠子 */
 void check_tai39(int sit, int comb) {
-  int i, kang_count = 0;
+  int kang_count = 0;
 
-  for (i = 0; i < pool[sit].out_card_index; i++) {
+  for (int i = 0; i < pool[sit].out_card_index; i++) {
     if (pool[sit].out_card[i][0] == 3 || pool[sit].out_card[i][0] == 11 ||
         pool[sit].out_card[i][0] == 12)
       kang_count++;
@@ -1119,7 +1060,7 @@ void check_tai41(int sit, int comb) {
 
 /* 清一色 */
 void check_tai42(int sit, int comb) {
-  int i, j, kind;
+  int i, kind;
 
   card_comb[comb].tai_score[42] = tai[42].score;
   kind = pool_buf[0] / 10;
@@ -1154,11 +1095,13 @@ void check_tai43(int sit, int comb) {
   }
   for (i = 0; i < pool[sit].out_card_index; i++) {
     j = 1;
-    while (pool[sit].out_card[j][1]) {
-      if (!(pool[sit].out_card[j][1] <= 34 && pool[sit].out_card[j][1] >= 31) &&
-          !(pool[sit].out_card[j][1] <= 43 && pool[sit].out_card[j][1] >= 41)) {
+    while (pool[sit].out_card[i][j]) {
+      if (!(pool[sit].out_card[i][j] <= 34 && pool[sit].out_card[i][j] >= 31) &&
+          !(pool[sit].out_card[i][j] <= 43 &&
+            pool[sit].out_card[i][j] >= 41)) {
         goto fail43;
       }
+      j++;
     }
   }
   card_comb[comb].tai_score[43] = tai[43].score;
@@ -1166,20 +1109,16 @@ void check_tai43(int sit, int comb) {
 fail43:;
 }
 
-/* 七搶一 */
-void check_tai44(int sit, int comb) {}
-
 /* 五暗刻 */
 void check_tai45(int sit, int comb, int make_card) {
-  int i, three_card = 0;
-  char msg_buf[80];
+  int three_card = 0;
 
-  for (i = 0; i < card_comb[comb].set_count; i++) {
+  for (int i = 0; i < card_comb[comb].set_count; i++) {
     if (card_comb[comb].info[i][0] == 2)
       if (card_comb[comb].info[i][1] != make_card || sit == card_owner)
         three_card++; /* 自摸可算暗刻 */
   }
-  for (i = 0; i < pool[sit].out_card_index; i++)
+  for (int i = 0; i < pool[sit].out_card_index; i++)
     if (pool[sit].out_card[i][0] == 11) three_card++;
   if (three_card == 3) card_comb[comb].tai_score[29] = tai[29].score;
   if (three_card == 4) card_comb[comb].tai_score[38] = tai[38].score;
@@ -1191,10 +1130,10 @@ void check_tai45(int sit, int comb, int make_card) {
 
 /* 清老頭 */
 void check_tai46(int sit, int comb) {
-  int i, j;
+  int i;
 
   for (i = 0; i <= pool[sit].num; i++) {
-    if (pool_buf[i] % 10 != 1 && pool_buf[i] % 10 != 9 || pool_buf[i] > 30) {
+    if ((pool_buf[i] % 10 != 1 && pool_buf[i] % 10 != 9) || pool_buf[i] > 30) {
       goto fail46;
     }
   }
@@ -1234,12 +1173,8 @@ void check_tai47(int sit, int comb) {
   }
 }
 
-/* 八仙過海 */
-void check_tai48(int sit, int comb) {}
-
 /* 天胡 */
 void check_tai49(int sit, int comb) {
-  char msg_buf[80];
   if (pool[sit].first_round && sit == info.dealer)
     card_comb[comb].tai_score[49] = tai[49].score;
 }

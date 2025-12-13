@@ -1,6 +1,9 @@
+#include "input.h"
+
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,62 +13,93 @@
 
 #include "mjdef.h"
 
-#ifdef NON_WINDOWS  // Linux
-#include "curses.h"
-#else  // Cygwin
-#include "ncurses/ncurses.h"
-#endif
+#include <cjson/cJSON.h>
 
 #include "misc.h"
+#include "protocol.h"
+#include "protocol_def.h"
 #include "qkmj.h"
 
 int my_getch();
 
 void action_throw_card(int index) {
-  char msg_buf[255];
-  int i, j;
-
   play_mode = WAIT_CARD;
   in_kang = 0;
   pool[my_sit].first_round = 0;
+
   if (in_join) {
-    snprintf(msg_buf, sizeof(msg_buf), "401%c",
-             pool[my_sit].card[index]);
-    write_msg(table_sockfd, msg_buf);
+    /* 401 MSG_THROW_CARD */
+    cJSON* payload = cJSON_CreateObject();
+    cJSON_AddNumberToObject(payload, "card", pool[my_sit].card[index]);
+    send_json(table_sockfd, MSG_THROW_CARD, payload);
+
     current_id = my_id;
     current_card = pool[my_sit].card[index];
-  } else if (in_serv) /* need not to check card for itself */
-  {
+  } else if (in_serv) {
+    /* need not to check card for itself */
     pool[my_sit].time += thinktime();
     display_time(my_sit);
-    snprintf(msg_buf, sizeof(msg_buf), "312%c%f", my_sit,
-             pool[my_sit].time);
-    broadcast_msg(1, msg_buf);
-    snprintf(msg_buf, sizeof(msg_buf), "314%c%c", my_sit, 3);
-    broadcast_msg(1, msg_buf);
-    snprintf(msg_buf, sizeof(msg_buf), "402%c%c", 1,
-             pool[my_sit].card[index]);
-    broadcast_msg(1, msg_buf);
+
+    /* 312 MSG_TIME */
+    cJSON* payload = cJSON_CreateObject();
+    cJSON_AddNumberToObject(payload, "sit", my_sit);
+    cJSON_AddNumberToObject(payload, "time", pool[my_sit].time);
+    for (int i = 2; i < MAX_PLAYER; i++) {
+      if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_TIME, cJSON_Duplicate(payload, 1));
+      }
+    }
+    cJSON_Delete(payload);
+
+    /* 314 MSG_SHOW_NEW_CARD */
+    payload = cJSON_CreateObject();
+    cJSON_AddNumberToObject(payload, "sit", my_sit);
+    cJSON_AddNumberToObject(payload, "mode", 3);
+    for (int i = 2; i < MAX_PLAYER; i++) {
+      if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_SHOW_NEW_CARD,
+                  cJSON_Duplicate(payload, 1));
+      }
+    }
+    cJSON_Delete(payload);
+
+    /* 402 MSG_CARD_THROWN */
+    payload = cJSON_CreateObject();
+    cJSON_AddNumberToObject(payload, "user_id", 1); /* 1 is me (server) */
+    cJSON_AddNumberToObject(payload, "card", pool[my_sit].card[index]);
+    for (int i = 2; i < MAX_PLAYER; i++) {
+      if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_CARD_THROWN,
+                  cJSON_Duplicate(payload, 1));
+      }
+    }
+    cJSON_Delete(payload);
+
     current_card = pool[my_sit].card[index];
-    for (i = 1; i <= 4; i++) {
-      if (table[i] > 1) /* clients */
-      {
+    for (int i = 1; i <= 4; i++) {
+      if (table[i] > 1) { /* clients */
         check_card(i, current_card);
       }
     }
-    for (i = 1; i <= 4; i++) {
-      if (table[i] > 1)
-        for (j = 1; j < check_number; j++) {
+    for (int i = 1; i <= 4; i++) {
+      if (table[i] > 1) {
+        for (int j = 1; j < check_number; j++) {
           if (check_flag[i][j]) {
-            snprintf(msg_buf, sizeof(msg_buf), "501%c%c%c%c",
-                     check_flag[i][1] + '0', check_flag[i][2] + '0',
-                     check_flag[i][3] + '0', check_flag[i][4] + '0');
-            write_msg(player[table[i]].sockfd, msg_buf);
+            /* 501 MSG_CHECK_CARD */
+            payload = cJSON_CreateObject();
+            cJSON_AddNumberToObject(payload, "eat", check_flag[i][1]);
+            cJSON_AddNumberToObject(payload, "pong", check_flag[i][2]);
+            cJSON_AddNumberToObject(payload, "kang", check_flag[i][3]);
+            cJSON_AddNumberToObject(payload, "win", check_flag[i][4]);
+            send_json(player[table[i]].sockfd, MSG_CHECK_CARD, payload);
+
             in_check[i] = 1;
             break;
-          } else
+          } else {
             in_check[i] = 0;
+          }
         }
+      }
     }
     in_check[1] = 0;
     check_on = 1;
@@ -76,8 +110,7 @@ void action_throw_card(int index) {
   }
   throw_card(pool[my_sit].card[index]);
   show_cardmsg(my_sit, pool[my_sit].card[index]);
-  pool[my_sit].card[index] =
-      pool[my_sit].card[pool[my_sit].num];
+  pool[my_sit].card[index] = pool[my_sit].card[pool[my_sit].num];
   current_item = pool[my_sit].num;
   pos_x = INDEX_X + 16 * 2 + 1;
   play_mode = WAIT_CARD;
@@ -88,49 +121,78 @@ void action_throw_card(int index) {
 }
 
 void action_draw_card() {
-  int card, i;
-  char msg_buf[255];
-
+  int card;
   play_mode = WAIT_CARD;
   if (in_join) {
-    write_msg(table_sockfd, "313");
+    /* 313 MSG_REQUEST_CARD */
+    send_json(table_sockfd, MSG_REQUEST_CARD, NULL);
   } else {
     card = mj[card_point++];
     current_card = card;
     show_num(2, 70, 144 - card_point - 16, 2);
     /* change turn */
     card_owner = my_sit;
-    snprintf(msg_buf, sizeof(msg_buf), "305%c", (char)my_sit);
-    broadcast_msg(1, msg_buf);
+
+    /* 305 MSG_CARD_OWNER */
+    cJSON* payload = cJSON_CreateObject();
+    cJSON_AddNumberToObject(payload, "sit", my_sit);
+    for (int i = 2; i < MAX_PLAYER; i++) {
+      if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_CARD_OWNER,
+                  cJSON_Duplicate(payload, 1));
+      }
+    }
+    cJSON_Delete(payload);
+
     /* show new cardback */
-    snprintf(msg_buf, sizeof(msg_buf), "314%c%c", my_sit, 2);
-    broadcast_msg(1, msg_buf);
+    /* 314 MSG_SHOW_NEW_CARD */
+    payload = cJSON_CreateObject();
+    cJSON_AddNumberToObject(payload, "sit", my_sit);
+    cJSON_AddNumberToObject(payload, "mode", 2);
+    for (int i = 2; i < MAX_PLAYER; i++) {
+      if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_SHOW_NEW_CARD,
+                  cJSON_Duplicate(payload, 1));
+      }
+    }
+    cJSON_Delete(payload);
+
     /* change card number */
-    snprintf(msg_buf, sizeof(msg_buf), "306%c", card_point);
-    broadcast_msg(1, msg_buf);
+    /* 306 MSG_CARD_POINT */
+    payload = cJSON_CreateObject();
+    cJSON_AddNumberToObject(payload, "count", card_point);
+    for (int i = 2; i < MAX_PLAYER; i++) {
+      if (player[i].in_table && i != 1) {
+        send_json(player[i].sockfd, MSG_CARD_POINT,
+                  cJSON_Duplicate(payload, 1));
+      }
+    }
+    cJSON_Delete(payload);
+
     /* get the card */
     process_new_card(my_sit, card);
     clear_check_flag(my_sit);
     check_flag[my_sit][3] = check_kang(my_sit, card);
     check_flag[my_sit][4] = check_make(my_sit, card, 0);
     in_check[1] = 0;
-    for (i = 1; i < check_number; i++)
+    for (int i = 1; i < check_number; i++) {
       if (check_flag[my_sit][i]) {
         getting_card = 1;
         init_check_mode();
         in_check[1] = 1;
         check_on = 1;
       }
+    }
     gettimeofday(&before, (struct timezone*)0);
   }
 }
 
 void process_key() {
-  int i, j, key;
-  static int m, n, current_eat;
+  int key;
+  static int m, current_eat;
   static int eat_pool[5];
   char msg_buf[255];
-  char card, card1;
+  char card;
 
   while (Check_for_data(0)) {
     key = my_getch();
@@ -140,7 +202,8 @@ void process_key() {
         if (play_mode == THROW_CARD) {
           current_item = key - 'a';
           return_cursor();
-          goto quick_throw;
+          action_throw_card(current_item);
+          continue;
         }
       }
       switch (key) {
@@ -195,7 +258,6 @@ void process_key() {
             action_draw_card();
             break;
           } else if (play_mode == THROW_CARD) {
-          quick_throw:;
             action_throw_card(current_item);
             break;
           } else
@@ -240,7 +302,7 @@ void process_key() {
         case SPACE:
         quick_choose:;
           if (current_check && !check_flag[my_sit][current_check]) break;
-          for (i = 0; i < check_number; i++) {
+          for (int i = 0; i < check_number; i++) {
             wmvaddstr(stdscr, org_check_y + 1, org_check_x + i * 3, "  ");
             wrefresh(stdscr);
             wmvaddstr(stdscr, org_check_y + 1, org_check_x + i * 3,
@@ -276,10 +338,11 @@ void process_key() {
               wmvaddstr(stdscr, 15, 58, "┌───────┐");
               wmvaddstr(stdscr, 16, 58, "│              │");
               wmvaddstr(stdscr, 17, 58, "└───────┘");
-              for (i = 0; i < m; i++) {
+              for (int i = 0; i < m; i++) {
                 if (eat_pool[i]) {
-                  snprintf(msg_buf, sizeof(msg_buf), "%d%d%d", eat_pool[i] % 10,
-                           eat_pool[i] % 10 + 1, eat_pool[i] % 10 + 2);
+                  snprintf(msg_buf, sizeof(msg_buf), "%d%d%d",
+                           eat_pool[i] % 10, eat_pool[i] % 10 + 1,
+                           eat_pool[i] % 10 + 2);
                   wmvaddstr(stdscr, org_eat_y, org_eat_x + i * 4, msg_buf);
                 }
               }
@@ -288,7 +351,7 @@ void process_key() {
               eat_y = org_eat_y;
               return_cursor();
             } else {
-              i = current_card - eat_pool[m - 1] + 7;
+              int i = current_card - eat_pool[m - 1] + 7;
               write_check(i);
               input_mode = PLAY_MODE;
               return_cursor();
@@ -305,7 +368,7 @@ void process_key() {
     }
     /* --------- CHOOSE_EAT  ------------ */
     else if (input_mode == EAT_MODE) {
-      for (i = 0; i < m; i++) {
+      for (int i = 0; i < m; i++) {
         if (key == '0' + eat_pool[i] % 10) {
           current_eat = i;
           goto quick_eat;
@@ -339,7 +402,7 @@ void process_key() {
         case SPACE:
         quick_eat:;
           input_mode = PLAY_MODE;
-          i = current_card - eat_pool[current_eat] + 7;
+          int i = current_card - eat_pool[current_eat] + 7;
           write_check(i);
           show_cardmsg(0, 0);
           break;
@@ -377,9 +440,8 @@ void process_key() {
           break;
         case CTRL_N:
         case KEY_DOWN:
-          if (h_point == h_tail)
-            break;
-werase(inputwin);
+          if (h_point == h_tail) break;
+          werase(inputwin);
           mvwaddstr(inputwin, 0, 0, history[h_point]);
           wrefresh(inputwin);
           strncpy(talk_buf, history[h_point], sizeof(talk_buf) - 1);
@@ -405,7 +467,7 @@ werase(inputwin);
         case KEY_BACKSPACE: /* ncurses */
           if (talk_x == 0) break;
           talk_x--;
-          for (i = talk_x; i < talk_buf_count; i++)
+          for (int i = talk_x; i < talk_buf_count; i++)
             talk_buf[i] = talk_buf[i + 1];
           talk_buf[talk_buf_count--] = '\0';
           strncpy(history[h_tail], talk_buf, sizeof(history[h_tail]) - 1);
@@ -467,7 +529,7 @@ werase(inputwin);
               talk_buf[++talk_buf_count] = '\0';
             else
               talk_buf[talk_buf_count - 1] = '\0';
-            for (i = talk_buf_count; i > talk_x; i--)
+            for (int i = talk_buf_count; i > talk_x; i--)
               talk_buf[i] = talk_buf[i - 1];
             talk_buf[talk_x] = (char)key;
             mvprintstr(inputwin, talk_y, talk_x, (char*)talk_buf + talk_x);
@@ -478,9 +540,6 @@ werase(inputwin);
           history[h_tail][sizeof(history[h_tail]) - 1] = '\0';
           break;
       }
-    /*
-        }
-    */
   }
 }
 

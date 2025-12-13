@@ -2,6 +2,7 @@
 #define QKMJ_H
 
 #include <netinet/in.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -21,7 +22,9 @@
 #error "No curses header found"
 #endif
 
+#include "misc.h"
 #include "mjdef.h"
+#include "protocol.h"
 
 /* Global Variables */
 extern char menu_item[25][10];
@@ -170,13 +173,11 @@ extern char table_card[6][17];
 /* Function Prototypes */
 
 /* qkmj.c */
-void write_msg(int fd, char* msg);
 void show_card(int card, int x, int y, int color);
 void show_cardmsg(int sit, int card);
 void return_cursor();
 int check_flower(int sit, int card);
 void show_num(int x, int y, int num, int color);
-void broadcast_msg(int player_id, char* msg);
 void show_newcard(int sit, int type);
 void clear_check_flag(int sit);
 int check_kang(int sit, int card);
@@ -196,12 +197,10 @@ int init_socket(char* host, int port, int* sockfd);
 void init_global_screen();
 void get_my_info();
 void ask_question(char* prompt, char* ans, int len, int mode);
-int read_msg_id(int fd, char* msg);
 void close_join();
 void close_serv();
-void process_msg(int player_id, unsigned char* id_buf, int msg_type);
+void process_msg(int player_id, int msg_id, cJSON *data, int msg_type);
 void accept_new_client();
-int read_msg(int fd, char* msg);
 void close_client(int player_id);
 void compare_check();
 void show_allcard(int sit);
@@ -266,7 +265,7 @@ void command_parser(char* msg);
 
 /* check.c */
 int search_card(int sit, int card);
-int check_eat(int sit, int card);
+bool check_eat(int sit, int card);
 void check_card(int sit, int card);
 void write_check(int check);
 int check_pong(int sit, int card);

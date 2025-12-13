@@ -5,6 +5,8 @@
 #include <time.h>
 #include <curl/curl.h>
 #include "qkmj.h"
+#include "protocol.h"
+#include "protocol_def.h"
 
 static int ai_enabled = 0;
 static int ai_debug_enabled = 0;
@@ -34,19 +36,35 @@ static void ai_send_log_to_server(const char* type, cJSON* req, cJSON* resp, con
     if (resp) cJSON_AddItemToObject(log, "response", cJSON_Duplicate(resp, 1));
     if (err) cJSON_AddStringToObject(log, "error", err);
 
-    char *log_str = cJSON_PrintUnformatted(log);
-    if (log_str) {
-        size_t len = strlen(log_str);
-        char *msg_buf = (char*)malloc(len + 4);
-        if (msg_buf) {
-            sprintf(msg_buf, "901%s", log_str);
-            // write_msg is extern from qkmj.h
-            write_msg(gps_sockfd, msg_buf);
-            free(msg_buf);
-        }
-        free(log_str);
-    }
-    cJSON_Delete(log);
+    /* Use send_json to send message ID 901 (AI Log) */
+    send_json(gps_sockfd, 901, log); 
+    
+    /* send_json consumes the object? No, checking protocol.c:
+       cJSON_AddItemToObject(root, "data", data);
+       send_json TAKES OWNERSHIP of 'data' because it adds it to 'root' and then deletes 'root'.
+       Wait, let's double check protocol.c implementation I read earlier.
+    */
+    /* protocol.c:
+       int send_json(int fd, int msg_id, cJSON *data) {
+           cJSON *root = cJSON_CreateObject();
+           // ...
+           if (data) {
+               cJSON_AddItemToObject(root, "data", data);
+           }
+           // ...
+           cJSON_Delete(root);
+           return 1;
+       }
+       cJSON_AddItemToObject transfers ownership.
+       When root is deleted, data is deleted.
+       So we DO NOT need to cJSON_Delete(log) here if send_json is called.
+       BUT, if send_json returns 0 (failure) early?
+       protocol.c:
+       if (!root) { if (data) cJSON_Delete(data); return 0; }
+       ...
+       cJSON_Delete(root); // Deletes data
+       So yes, send_json takes ownership.
+    */
 }
 
 static size_t write_callback(void *data, size_t size, size_t nmemb, void *userp) {

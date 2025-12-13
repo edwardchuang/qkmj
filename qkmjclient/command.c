@@ -11,14 +11,13 @@
 
 #include "mjdef.h"
 
-#ifdef NON_WINDOWS  // Linux
-#include "curses.h"
-#else  // Cygwin
-#include "ncurses/ncurses.h"
-#endif
+#include <cjson/cJSON.h>
 
-#include "qkmj.h"
 #include "ai_client.h"
+#include "misc.h"
+#include "protocol.h"
+#include "protocol_def.h"
+#include "qkmj.h"
 
 #define TABLE 1
 #define LIST 2
@@ -71,12 +70,10 @@ char commands[100][10] = {
     "S",    "L",     "T",      "Q",      "AI"};
 
 void Tokenize(char* strinput) {
-  int k1, klast, Ltok, k1old;
+  int Ltok;
   char* token;
   char str[255];
   narg = 1;
-  strcpy(str, strinput);  // str is 255
-  // If strinput > 255, buffer overflow.
   strncpy(str, strinput, sizeof(str) - 1);
   str[sizeof(str) - 1] = '\0';
   token = strtok(str, " \n\t\r");
@@ -100,32 +97,32 @@ void Tokenize(char* strinput) {
 }
 
 void my_strupr(char* upper, char* org) {
-  int i, len;
-  len = (int)strlen(org);
-  for (i = 0; i < len; i++) upper[i] = (char)toupper(org[i]);
+  int len = (int)strlen(org);
+  for (int i = 0; i < len; i++) {
+    upper[i] = (char)toupper(org[i]);
+  }
   upper[len] = '\0';
 }
 
 int command_mapper(char* cmd) {
   char cmd_upper[255];
-  int i;
-
   my_strupr(cmd_upper, cmd);
-  i = 1;
+  int i = 1;
   while (commands[i][0] != '\0') {
     if (strcmp(cmd_upper, commands[i]) == 0) return (i);
     i++;
   }
-  return (0);
+  return 0;
 }
 
 void who(char* name) {
   char msg_buf[255];
-  int i;
+  cJSON* payload;
 
   if (name[0] != 0) {
-    snprintf(msg_buf, sizeof(msg_buf), "006%s", name);
-    write_msg(gps_sockfd, msg_buf);
+    payload = cJSON_CreateObject();
+    cJSON_AddStringToObject(payload, "table_leader", name);
+    send_json(gps_sockfd, MSG_WHO_IN_TABLE, payload);
     return;
   }
   if (!in_join && !in_serv) {
@@ -134,7 +131,7 @@ void who(char* name) {
   }
   display_comment("----------------   此桌使用者   ------------------");
   msg_buf[0] = 0;
-  for (i = 1; i < MAX_PLAYER; i++) {
+  for (int i = 1; i < MAX_PLAYER; i++) {
     if (strlen(msg_buf) > 49) {
       display_comment(msg_buf);
       msg_buf[0] = 0;
@@ -172,13 +169,11 @@ void help() {
 }
 
 void command_parser(char* msg) {
-  int i;
   int cmd_id;
-  char sit;
-  char table_upper[255];
   char msg_buf[255];
   char ans_buf[255];
   char ans_buf1[255];
+  cJSON* payload;
 
   if (msg[0] == '/') {
     Tokenize(msg + 1);
@@ -189,15 +184,15 @@ void command_parser(char* msg) {
         break;
       case TABLE:
       case S_TABLE:
-        write_msg(gps_sockfd, "003");
+        send_json(gps_sockfd, MSG_LIST_TABLES, NULL);
         break;
       case FREE:
-        write_msg(gps_sockfd, "013");
+        send_json(gps_sockfd, MSG_LIST_TABLES_FREE, NULL);
         break;
       case LIST:
       case PLAYER:
       case S_PLAYER:
-        write_msg(gps_sockfd, "002");
+        send_json(gps_sockfd, MSG_LIST_PLAYERS, NULL);
         break;
       case JOIN:
       case S_JOIN:
@@ -212,17 +207,17 @@ void command_parser(char* msg) {
         clear_variable();
         if (in_join) {
           close_join();
-          write_msg(gps_sockfd, "205");
+          send_json(gps_sockfd, MSG_LEAVE_TABLE_GPS, NULL);
           init_global_screen();
         }
         if (in_serv) {
           close_serv();
-          write_msg(gps_sockfd, "205");
+          send_json(gps_sockfd, MSG_LEAVE_TABLE_GPS, NULL);
           init_global_screen();
         }
-        snprintf(msg_buf, sizeof(msg_buf), "011%s", (char*)cmd_argv[2]);
-        write_msg(gps_sockfd, msg_buf);
-        /* Now wait for GPS's answer */
+        payload = cJSON_CreateObject();
+        cJSON_AddStringToObject(payload, "table_leader", (char*)cmd_argv[2]);
+        send_json(gps_sockfd, MSG_JOIN_TABLE, payload);
         break;
       case SERV:
       case S_SERV:
@@ -235,20 +230,17 @@ void command_parser(char* msg) {
           break;
         }
         clear_variable();
-        if (in_join)  // TODO: 確認這裡應該是不會跑到的程式碼吧？
-        {
+        if (in_join) {
           close_join();
-          write_msg(gps_sockfd, "205");
+          send_json(gps_sockfd, MSG_LEAVE_TABLE_GPS, NULL);
           init_global_screen();
         }
-        if (in_serv)  // TODO: 確認這裡應該是不會跑到的程式碼吧？
-        {
+        if (in_serv) {
           close_serv();
-          write_msg(gps_sockfd, "205");
+          send_json(gps_sockfd, MSG_LEAVE_TABLE_GPS, NULL);
           init_global_screen();
         }
-        write_msg(gps_sockfd,
-                  "014");  // 檢查開桌條件，將開桌的部份另外放到 message 去執行
+        send_json(gps_sockfd, MSG_CHECK_OPEN, NULL);
         break;
       case QUIT:
       case S_QUIT:
@@ -256,11 +248,6 @@ void command_parser(char* msg) {
         leave();
         break;
       case SHOW:
-        /*
-                sprintf(msg_buf,"%%d",pool[cmd_argv[2][0]-'0'].card[atoi(cmd_argv[3])]);
-               display_comment(msg_buf);
-        show_allcard(cmd_argv[2][0]-'0');
-        */
         break;
       case WHO:
       case S_WHO:
@@ -269,17 +256,23 @@ void command_parser(char* msg) {
         else
           who("");
         break;
-      case NUM:
-        i = cmd_argv[2][0] - '0';
+      case NUM: {
+        int i = cmd_argv[2][0] - '0';
         if (i >= 1 && i <= 4) PLAYER_NUM = i;
         break;
+      }
       case NEW:
         if (in_serv) {
-          broadcast_msg(1, "290");
+          /* Broadcast NEW ROUND */
+          for (int i = 2; i < MAX_PLAYER; i++) {
+            if (player[i].in_table && i != 1) { /* 1 is server (me) */
+              send_json(player[i].sockfd, MSG_NEW_ROUND, NULL);
+            }
+          }
           opening();
           open_deal();
         } else {
-          write_msg(table_sockfd, "290");
+          send_json(table_sockfd, MSG_NEW_ROUND, NULL);
           opening();
         }
         break;
@@ -288,18 +281,18 @@ void command_parser(char* msg) {
         if (in_join) {
           in_join = 0;
           close_join();
-          write_msg(gps_sockfd, "205");
+          send_json(gps_sockfd, MSG_LEAVE_TABLE_GPS, NULL);
           init_global_screen();
-          write_msg(gps_sockfd, "201");  // 更新一下目前線上人數跟內容
+          send_json(gps_sockfd, MSG_STATUS, NULL);
           display_comment("您已離開牌桌");
           display_comment("-------------------");
         }
         if (in_serv) {
           in_serv = 0;
           close_serv();
-          write_msg(gps_sockfd, "205");
+          send_json(gps_sockfd, MSG_LEAVE_TABLE_GPS, NULL);
           init_global_screen();
-          write_msg(gps_sockfd, "201");  // 更新一下目前線上人數跟內容
+          send_json(gps_sockfd, MSG_STATUS, NULL);
           display_comment("您已關閉牌桌");
           display_comment("-------------------");
         }
@@ -310,26 +303,30 @@ void command_parser(char* msg) {
         help();
         break;
       case NOTE:
-        snprintf(msg_buf, sizeof(msg_buf), "004%s", msg + 6);
-        write_msg(gps_sockfd, msg_buf);
+        payload = cJSON_CreateObject();
+        cJSON_AddStringToObject(payload, "note", msg + 6);
+        send_json(gps_sockfd, MSG_SET_NOTE, payload);
         break;
       case STAT:  // /STAT
         if (narg < 2)
           strncpy((char*)cmd_argv[2], (char*)my_name, sizeof(cmd_argv[2]) - 1);
         cmd_argv[2][sizeof(cmd_argv[2]) - 1] = '\0';
-        snprintf(msg_buf, sizeof(msg_buf), "005%s", cmd_argv[2]);
-        write_msg(gps_sockfd, msg_buf);
+
+        payload = cJSON_CreateObject();
+        cJSON_AddStringToObject(payload, "name", (char*)cmd_argv[2]);
+        send_json(gps_sockfd, MSG_USER_INFO, payload);
         break;
       case LOGIN:
         break;
       case BROADCAST:
-        snprintf(msg_buf, sizeof(msg_buf), "007%s", msg + 11);
-        write_msg(gps_sockfd, msg_buf);
+        payload = cJSON_CreateObject();
+        cJSON_AddStringToObject(payload, "msg", msg + 11);
+        send_json(gps_sockfd, MSG_BROADCAST, payload);
         break;
       case MSG:
         if (narg <= 2) break;
         if (in_join || in_serv) {
-          for (i = 1; i <= 4; i++) {
+          for (int i = 1; i <= 4; i++) {
             if (table[i] &&
                 strcmp((char*)cmd_argv[2], player[table[i]].name) == 0) {
               snprintf(msg_buf, sizeof(msg_buf), "%s",
@@ -339,8 +336,18 @@ void command_parser(char* msg) {
             }
           }
         }
-        snprintf(msg_buf, sizeof(msg_buf), "009%s", msg + 5);
-        write_msg(gps_sockfd, msg_buf);
+        payload = cJSON_CreateObject();
+        cJSON_AddStringToObject(payload, "to", (char*)cmd_argv[2]);
+        cJSON_AddStringToObject(payload, "msg", msg + 5);
+        {
+          char* p = msg + 5;
+          while (*p && *p != ' ') p++;
+          if (*p == ' ') p++; /* Skip space */
+          /* p now points to message part */
+          cJSON_ReplaceItemInObject(payload, "msg", cJSON_CreateString(p));
+        }
+        send_json(gps_sockfd, MSG_SEND_MESSAGE, payload);
+
         snprintf(msg_buf, sizeof(msg_buf), "-> *%s* %s", (char*)cmd_argv[2],
                  msg + 5 + strlen((char*)cmd_argv[2]) + 1);
         msg_buf[talk_right] = 0;
@@ -348,31 +355,21 @@ void command_parser(char* msg) {
       finish_msg:;
         break;
       case SHUTDOWN:
-        write_msg(gps_sockfd, "500");
+        send_json(gps_sockfd, MSG_SHUTDOWN, NULL);
         break;
       case LURKER:
-        write_msg(gps_sockfd, "010");
+        send_json(gps_sockfd, MSG_LURKER_LIST, NULL);
         break;
       case FIND:
         if (narg < 2) {
           display_comment("你要找誰呢?");
           break;
         }
-        snprintf(msg_buf, sizeof(msg_buf), "021%s", cmd_argv[2]);
-        write_msg(gps_sockfd, msg_buf);
+        payload = cJSON_CreateObject();
+        cJSON_AddStringToObject(payload, "name", (char*)cmd_argv[2]);
+        send_json(gps_sockfd, MSG_FIND_USER, payload);
         break;
       case EXEC:
-        /*if(!enable_exec)
-          break;
-        nl();
-        echo();
-        nocbreak();
-        system(msg+6);
-        cbreak();
-        nonl();
-        noecho();
-        wait_a_key("");
-        redraw_screen();*/
         break;
       case BEEP:
         if (narg < 2) {
@@ -406,8 +403,10 @@ void command_parser(char* msg) {
         ans_buf[8] = 0;
         ans_buf1[8] = 0;
         if (strcmp(ans_buf, ans_buf1) == 0) {
-          snprintf(msg_buf, sizeof(msg_buf), "104%s", ans_buf);
-          write_msg(gps_sockfd, msg_buf);
+          payload = cJSON_CreateObject();
+          cJSON_AddStringToObject(payload, "new_password", ans_buf);
+          send_json(gps_sockfd, MSG_CHANGE_PASSWORD, payload);
+
           strncpy((char*)my_pass, ans_buf, sizeof(my_pass) - 1);
           my_pass[sizeof(my_pass) - 1] = '\0';
           wait_a_key("密碼已更改!");
@@ -425,14 +424,23 @@ void command_parser(char* msg) {
               display_comment("抱歉, 自己不能踢自己");
               break;
             }
-            for (i = 2; i < MAX_PLAYER; i++) {
+            for (int i = 2; i < MAX_PLAYER; i++) {
               if (player[i].in_table &&
                   strcmp(player[i].name, (char*)cmd_argv[2]) == 0) {
                 snprintf(msg_buf, sizeof(msg_buf), "101%s 被踢出此桌",
                          cmd_argv[2]);
                 display_comment(msg_buf + 3);
-                broadcast_msg(1, msg_buf);
-                write_msg(player[i].sockfd, "200");
+
+                /* Broadcast kick msg */
+                for (int k = 2; k < MAX_PLAYER; k++) {
+                  if (player[k].in_table && k != 1) {
+                    payload = cJSON_CreateObject();
+                    cJSON_AddStringToObject(payload, "text", msg_buf + 3);
+                    send_json(player[k].sockfd, MSG_TEXT_MESSAGE, payload);
+                  }
+                }
+
+                send_json(player[i].sockfd, MSG_LEAVE, NULL);
                 close_client(i);
                 goto finish_kick;
               }
@@ -446,8 +454,9 @@ void command_parser(char* msg) {
         break;
       case KILL:
         if (narg >= 2) {
-          snprintf(msg_buf, sizeof(msg_buf), "202%s", (char*)cmd_argv[2]);
-          write_msg(gps_sockfd, msg_buf);
+          payload = cJSON_CreateObject();
+          cJSON_AddStringToObject(payload, "name", (char*)cmd_argv[2]);
+          send_json(gps_sockfd, MSG_KICK_USER, payload);
         }
         break;
       case INVITE:
@@ -455,8 +464,10 @@ void command_parser(char* msg) {
           display_comment("你打算邀請誰?");
           break;
         }
-        snprintf(msg_buf, sizeof(msg_buf), "008%s", (char*)cmd_argv[2]);
-        write_msg(gps_sockfd, msg_buf);
+        payload = cJSON_CreateObject();
+        cJSON_AddStringToObject(payload, "name", (char*)cmd_argv[2]);
+        send_json(gps_sockfd, MSG_INVITE, payload);
+
         snprintf(msg_buf, sizeof(msg_buf), "邀請 %s 加入此桌",
                  (char*)cmd_argv[2]);
         display_comment(msg_buf);
@@ -468,28 +479,35 @@ void command_parser(char* msg) {
           display_comment(msg_buf);
         } else {
           my_strupr(ans_buf, (char*)cmd_argv[2]);
+          int enabled = -1;
           if (strcmp(ans_buf, "ON") == 0) {
-            ai_set_enabled(1);
+            enabled = 1;
             display_comment("開啟 AI 模式");
-            if (in_serv) {
-                player[my_id].is_ai = 1;
-                char msg[10];
-                snprintf(msg, sizeof(msg), "130%c1", my_sit + '0');
-                broadcast_msg(my_id, msg);
-            } else if (in_join) {
-                write_msg(table_sockfd, "1301");
-            }
-          }
-          if (strcmp(ans_buf, "OFF") == 0) {
-            ai_set_enabled(0);
+          } else if (strcmp(ans_buf, "OFF") == 0) {
+            enabled = 0;
             display_comment("關閉 AI 模式");
+          }
+
+          if (enabled != -1) {
+            ai_set_enabled(enabled);
+            payload = cJSON_CreateObject();
+            cJSON_AddNumberToObject(payload, "sit", my_sit);
+            cJSON_AddNumberToObject(payload, "enabled", enabled);
+
             if (in_serv) {
-                player[my_id].is_ai = 0;
-                char msg[10];
-                snprintf(msg, sizeof(msg), "130%c0", my_sit + '0');
-                broadcast_msg(my_id, msg);
+              player[my_id].is_ai = enabled;
+              /* Broadcast */
+              for (int i = 2; i < MAX_PLAYER; i++) {
+                if (player[i].in_table && i != my_id) {
+                  send_json(player[i].sockfd, MSG_AI_MODE,
+                            cJSON_Duplicate(payload, 1));
+                }
+              }
+              cJSON_Delete(payload);
             } else if (in_join) {
-                write_msg(table_sockfd, "1300");
+              send_json(table_sockfd, MSG_AI_MODE, payload);
+            } else {
+              cJSON_Delete(payload);
             }
           }
         }
@@ -499,6 +517,7 @@ void command_parser(char* msg) {
         display_comment(msg);
         break;
     }
-  } else
+  } else {
     send_talk_line(msg);
+  }
 }

@@ -1,4 +1,6 @@
 #include "qkmj.h"
+#include "protocol.h"
+#include <stdio.h>
 
 // Mock Global Variables
 struct player_info player[MAX_PLAYER];

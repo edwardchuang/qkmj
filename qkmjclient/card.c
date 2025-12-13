@@ -1,19 +1,16 @@
-#include <arpa/inet.h>
-#include <math.h>
-#include <netinet/in.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <time.h>
 
-#include "curses.h"
 #include "mjdef.h"
 #include "qkmj.h"
 
+// Define _XOPEN_SOURCE for drand48 and srand48 if not already defined by compiler flags
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
+
 int card_num = 144;
-char all_card[150] = {
+const char all_card[150] = {
     1,  1,  1,  1,  2,  2,  2,  2,  3,  3,  3,  3,  4,  4,  4,  4,  5,  5,
     5,  5,  6,  6,  6,  6,  7,  7,  7,  7,  8,  8,  8,  8,  9,  9,  9,  9,
     11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15,
@@ -26,19 +23,23 @@ char all_card[150] = {
 int generate_random(int range);
 
 void generate_card() {
-  long seed;
-  int i, j, index, rand_int;
-
-  seed = time(NULL);
+  long seed = time(NULL);
   srand48(seed);
-  for (i = 0; i < 150; i++) mj[i] = 0;
-  for (i = 0; i < card_num; i++) {
-    index = 0;
-    rand_int = generate_random(card_num - i);
+
+  for (int i = 0; i < 150; i++) {
+    mj[i] = 0;
+  }
+
+  for (int i = 0; i < card_num; i++) {
+    int index = 0;
+    int rand_int = generate_random(card_num - i);
+    int j = 0;
     for (j = 0; j < card_num; j++) {
-      if (!mj[j]) /* The room is empty */
-      {
-        if (index == rand_int) break;
+      if (!mj[j]) {
+        // The room is empty
+        if (index == rand_int) {
+          break;
+        }
         index++;
       }
     }
@@ -47,10 +48,6 @@ void generate_card() {
 }
 
 int generate_random(int range) {
-  double rand_num;
-  int rand_int;
-
-  rand_num = drand48();
-  rand_int = (int)(range * rand_num);
-  return (rand_int);
+  double rand_num = drand48();
+  return (int)(range * rand_num);
 }

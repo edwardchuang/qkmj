@@ -2,6 +2,7 @@
 #define __MJGPS_H__
 
 #include <netinet/in.h>
+#include "cJSON.h" /* Need cJSON for prototypes if any */
 
 #define DEFAULT_GPS_PORT 7001
 #define DEFAULT_GPS_IP "0.0.0.0"
@@ -76,11 +77,8 @@ void shutdown_server();
 /* Additional Prototypes */
 int err(char* errmsg);
 int game_log(char* gamemsg);
-int read_msg(int fd, char* msg);
-void write_msg(int fd, char* msg);
 void display_msg(int player_id, char* msg);
 int Check_for_data(int fd);
-int convert_msg_id(int player_id, char* msg);
 void list_player(int fd);
 void list_table(int fd, int mode);
 void list_stat(int fd, char* name);
