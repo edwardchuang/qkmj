@@ -29,6 +29,7 @@
 #include "mongo.h"
 #include "protocol.h"
 #include "protocol_def.h"
+#include "logger.h"
 
 /*
  * Global variables
@@ -79,26 +80,7 @@ static double j_double(cJSON *json, const char *name) {
     return item ? item->valuedouble : 0.0;
 }
 
-int err(char* errmsg) {
-  bson_t* doc;
-
-  printf("%s", errmsg);
-
-  doc = BCON_NEW("level", BCON_UTF8("error"), "message", BCON_UTF8(errmsg),
-                 "timestamp", BCON_DATE_TIME(time(NULL) * 1000));
-  mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
-  bson_destroy(doc);
-  return 0;
-}
-
-int game_log(char* gamemsg) {
-  bson_t* doc =
-      BCON_NEW("level", BCON_UTF8("game"), "message", BCON_UTF8(gamemsg),
-               "timestamp", BCON_DATE_TIME(time(NULL) * 1000));
-  mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
-  bson_destroy(doc);
-  return 0;
-}
+// Old err() and game_log() removed. Replaced by logger.h functions.
 
 void display_msg(int player_id, char* msg) {
   cJSON *payload = cJSON_CreateObject();
@@ -113,11 +95,14 @@ void list_player(int fd) {
   
   cJSON *payload;
 
-  display_msg(find_user_name(player[fd].name), "-------------    目前上線使用者    --------------- "); /* Hacky way to find id? 'fd' passed here is actually sockfd, wait. */
-  /* list_player(player[player_id].sockfd) was called. So 'fd' is sockfd. 
-     display_msg takes player_id. 
-     This helper function should just send_json to fd.
-  */
+  // Hacky way to find id? 'fd' passed here is actually sockfd.
+  // Note: The original code called find_user_name(player[fd].name) inside display_msg call?
+  // No, list_player is called with player[player_id].sockfd.
+  // But player[] is indexed by player_id, not sockfd.
+  // Accessing player[fd] is dangerous if fd >= MAX_PLAYER.
+  // However, in typical unix, fd can be small.
+  // But strictly, we should pass player_id to this function, not fd.
+  // I'll keep it as is for now to avoid breaking too much, but it's a smell.
   
   payload = cJSON_CreateObject();
   cJSON_AddStringToObject(payload, "text", "-------------    目前上線使用者    --------------- ");
@@ -161,12 +146,12 @@ void list_table(int fd, int mode) {
     if (player[i].login && player[i].serv > 0) {
       if (player[i].serv > 4) {
         if (player[i].serv == 5)
-          err("SERV=5\n");
+          LOG_ERROR("SERV=5");
         else {
-          err("LIST TABLE ERROR!");
-          snprintf(msg_buf, sizeof(msg_buf), "serv=%d\n", player[i].serv);
+          LOG_ERROR("LIST TABLE ERROR!");
+          snprintf(msg_buf, sizeof(msg_buf), "serv=%d", player[i].serv);
           close_id(i);
-          err(msg_buf);
+          LOG_ERROR("%s", msg_buf);
         }
       }
       if (mode == 2 && player[i].serv >= 4) continue;
@@ -198,8 +183,6 @@ void list_stat(int fd, char* name) {
 
   /* MongoDB variables */
   bson_t* query;
-  /* mongoc_cursor_t* cursor; */
-  /* const bson_t* doc; */
 
   if (!read_user_name(name)) {
     payload = cJSON_CreateObject();
@@ -207,7 +190,7 @@ void list_stat(int fd, char* name) {
     send_json(fd, MSG_TEXT_MESSAGE, payload);
     return;
   }
-  snprintf(msg_buf, sizeof(msg_buf), "◇名稱:%s ", record.name);
+  snprintf(msg_buf, sizeof(msg_buf), "◇名稱:%s ", record.name); 
 
   if (record.game_count >= 16) {
     /* Count players with more money and >= 16 games */
@@ -255,7 +238,7 @@ void who(int fd, char* name) {
     payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "找不到此桌"); send_json(fd, MSG_TEXT_MESSAGE, payload);
     return;
   }
-  snprintf(msg_buf, sizeof(msg_buf), "%s  ", player[serv_id].name);
+  snprintf(msg_buf, sizeof(msg_buf), "%s  ", player[serv_id].name); 
   payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "----------------   此桌使用者   ------------------"); send_json(fd, MSG_TEXT_MESSAGE, payload);
   
   strcpy(msg_buf, "");
@@ -302,7 +285,6 @@ void lurker(int fd) {
 }
 
 void find_user(int fd, char* name) {
-  int i;
   char msg_buf[1000];
   int id;
   char last_login_time[80];
@@ -344,7 +326,6 @@ void find_user(int fd, char* name) {
 
 void broadcast(int player_id, char* msg) {
   int i;
-  char msg_buf[1000];
   cJSON *payload;
 
   if (strcmp(player[player_id].name, ADMIN_USER) != 0) return;
@@ -363,12 +344,7 @@ void send_msg(int player_id, char* msg) {
   char msg_buf[1000];
   cJSON *payload;
 
-  /* msg format: "to msg" ?? No, in gps_processing I see:
-     "009%s" where buf+3 was sent.
-     In mjgps.c original `send_msg(player_id, (char *)buf + 3)`.
-     buf+3 contained "name message".
-     Here, 'msg' contains "name message".
-  */
+  /* msg format: "name message" */
   str1 = strtok(msg, " "); /* name */
   if (str1 == NULL) return;
   str2 = msg + strlen(str1) + 1; /* message */
@@ -417,7 +393,7 @@ void init_socket() {
    * open a TCP socket for internet stream socket
    */
   if ((gps_sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    err("Server: cannot open stream socket");
+    LOG_FATAL("Server: cannot open stream socket");
 
   /*
    * bind our local address
@@ -428,11 +404,11 @@ void init_socket() {
   serv_addr.sin_port = htons(gps_port);
   setsockopt(gps_sockfd, SOL_SOCKET, SO_REUSEADDR, (char*)&on, sizeof(on));
   if (bind(gps_sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-    printf("server: cannot bind local address\n");
+    LOG_FATAL("server: cannot bind local address");
     exit(1);
   }
   listen(gps_sockfd, 10);
-  printf("Listen for client...\n");
+  LOG_INFO("Listen for client...");
 }
 
 char* lookup(struct sockaddr_in* cli_addrp) {
@@ -510,7 +486,7 @@ int add_user(int player_id, char* name, char* passwd) {
 
   new_id = mongo_get_next_sequence(MONGO_DB_NAME, MONGO_SEQUENCE_USERID);
   if (new_id < 0) {
-    err("Failed to generate user ID");
+    LOG_ERROR("Failed to generate user ID");
     return 0;
   }
   record.id = (unsigned int)new_id;
@@ -688,9 +664,9 @@ void close_id(int player_id) {
   char msg_buf[1000];
 
   close_connection(player_id);
-  snprintf(msg_buf, sizeof(msg_buf), "Connection to %s closed\n",
+  snprintf(msg_buf, sizeof(msg_buf), "Connection to %s closed",
            lookup(&(player[player_id].addr)));
-  err(msg_buf);
+  LOG_INFO("%s", msg_buf);
 }
 
 void close_connection(int player_id) {
@@ -715,8 +691,8 @@ void shutdown_server() {
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].login) shutdown(player[i].sockfd, 2);
   }
-  snprintf(msg_buf, sizeof(msg_buf), "QKMJ Server shutdown\n");
-  err(msg_buf);
+  snprintf(msg_buf, sizeof(msg_buf), "QKMJ Server shutdown");
+  LOG_WARN("%s", msg_buf);
   mongo_disconnect();
   exit(0);
 }
@@ -752,9 +728,9 @@ void gps_processing() {
   for (;;) {
     memmove((char*)&rfds, (char*)&afds, sizeof(rfds));
     if (select(nfds, &rfds, (fd_set*)0, (fd_set*)0, 0) < 0) {
-      snprintf(msg_buf, sizeof(msg_buf), "select: %d %s\n", errno,
+      snprintf(msg_buf, sizeof(msg_buf), "select: %d %s", errno,
                strerror(errno));
-      err(msg_buf);
+      LOG_ERROR("%s", msg_buf);
       continue;
     }
     if (FD_ISSET(gps_sockfd, &rfds)) {
@@ -763,7 +739,7 @@ void gps_processing() {
        */
       for (player_num = 1; player_num < MAX_PLAYER; player_num++)
         if (!player[player_num].login) break;
-      if (player_num == MAX_PLAYER - 1) err("Too many users");
+      if (player_num == MAX_PLAYER - 1) LOG_WARN("Too many users");
       player_id = player_num;
       alen = sizeof(player[player_num].addr);
       player[player_id].sockfd =
@@ -771,7 +747,7 @@ void gps_processing() {
                  (socklen_t*)&alen);
 
       if (player[player_id].sockfd < 0) {
-        err("accept failed");
+        LOG_ERROR("accept failed");
         continue;  /* Don't break the loop */
       }
 
@@ -780,8 +756,8 @@ void gps_processing() {
       player[player_id].login = 1;
       strncpy(climark, lookup(&(player[player_id].addr)), sizeof(climark) - 1);
       climark[sizeof(climark) - 1] = '\0';
-      snprintf(msg_buf, sizeof(msg_buf), "Connectted with %s\n", climark);
-      err(msg_buf);
+      snprintf(msg_buf, sizeof(msg_buf), "Connected with %s", climark);
+      LOG_INFO("%s", msg_buf);
 
       time(&current_time);
       tim = localtime(&current_time);
@@ -803,10 +779,13 @@ void gps_processing() {
            * Processing the player's information
            */
           if (!recv_json(player[player_id].sockfd, &msg_id, &data)) {
-            err(("cant read code or conn closed!"));
+            LOG_WARN("cant read code or conn closed!");
             close_id(player_id);
             if (data) cJSON_Delete(data);
           } else {
+            // Debug Log for Protocol Flow
+            LOG_DEBUG("Player [%s](%d) sent CMD: %d", player[player_id].name, player_id, msg_id);
+
             switch (msg_id) {
               case MSG_GET_USERNAME: /* 99 */
                 strncpy(player[player_id].username, j_str(data, "username"),
@@ -873,6 +852,7 @@ void gps_processing() {
                     else
                       close_id(player_id);
                   } else {
+                    LOG_WARN("Login Failed: User [%s] from IP [%s]", player[player_id].name, inet_ntoa(player[player_id].addr.sin_addr));
                     send_json(player[player_id].sockfd, MSG_PASSWORD_FAIL, NULL);
                   }
                 }
@@ -964,6 +944,7 @@ void gps_processing() {
                 }
                 update_client_money(player_id);
                 if (player[player_id].money <= MIN_JOIN_MONEY) {
+                  LOG_INFO("Join Table Denied: Player [%s] has insufficient funds (%ld)", player[player_id].name, player[player_id].money);
                   snprintf(msg_buf, sizeof(msg_buf),
                            "您的賭幣（%ld）不足，必須超過 %d 元才能加入牌桌",
                            player[player_id].money, MIN_JOIN_MONEY);
@@ -974,6 +955,7 @@ void gps_processing() {
                   if (player[i].login == 2 && player[i].serv) {
                     if (strcmp(player[i].name, j_str(data, "table_leader")) == 0) {
                       if (player[i].serv >= 4) {
+                        LOG_INFO("Join Table Denied: Target table [%s] is full", j_str(data, "table_leader"));
                         payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "此桌人數已滿!"); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
                         break;
                       }
@@ -1058,6 +1040,9 @@ void gps_processing() {
                     record.money = (long)j_double(data, "money");
                     record.game_count++;
                     write_record();
+                    
+                    LOG_INFO("Game End: Winner [%d] Money update: %ld", id, record.money);
+                    
                     for (i = 1; i < MAX_PLAYER; i++) {
                       if (player[i].login == 2 && player[i].id == id) {
                         player[i].money = record.money;
@@ -1074,11 +1059,10 @@ void gps_processing() {
                     /* We assume data has "record" which is a JSON object. 
                        Original code just passed string.
                        Now we might pass the JSON stringified?
-                       Or we can just log the 'data' part.
-                    */
+                       Or we can just log the 'data' part. */
                     char *json_str = cJSON_PrintUnformatted(data);
                     if (json_str) {
-                        game_log(json_str);
+                        log_game_record(json_str);
                         free(json_str);
                     }
                 }
@@ -1113,6 +1097,7 @@ void gps_processing() {
                 {
                     int id = find_user_name((char*)j_str(data, "name"));
                     if (id >= 0) {
+                      LOG_WARN("ADMIN ACTION: [%s] kicked user [%s]", ADMIN_USER, j_str(data, "name"));
                       send_json(player[id].sockfd, MSG_LEAVE, NULL);
                       close_id(id);
                     }
@@ -1134,19 +1119,21 @@ void gps_processing() {
               case MSG_STATUS: /* 201 */
                 show_current_state(player_id);
               case MSG_SHUTDOWN: /* 500 */
-                if (strcmp(player[player_id].name, ADMIN_USER) == 0)
+                if (strcmp(player[player_id].name, ADMIN_USER) == 0) {
+                  LOG_WARN("ADMIN ACTION: [%s] initiated shutdown", ADMIN_USER);
                   shutdown_server();
+                }
                 break;
               default:
                 snprintf(msg_buf, sizeof(msg_buf),
-                         "### cmd=%d player_id=%d sockfd=%d ###\n", msg_id,
+                         "### cmd=%d player_id=%d sockfd=%d ###", msg_id,
                          player_id, player[player_id].sockfd);
-                err(msg_buf);
+                LOG_ERROR("%s", msg_buf);
                 close_connection(player_id);
                 snprintf(msg_buf, sizeof(msg_buf),
-                         "Connection to %s error, closed it\n",
+                         "Connection to %s error, closed it",
                          lookup(&(player[player_id].addr)));
-                err(msg_buf);
+                LOG_ERROR("%s", msg_buf);
                 break;
             }
             if (data) cJSON_Delete(data);
@@ -1170,19 +1157,19 @@ void core_dump(int signo) {
   snprintf(cmd, sizeof(cmd), "gdb %s %d", buf, getpid());
   system(cmd);
 
-  err("CORE DUMP!\n");
+  LOG_FATAL("CORE DUMP!");
   exit(0);
 }
 
 void bus_err(int signo) {
-  err("BUS ERROR!\n");
+  LOG_FATAL("BUS ERROR!");
   exit(0);
 }
 
-void broken_pipe(int signo) { err("Broken PIPE!!\n"); }
+void broken_pipe(int signo) { LOG_WARN("Broken PIPE!!"); }
 
 void time_out(int signo) {
-  err("timeout!");
+  LOG_WARN("timeout!");
   timeup = 1;
 }
 

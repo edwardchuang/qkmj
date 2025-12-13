@@ -95,6 +95,7 @@ add_executable(mjgps
     qkmjserver/mjgps.c
     qkmjserver/mongo.c
     qkmjserver/mjgps_mongo_helpers.c
+    qkmjserver/logger.c
     qkmjclient/protocol.c
 )
 

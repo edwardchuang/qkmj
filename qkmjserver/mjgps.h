@@ -75,8 +75,6 @@ void close_connection(int);
 void shutdown_server();
 
 /* Additional Prototypes */
-int err(char* errmsg);
-int game_log(char* gamemsg);
 void display_msg(int player_id, char* msg);
 int Check_for_data(int fd);
 void list_player(int fd);
