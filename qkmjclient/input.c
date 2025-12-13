@@ -33,6 +33,8 @@ void action_throw_card(int index) {
     cJSON_AddNumberToObject(payload, "card", pool[my_sit].card[index]);
     send_json(table_sockfd, MSG_THROW_CARD, payload);
 
+    send_game_log("Throw", pool[my_sit].card[index], NULL);
+
     current_id = my_id;
     current_card = pool[my_sit].card[index];
   } else if (in_serv) {

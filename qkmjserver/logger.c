@@ -23,22 +23,27 @@ void log_message(LogLevel level, const char *file, int line, const char *fmt, ..
     char time_buf[64];
     strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", local);
 
-    // 3. Print to Console (stderr)
+    // 3. Shorten filename
+    const char *short_file = strrchr(file, '/');
+    if (short_file) {
+        short_file++; // Skip the slash
+    } else {
+        short_file = file;
+    }
+
+    // 4. Print to Console (stderr)
     // Use colors for console if possible, but keep it simple for now.
     fprintf(stderr, "[%s] [%s] [%s:%d] %s\n", 
-            time_buf, level_strings[level], file, line, message);
+            time_buf, level_strings[level], short_file, line, message);
 
-    // 4. Save to MongoDB (WARN and above)
+    // 5. Save to MongoDB (WARN and above)
     if (level >= LOG_LEVEL_WARN) {
         // We use 'mongo_insert_document' from mongo.h
-        // Note: We are creating a new connection potentially every log? 
-        // No, mongo.c manages a global client/database handle if initialized.
-        // Assuming mongo is initialized.
         
         bson_t *doc = BCON_NEW(
             "timestamp", BCON_DATE_TIME(now * 1000),
             "level", BCON_UTF8(level_strings[level]),
-            "file", BCON_UTF8(file),
+            "file", BCON_UTF8(short_file),
             "line", BCON_INT32(line),
             "message", BCON_UTF8(message)
         );

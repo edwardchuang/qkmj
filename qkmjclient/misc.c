@@ -10,8 +10,25 @@
 #include "mjdef.h"
 #include "qkmj.h"
 
+#include <cjson/cJSON.h>
+#include "protocol_def.h"
+#include "protocol.h"
+
 /* Prototypes */
 int my_getch();
+
+void send_game_log(const char *action, int card, const char *extra) {
+    if (gps_sockfd <= 0) return;
+    cJSON *record = cJSON_CreateObject();
+    cJSON_AddStringToObject(record, "action", action);
+    // my_username is global from qkmj.h
+    cJSON_AddStringToObject(record, "player", my_username);
+    cJSON_AddNumberToObject(record, "card", card);
+    if (extra) {
+        cJSON_AddStringToObject(record, "info", extra);
+    }
+    send_json(gps_sockfd, MSG_GAME_RECORD, record);
+}
 
 float thinktime() {
   gettimeofday(&after, (struct timezone*)0);

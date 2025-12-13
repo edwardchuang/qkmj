@@ -205,6 +205,16 @@ int check_flower(int sit, int card) {
 }
 
 void write_check(int check) {
+  const char *action_str = "Unknown";
+  if (check == EAT || (check >= 7 && check <= 9)) action_str = "Eat";
+  else if (check == PONG) action_str = "Pong";
+  else if (check == KANG) action_str = "Kang";
+  else if (check == MAKE) action_str = "Make";
+  
+  if (strcmp(action_str, "Unknown") != 0) {
+      send_game_log(action_str, 0, NULL);
+  }
+
   if (in_join) {
     cJSON* payload = cJSON_CreateObject();
     cJSON_AddNumberToObject(payload, "action", check);

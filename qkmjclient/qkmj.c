@@ -168,11 +168,14 @@ void change_card(int position, int card) {
 
 /* Get a card */
 void get_card(int card) {
-  pool[my_sit].card[pool[my_sit].num] = (char)card;
-  show_card(20, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
-  wrefresh(stdscr);
-  show_card(card, INDEX_X + 16 * 2 + 1, INDEX_Y + 1, 1);
-  wrefresh(stdscr);
+  int i;
+
+  send_game_log("Draw", card, NULL);
+
+  // pool[my_sit].time += thinktime();
+  // display_time(my_sit);
+
+  getting_card = 1;
 }
 
 void process_new_card(int sit, int card) {
