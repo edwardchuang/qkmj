@@ -1,12 +1,5 @@
 # Stage 1: Build (Alpine)
 FROM alpine:latest AS builder
-
-# Install build dependencies
-# build-base: GCC, Make, etc.
-# pkgconf: For pkg-config
-# cjson-dev, mongo-c-driver-dev, curl-dev: Library headers
-# linux-headers: For system headers
-# libxcrypt-dev: For crypt() function
 RUN apk add --no-cache \
     build-base \
     cmake \
@@ -15,7 +8,6 @@ RUN apk add --no-cache \
     cjson-dev \
     mongo-c-driver-dev \
     curl-dev \
-    libxcrypt-dev \
     linux-headers
 
 WORKDIR /src
