@@ -108,7 +108,7 @@ void list_player(int fd) {
   cJSON_AddStringToObject(payload, "text", "-------------    目前上線使用者    --------------- ");
   send_json(fd, MSG_TEXT_MESSAGE, payload);
 
-  strcpy(msg_buf, "");
+  memset(msg_buf, 0, sizeof(msg_buf));
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].login == 2) {
       total_num++;
@@ -116,10 +116,10 @@ void list_player(int fd) {
         payload = cJSON_CreateObject();
         cJSON_AddStringToObject(payload, "text", msg_buf);
         send_json(fd, MSG_TEXT_MESSAGE, payload);
-        strcpy(msg_buf, "");
+        memset(msg_buf, 0, sizeof(msg_buf));
       }
-      strcat(msg_buf, player[i].name);
-      strcat(msg_buf, "  ");
+      strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
+      strncat(msg_buf, "  ", sizeof(msg_buf) - strlen(msg_buf) - 1);
     }
   }
   
@@ -208,9 +208,10 @@ void list_stat(int fd, char* name) {
     bson_destroy(query);
   }
 
-  if (record.game_count < 16)
-    strcpy(order_buf, "無");
-  else
+  if (record.game_count < 16) {
+    strncpy(order_buf, "無", sizeof(order_buf) - 1);
+    order_buf[sizeof(order_buf) - 1] = '\0';
+  } else
     snprintf(order_buf, sizeof(order_buf), "%d/%d", order, total_num);
   snprintf(msg_buf1, sizeof(msg_buf1),
            "◇金額:%ld 排名:%s 上線次數:%d 已玩局數:%d", record.money,
@@ -241,12 +242,12 @@ void who(int fd, char* name) {
   snprintf(msg_buf, sizeof(msg_buf), "%s  ", player[serv_id].name); 
   payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "----------------   此桌使用者   ------------------"); send_json(fd, MSG_TEXT_MESSAGE, payload);
   
-  strcpy(msg_buf, "");
+  memset(msg_buf, 0, sizeof(msg_buf));
   for (i = 1; i < MAX_PLAYER; i++) {
     if (player[i].join == serv_id) {
       if ((strlen(msg_buf) + strlen(player[i].name)) > 53) {
         payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
-        strcpy(msg_buf, "");
+        memset(msg_buf, 0, sizeof(msg_buf));
       }
       strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
       strncat(msg_buf, "   ", sizeof(msg_buf) - strlen(msg_buf) - 1);
@@ -263,14 +264,14 @@ void lurker(int fd) {
   char msg_buf[1000];
   cJSON *payload;
 
-  strcpy(msg_buf, "");
+  memset(msg_buf, 0, sizeof(msg_buf));
   payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", "-------------   目前□置之使用者   --------------- "); send_json(fd, MSG_TEXT_MESSAGE, payload);
   for (i = 1; i < MAX_PLAYER; i++)
     if (player[i].login == 2 && (player[i].join == 0 && player[i].serv == 0)) {
       total_num++;
       if ((strlen(msg_buf) + strlen(player[i].name)) > 53) {
         payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
-        strcpy(msg_buf, "");
+        memset(msg_buf, 0, sizeof(msg_buf));
       }
       strncat(msg_buf, player[i].name, sizeof(msg_buf) - strlen(msg_buf) - 1);
       strncat(msg_buf, "  ", sizeof(msg_buf) - strlen(msg_buf) - 1);
@@ -317,8 +318,10 @@ void find_user(int fd, char* name) {
     snprintf(msg_buf, sizeof(msg_buf), "◇%s 不在線上", name);
     payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
     
-    strcpy(last_login_time, ctime(&record.last_login_time));
-    last_login_time[strlen(last_login_time) - 1] = 0;
+    snprintf(last_login_time, sizeof(last_login_time), "%s", ctime(&record.last_login_time));
+    if (strlen(last_login_time) > 0 && last_login_time[strlen(last_login_time) - 1] == '\n') {
+        last_login_time[strlen(last_login_time) - 1] = 0;
+    }
     snprintf(msg_buf, sizeof(msg_buf), "◇上次連線時間: %s", last_login_time);
     payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(fd, MSG_TEXT_MESSAGE, payload);
   }
