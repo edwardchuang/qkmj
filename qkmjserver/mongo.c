@@ -10,10 +10,37 @@
 #include "mongo.h"
 
 #include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 // Global MongoDB client and URI instances
 static mongoc_client_t* client;
 static mongoc_uri_t* uri;
+
+/**
+ * @brief Helper to detect system CA certificate bundle location.
+ * 
+ * Checks common locations on macOS (Homebrew) and Linux.
+ * 
+ * @return Path to the CA file if found, otherwise NULL.
+ */
+static const char* detect_system_ca_file() {
+    static const char* search_paths[] = {
+        "/opt/homebrew/etc/openssl@3/cert.pem",   // macOS Homebrew (Apple Silicon)
+        "/usr/local/etc/openssl@1.1/cert.pem",    // macOS Homebrew (Intel)
+        "/etc/ssl/cert.pem",                      // macOS System / Some Linux
+        "/etc/pki/tls/certs/ca-bundle.crt",       // Fedora/RHEL/CentOS
+        "/etc/ssl/certs/ca-certificates.crt",     // Debian/Ubuntu/Gentoo
+        NULL
+    };
+
+    for (int i = 0; search_paths[i] != NULL; i++) {
+        if (access(search_paths[i], F_OK) == 0) {
+            return search_paths[i];
+        }
+    }
+    return NULL;
+}
 
 /**
  * @brief Initializes the MongoDB driver and establishes a connection.
@@ -32,6 +59,28 @@ bool mongo_connect(const char* uri_string) {
   if (!uri) {
     fprintf(stderr, "failed to parse URI: %s\n", uri_string);
     return false;
+  }
+
+  // Auto-detect CA file if not specified in URI.
+  // Priority:
+  // 1. SSL_CERT_FILE environment variable (if set and file exists)
+  // 2. System default paths (detect_system_ca_file)
+  // This fixes connection issues when running outside of debuggers/IDEs that don't inject cert paths.
+  if (!mongoc_uri_get_option_as_utf8(uri, "tlsCAFile", NULL)) {
+      const char* env_ca_file = getenv("SSL_CERT_FILE");
+      const char* ca_file = NULL;
+
+      if (env_ca_file && access(env_ca_file, F_OK) == 0) {
+          ca_file = env_ca_file;
+      } else {
+          ca_file = detect_system_ca_file();
+      }
+
+      if (ca_file) {
+          mongoc_uri_set_option_as_utf8(uri, "tlsCAFile", ca_file);
+          // Optional: Verify it was set (for debugging, though we lack a logger here)
+          // fprintf(stderr, "mongo_connect: Auto-detected tlsCAFile=%s\n", ca_file);
+      }
   }
 
   client = mongoc_client_new_from_uri(uri);
@@ -226,6 +275,7 @@ bool mongo_replace_document(const char* db_name, const char* collection_name,
   mongoc_collection_t* collection;
   bson_error_t error;
   bool retval;
+  bson_t* opts;
 
   if (!client) {
     fprintf(stderr, "MongoDB client not connected\n");
@@ -233,8 +283,10 @@ bool mongo_replace_document(const char* db_name, const char* collection_name,
   }
 
   collection = mongoc_client_get_collection(client, db_name, collection_name);
-  retval = mongoc_collection_replace_one(collection, filter, replacement, NULL,
+  opts = BCON_NEW("upsert", BCON_BOOL(true));
+  retval = mongoc_collection_replace_one(collection, filter, replacement, opts,
                                          NULL, &error);
+  bson_destroy(opts);
 
   if (!retval) {
     fprintf(stderr, "Replace failed: %s\n", error.message);
