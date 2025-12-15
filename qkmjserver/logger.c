@@ -3,6 +3,13 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+#ifdef HAVE_CJSON_CJSON_H
+#include <cjson/cJSON.h>
+#elif defined(HAVE_CJSON_H)
+#include <cJSON.h>
+#else
+#include <cJSON.h> /* Fallback */
+#endif
 
 static const char* level_strings[] = {
     "DEBUG", "INFO", "WARN", "ERROR", "FATAL"
@@ -31,10 +38,20 @@ void log_message(LogLevel level, const char *file, int line, const char *fmt, ..
         short_file = file;
     }
 
-    // 4. Print to Console (stderr)
-    // Use colors for console if possible, but keep it simple for now.
-    fprintf(stderr, "[%s] [%s] [%s:%d] %s\n", 
-            time_buf, level_strings[level], short_file, line, message);
+    // 4. Print to Console (stderr) in JSON format
+    cJSON *log_obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(log_obj, "timestamp", time_buf);
+    cJSON_AddStringToObject(log_obj, "level", level_strings[level]);
+    cJSON_AddStringToObject(log_obj, "file", short_file);
+    cJSON_AddNumberToObject(log_obj, "line", line);
+    cJSON_AddStringToObject(log_obj, "message", message);
+    
+    char *json_str = cJSON_PrintUnformatted(log_obj);
+    if (json_str) {
+        fprintf(stderr, "%s\n", json_str);
+        free(json_str);
+    }
+    cJSON_Delete(log_obj);
 
     // 5. Save to MongoDB (WARN and above)
     if (level >= LOG_LEVEL_WARN) {

@@ -1,0 +1,50 @@
+# Stage 1: Build (Alpine)
+FROM alpine:latest AS builder
+
+# Install build dependencies
+# build-base: GCC, Make, etc.
+# pkgconf: For pkg-config
+# cjson-dev, mongo-c-driver-dev, curl-dev: Library headers
+# linux-headers: For system headers
+# libxcrypt-dev: For crypt() function
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    pkgconf \
+    git \
+    cjson-dev \
+    mongo-c-driver-dev \
+    curl-dev \
+    libxcrypt-dev \
+    linux-headers
+
+WORKDIR /src
+COPY . .
+
+# Build only the server target (mjgps)
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build --target mjgps
+
+# Stage 2: Runtime (Alpine)
+FROM alpine:latest
+
+# Install runtime libraries
+# These must match the versions linked during build
+RUN apk add --no-cache \
+    cjson \
+    mongo-c-driver \
+    libcurl \
+    ca-certificates
+
+WORKDIR /app
+COPY --from=builder /src/build/mjgps .
+
+# Default Environment Variables
+ENV PORT=7001
+ENV MONGO_URI="mongodb://mongo:27017"
+ENV LOGIN_LIMIT=2000
+
+# Expose the port
+EXPOSE 7001
+
+CMD ["./mjgps"]

@@ -85,10 +85,16 @@ int send_json(int fd, int msg_id, cJSON* data) {
   return 1;
 }
 
+#define PEEK_SIZE 4096
+
 int recv_json(int fd, int* msg_id, cJSON** data) {
   char buf[MAX_JSON_PACKET_SIZE];
   int n = 0;
   ssize_t read_count;
+  ssize_t peek_count;
+  char peek_buf[PEEK_SIZE];
+  int found_null;
+  int i;
 
   /* Wait for data with timeout */
   if (check_socket_read(fd, 5, 0) <= 0) {
@@ -97,23 +103,53 @@ int recv_json(int fd, int* msg_id, cJSON** data) {
 
   /* Read until null terminator */
   while (n < MAX_JSON_PACKET_SIZE - 1) {
-    read_count = read(fd, &buf[n], 1);
-    if (read_count < 0) {
+    /* Optimization: Peek ahead to find null terminator */
+    peek_count = recv(fd, peek_buf, sizeof(peek_buf), MSG_PEEK);
+
+    if (peek_count < 0) {
       if (errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN) {
         /* Wait a bit if non-blocking */
         if (check_socket_read(fd, 1, 0) <= 0) return 0;
         continue;
       }
       return 0;
-    } else if (read_count == 0) {
+    } else if (peek_count == 0) {
       /* Connection closed */
       return 0;
     }
 
-    if (buf[n] == '\0') {
-      break;
+    /* Scan for null terminator in the peeked data */
+    found_null = -1;
+    for (i = 0; i < peek_count; i++) {
+        if (peek_buf[i] == '\0') {
+            found_null = i;
+            break;
+        }
     }
-    n++;
+
+    if (found_null != -1) {
+        /* We found the end of the message. Read exactly up to it. */
+        /* Check if it fits in our buffer */
+        if (n + found_null + 1 >= MAX_JSON_PACKET_SIZE) {
+            /* Packet too large. We could drain and fail, but for now just fail. */
+            return 0;
+        }
+        
+        read_count = read(fd, &buf[n], found_null + 1);
+        if (read_count != found_null + 1) {
+             /* Should not happen if peek said it was there */
+             return 0;
+        }
+        n += read_count;
+        break; /* We are done */
+    } else {
+        /* No null found, consume all peeked data and continue */
+        if (n + peek_count >= MAX_JSON_PACKET_SIZE) {
+             return 0; /* Packet too large */
+        }
+        read_count = read(fd, &buf[n], peek_count);
+        n += read_count;
+    }
   }
   buf[n] = '\0'; /* Ensure null termination */
 

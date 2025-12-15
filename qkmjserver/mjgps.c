@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/errno.h>
+#include <errno.h>
 #include <sys/file.h>
 #include <sys/param.h>
 #include <sys/resource.h>
@@ -428,7 +428,6 @@ char* lookup(struct sockaddr_in* cli_addrp) {
 void init_variable() {
   int i;
 
-  login_limit = LOGIN_LIMIT;
   for (i = 0; i < MAX_PLAYER; i++) {
     player[i].login = 0;
     player[i].serv = 0;
@@ -716,7 +715,7 @@ void gps_processing() {
   cJSON *payload = NULL;
 
   log_level = 0;
-  nfds = getdtablesize();
+  /* nfds = getdtablesize(); -- Removed for portability, hardcoded below */
   nfds = 256;
   printf("%d\n", nfds);
   FD_ZERO(&afds);
@@ -1243,27 +1242,53 @@ int main(int argc, char** argv) {
   signal(SIGBUS, bus_err);
   signal(SIGPIPE, broken_pipe);
   signal(SIGALRM, time_out);
-  if (argc < 2)
-    gps_port = DEFAULT_GPS_PORT;
-  else {
+  
+  /* Environment Variable Configuration (Cloud Native) */
+  char *env_port = getenv("PORT");
+  char *env_mongo = getenv("MONGO_URI");
+  char *env_limit = getenv("LOGIN_LIMIT");
+
+  if (env_port) {
+    gps_port = atoi(env_port);
+    LOG_INFO("Using PORT from environment: %d", gps_port);
+  } else if (argc >= 2) {
     gps_port = atoi(argv[1]);
-    printf("Using port %s\n", argv[1]);
+    LOG_INFO("Using PORT from argument: %d", gps_port);
+  } else {
+    gps_port = DEFAULT_GPS_PORT;
+    LOG_INFO("Using default PORT: %d", gps_port);
   }
+
+  if (env_limit) {
+    login_limit = atoi(env_limit);
+    LOG_INFO("Using LOGIN_LIMIT from environment: %d", login_limit);
+  } else {
+    login_limit = LOGIN_LIMIT;
+  }
+
   strncpy(gps_ip, DEFAULT_GPS_IP, sizeof(gps_ip) - 1);
   gps_ip[sizeof(gps_ip) - 1] = '\0';
 
   /* Init Mongo */
-  mongo_uri = getenv("MONGO_URI");
-  if (!mongo_uri) {
-    mongo_uri = "mongodb://localhost:27017";
+  if (env_mongo) {
+     mongo_uri = env_mongo;
+     LOG_INFO("Using MONGO_URI from environment");
+  } else {
+     mongo_uri = "mongodb://localhost:27017";
+     LOG_INFO("Using default MONGO_URI");
   }
+  
   if (!mongo_connect(mongo_uri)) {
-    fprintf(stderr, "Failed to connect to MongoDB at %s\n", mongo_uri);
+    LOG_FATAL("Failed to connect to MongoDB at %s", mongo_uri);
     exit(1);
   }
 
   init_socket();
   init_variable();
+  /* login_limit is set in init_variable() again, we need to fix that */
+  /* init_variable() sets login_limit = LOGIN_LIMIT. We should move that logic or fix init_variable */
+  /* Let's see init_variable implementation below... */
+  
   gps_processing();
 
   mongo_disconnect();
