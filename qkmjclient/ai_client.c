@@ -237,11 +237,14 @@ void ai_set_enabled(int enabled) {
             char msg[256];
             snprintf(msg, sizeof(msg), "AI Session Created: %s", ai_session_id);
             display_comment(msg);
+            ai_enabled = 1; /* Only enable if registration succeeded */
         } else {
             display_comment("AI Session Registration Failed!");
+            ai_enabled = 0;
         }
+    } else if (!enabled) {
+        ai_enabled = 0;
     }
-    ai_enabled = enabled;
 }
 
 // Helper to add player state
@@ -436,6 +439,8 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
     struct memory chunk = {0};
     char *inner_json;
     char *final_payload = NULL;
+    int retries = 0;
+    const int max_retries = 3;
 
     if (!ai_enabled) return decision;
 
@@ -477,9 +482,21 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
         // SSL verification off for localhost
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L); // 60s timeout per attempt
 
         show_ai_thinking();
-        res = curl_easy_perform(curl);
+        
+        do {
+            if (retries > 0) {
+                 AI_LOG("[AI DEBUG] Retrying request (attempt %d/%d)...\n", retries + 1, max_retries);
+                 // Clear previous response data
+                 if (chunk.response) { free(chunk.response); chunk.response = NULL; chunk.size = 0; }
+            }
+            res = curl_easy_perform(curl);
+            if (res == CURLE_OK) break;
+            retries++;
+        } while (retries < max_retries);
+        
         hide_ai_thinking();
 
         cJSON *resp_json = NULL;
@@ -495,8 +512,15 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
             }
             decision = ai_parse_decision(chunk.response);
         } else {
-            AI_ERR("[AI ERROR] curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            AI_ERR("[AI ERROR] curl_easy_perform() failed after %d retries: %s\n", max_retries, curl_easy_strerror(res));
             err = curl_easy_strerror(res);
+        }
+
+        // New Fallback Logic: Disable AI on Error
+        if (decision.action == AI_ACTION_NONE) {
+            AI_ERR("[AI ERROR] Failed to get valid decision. Disabling AI.\n");
+            display_comment("AI Error! Switching to Manual Mode.");
+            ai_set_enabled(0);
         }
 
         // Log decision trace
