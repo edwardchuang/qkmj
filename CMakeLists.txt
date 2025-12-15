@@ -78,8 +78,8 @@ find_package(CURL REQUIRED)
 include_directories(${CURL_INCLUDE_DIR})
 
 # Find Mongo C Driver
-pkg_check_modules(MONGOC REQUIRED IMPORTED_TARGET mongoc2)
-pkg_check_modules(BSON REQUIRED IMPORTED_TARGET bson2)
+pkg_search_module(MONGOC REQUIRED IMPORTED_TARGET libmongoc-1.0 mongoc-1.0 mongoc2)
+pkg_search_module(BSON REQUIRED IMPORTED_TARGET libbson-1.0 bson-1.0 bson2)
 
 # Math library
 find_library(MATH_LIB m)
