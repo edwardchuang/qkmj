@@ -53,8 +53,20 @@ void log_message(LogLevel level, const char *file, int line, const char *fmt, ..
     }
     cJSON_Delete(log_obj);
 
-    // 5. Save to MongoDB (WARN and above)
-    if (level >= LOG_LEVEL_WARN) {
+    // 5. Save to MongoDB
+    // Determine minimum log level from environment, defaulting to INFO
+    const char *env_level_str = getenv("MONGO_LOG_LEVEL");
+    LogLevel min_mongo_level = LOG_LEVEL_INFO; // Default to INFO
+
+    if (env_level_str) {
+        if (strcmp(env_level_str, "DEBUG") == 0) min_mongo_level = LOG_LEVEL_DEBUG;
+        else if (strcmp(env_level_str, "INFO") == 0) min_mongo_level = LOG_LEVEL_INFO;
+        else if (strcmp(env_level_str, "WARN") == 0) min_mongo_level = LOG_LEVEL_WARN;
+        else if (strcmp(env_level_str, "ERROR") == 0) min_mongo_level = LOG_LEVEL_ERROR;
+        else if (strcmp(env_level_str, "FATAL") == 0) min_mongo_level = LOG_LEVEL_FATAL;
+    }
+
+    if (level >= min_mongo_level) {
         // We use 'mongo_insert_document' from mongo.h
         
         bson_t *doc = BCON_NEW(

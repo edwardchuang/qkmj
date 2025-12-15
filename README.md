@@ -60,6 +60,24 @@ Default server is 0.0.0.0 and port 7001.
 ./mjrec [record_file]
 ```
 
+## Environment Variables
+
+### Server (`mjgps`)
+*   `PORT`: Server listening port (default: `7001` or first argument).
+*   `MONGO_URI`: MongoDB connection string.
+*   `LOGIN_LIMIT`: Maximum concurrent users (default: `200`).
+*   `SSL_CERT_FILE`: Path to SSL CA certificate (overrides auto-detection).
+*   `MONGO_LOG_LEVEL`: Minimum log level for MongoDB (`DEBUG`, `INFO`, `WARN`, `ERROR`, `FATAL`; default: `INFO`).
+
+### Client (`qkmj`)
+*   `HOME`: Used to locate the `.qkmjrc` configuration file.
+*   `AI_MODE`: Enable AI features (`1` to enable).
+*   `AI_ENDPOINT`: Endpoint URL for the AI backend.
+*   `AI_DEBUG`: Enable verbose AI debugging logs (`1` to enable).
+
+### Recorder (`mjrec`)
+*   `MONGO_URI`: MongoDB connection string.
+
 ## Protocol
 
 See [COMMANDS.md](COMMANDS.md) for details on the client-server communication protocol.
