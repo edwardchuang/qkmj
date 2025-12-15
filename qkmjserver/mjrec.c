@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include "mjgps.h"
 #include "mjgps_mongo_helpers.h"
@@ -57,23 +58,27 @@ void read_user_id(unsigned int id) {
   }
 }
 
-void write_record() {
+bool write_record() {
   bson_t* query;
   bson_t* doc;
+  bool ret;
 
   query = BCON_NEW("user_id", BCON_INT64(record.id));
   doc = record_to_bson(&record);
 
-  mongo_replace_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query, doc);
+  ret = mongo_replace_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query, doc);
 
   bson_destroy(query);
   bson_destroy(doc);
+  return ret;
 }
 
-void delete_user(unsigned int id) {
+int delete_user(unsigned int id) {
+  int64_t count;
   bson_t* query = BCON_NEW("user_id", BCON_INT64(id));
-  mongo_delete_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
+  count = mongo_delete_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query);
   bson_destroy(query);
+  return (int)count;
 }
 
 void print_record() {
@@ -268,8 +273,13 @@ int main(int argc, char** argv) {
         scanf("%d", &id);
 
         if (id >= 0) {
-          delete_user((unsigned int)id);
-          printf("User %d deleted.\n", id);
+          int count = delete_user((unsigned int)id);
+          if (count > 0)
+            printf("User %d deleted.\n", id);
+          else if (count == 0)
+            printf("User %d not found.\n", id);
+          else
+            printf("Delete failed.\n");
         }
         break;
 

@@ -2,6 +2,7 @@
 #define __MJGPS_H__
 
 #include <netinet/in.h>
+#include <stdbool.h>
 
 #define DEFAULT_GPS_PORT 7001
 #define DEFAULT_GPS_IP "0.0.0.0"
@@ -68,7 +69,7 @@ char* genpasswd(char*);
 int checkpasswd(char*, char*);
 
 int check_user(int);
-void write_record();
+bool write_record();
 void close_id(int);
 void close_connection(int);
 void shutdown_server();

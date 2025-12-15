@@ -105,10 +105,10 @@ bool mongo_replace_document(const char* db_name, const char* collection_name,
  * @param db_name The name of the database.
  * @param collection_name The name of the collection.
  * @param filter A BSON document specifying the query filter.
- * @return true if the deletion was successful, false otherwise.
+ * @return The number of deleted documents (0 or 1), or -1 on error.
  */
-bool mongo_delete_document(const char* db_name, const char* collection_name,
-                           const bson_t* filter);
+int64_t mongo_delete_document(const char* db_name, const char* collection_name,
+                              const bson_t* filter);
 
 /**
  * @brief Counts the number of documents in a collection matching a filter.
@@ -128,6 +128,18 @@ int64_t mongo_count_documents(const char* db_name, const char* collection_name,
  * @param collection_name The name of the collection to drop.
  */
 void mongo_drop_collection(const char* db_name, const char* collection_name);
+
+/**
+ * @brief Creates an index on a collection.
+ *
+ * @param db_name The name of the database.
+ * @param collection_name The name of the collection.
+ * @param keys A BSON document specifying the keys for the index (e.g., {"name": 1}).
+ * @param unique If true, creates a unique index.
+ * @return true if successful, false otherwise.
+ */
+bool mongo_create_index(const char* db_name, const char* collection_name,
+                        const bson_t* keys, bool unique);
 
 /**
  * @brief Atomically finds and increments a named sequence counter.

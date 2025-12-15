@@ -226,6 +226,7 @@ bool mongo_replace_document(const char* db_name, const char* collection_name,
   mongoc_collection_t* collection;
   bson_error_t error;
   bool retval;
+  bson_t* opts;
 
   if (!client) {
     fprintf(stderr, "MongoDB client not connected\n");
@@ -233,8 +234,11 @@ bool mongo_replace_document(const char* db_name, const char* collection_name,
   }
 
   collection = mongoc_client_get_collection(client, db_name, collection_name);
-  retval = mongoc_collection_replace_one(collection, filter, replacement, NULL,
+  
+  opts = BCON_NEW("upsert", BCON_BOOL(true));
+  retval = mongoc_collection_replace_one(collection, filter, replacement, opts,
                                          NULL, &error);
+  bson_destroy(opts);
 
   if (!retval) {
     fprintf(stderr, "Replace failed: %s\n", error.message);
@@ -250,28 +254,43 @@ bool mongo_replace_document(const char* db_name, const char* collection_name,
  * @param db_name The name of the database.
  * @param collection_name The name of the collection.
  * @param filter A BSON document specifying the query filter.
- * @return true if the deletion was successful, false otherwise.
+ * @return The number of deleted documents (0 or 1), or -1 on error.
  */
-bool mongo_delete_document(const char* db_name, const char* collection_name,
-                           const bson_t* filter) {
+int64_t mongo_delete_document(const char* db_name, const char* collection_name,
+                              const bson_t* filter) {
   mongoc_collection_t* collection;
   bson_error_t error;
+  bson_t reply;
   bool retval;
+  int64_t deleted_count = -1;
 
   if (!client) {
     fprintf(stderr, "MongoDB client not connected\n");
-    return false;
+    return -1;
   }
 
   collection = mongoc_client_get_collection(client, db_name, collection_name);
-  retval = mongoc_collection_delete_one(collection, filter, NULL, NULL, &error);
+  retval =
+      mongoc_collection_delete_one(collection, filter, NULL, &reply, &error);
 
-  if (!retval) {
+  if (retval) {
+    bson_iter_t iter;
+    if (bson_iter_init_find(&iter, &reply, "deletedCount")) {
+      if (BSON_ITER_HOLDS_INT32(&iter)) {
+        deleted_count = (int64_t)bson_iter_int32(&iter);
+      } else if (BSON_ITER_HOLDS_INT64(&iter)) {
+        deleted_count = bson_iter_int64(&iter);
+      }
+    }
+    // If deletedCount is missing but success, assume 0 (or protocol quirk), but safely 0
+    if (deleted_count == -1) deleted_count = 0;
+  } else {
     fprintf(stderr, "Delete failed: %s\n", error.message);
   }
 
+  bson_destroy(&reply);
   mongoc_collection_destroy(collection);
-  return retval;
+  return deleted_count;
 }
 
 /**
@@ -331,6 +350,49 @@ void mongo_drop_collection(const char* db_name, const char* collection_name) {
   }
 
   mongoc_collection_destroy(collection);
+}
+
+/**
+ * @brief Creates an index on a collection.
+ *
+ * @param db_name The name of the database.
+ * @param collection_name The name of the collection.
+ * @param keys A BSON document specifying the keys for the index.
+ * @param unique If true, creates a unique index.
+ * @return true if successful, false otherwise.
+ */
+bool mongo_create_index(const char* db_name, const char* collection_name,
+                        const bson_t* keys, bool unique) {
+  mongoc_collection_t* collection;
+  bson_error_t error;
+  bool retval;
+  mongoc_index_model_t* model;
+  bson_t* opts = NULL;
+
+  if (!client) {
+    fprintf(stderr, "MongoDB client not connected\n");
+    return false;
+  }
+
+  collection = mongoc_client_get_collection(client, db_name, collection_name);
+
+  if (unique) {
+    opts = BCON_NEW("unique", BCON_BOOL(true));
+  }
+
+  model = mongoc_index_model_new(keys, opts);
+  if (opts) bson_destroy(opts);
+
+  retval = mongoc_collection_create_indexes_with_opts(
+      collection, &model, 1, NULL, NULL, &error);
+
+  if (!retval) {
+    fprintf(stderr, "Create index failed: %s\n", error.message);
+  }
+
+  mongoc_index_model_destroy(model);
+  mongoc_collection_destroy(collection);
+  return retval;
 }
 
 /**

@@ -579,7 +579,10 @@ int add_user(int player_id, char* name, char* passwd) {
           sizeof(record.last_login_from) - strlen(record.last_login_from) - 1);
 
   if (check_user(player_id)) {
-    write_record();
+    if (!write_record()) {
+      err("Failed to write new user record (possible duplicate name)\n");
+      return 0;
+    }
     return 1;
   } else
     return 0;
@@ -611,17 +614,19 @@ int check_user(int player_id) {
   return 1;
 }
 
-void write_record() {
+bool write_record() {
   bson_t* query;
   bson_t* doc;
+  bool ret;
 
   query = BCON_NEW("user_id", BCON_INT64(record.id));
   doc = record_to_bson(&record);
 
-  mongo_replace_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query, doc);
+  ret = mongo_replace_document(MONGO_DB_NAME, MONGO_COLLECTION_USERS, query, doc);
 
   bson_destroy(query);
   bson_destroy(doc);
+  return ret;
 }
 
 void print_news(int fd, char* name) {
@@ -1348,10 +1353,15 @@ int main(int argc, char** argv) {
   if (!mongo_uri) {
     mongo_uri = "mongodb://localhost:27017";
   }
+
   if (!mongo_connect(mongo_uri)) {
     fprintf(stderr, "Failed to connect to MongoDB at %s\n", mongo_uri);
     exit(1);
   }
+
+  // Ensure unique index on name
+  mongo_create_index(MONGO_DB_NAME, MONGO_COLLECTION_USERS,
+                     BCON_NEW("name", BCON_INT32(1)), true);
 
   init_socket();
   init_variable();
