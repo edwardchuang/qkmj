@@ -17,9 +17,7 @@ unsigned char my_name[50] = "TestUser";
 int gps_sockfd = 0;
 
 // Mock WINDOW for tests
-typedef struct _win_st { int dummy; } WINDOW;
-WINDOW mock_win;
-WINDOW *stdscr = &mock_win;
+WINDOW *stdscr = NULL;
 
 void display_comment(char* msg) {
     printf("[DISPLAY] %s\n", msg);
