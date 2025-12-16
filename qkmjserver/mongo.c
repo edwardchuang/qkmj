@@ -1,12 +1,3 @@
-/**
- * @file mongo.c
- * @brief A simplified C wrapper for common MongoDB operations.
- *
- * This file provides a basic API to connect to, disconnect from, and perform
- * standard CRUD (Create, Read, Update, Delete) operations on a MongoDB
- * database. It uses the mongoc (MongoDB C Driver) library.
- */
-
 #include "mongo.h"
 
 #include <stdio.h>

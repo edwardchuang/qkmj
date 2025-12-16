@@ -96,6 +96,7 @@ add_executable(mjgps
     qkmjserver/mongo.c
     qkmjserver/mjgps_mongo_helpers.c
     qkmjserver/logger.c
+    qkmjserver/session_manager.c
     qkmjclient/protocol.c
 )
 
@@ -196,3 +197,29 @@ target_link_libraries(conn_test
     PkgConfig::CJSON
     ${CURL_LIBRARIES}
 )
+
+add_executable(session_test
+    tests/test_session_manager.cpp
+    qkmjserver/session_manager.c
+    qkmjserver/mongo.c
+    qkmjserver/logger.c
+    # We include this just in case mongo.c or logger.c has implicit deps, though not strictly used by session_manager
+    qkmjserver/mjgps_mongo_helpers.c 
+)
+
+target_include_directories(session_test PRIVATE 
+    ${CMAKE_SOURCE_DIR}/qkmjserver 
+    ${CMAKE_SOURCE_DIR}/qkmjclient 
+    ${CJSON_INCLUDE_DIRS}
+)
+
+target_link_libraries(session_test
+    gtest_main
+    PkgConfig::MONGOC
+    PkgConfig::BSON
+    PkgConfig::CJSON
+    ${MATH_LIB}
+)
+
+add_test(NAME SessionManagerTest COMMAND session_test)
+

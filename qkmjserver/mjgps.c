@@ -27,6 +27,7 @@
 
 #include "mjgps_mongo_helpers.h"
 #include "mongo.h"
+#include "session_manager.h"
 #include "protocol.h"
 #include "protocol_def.h"
 #include "logger.h"
@@ -598,6 +599,11 @@ void welcome_user(int player_id) {
   player[player_id].id = record.id;
   player[player_id].money = record.money;
   player[player_id].login = 2;
+  
+  if (!session_create(player[player_id].name, "gps-server", inet_ntoa(player[player_id].addr.sin_addr), player[player_id].money)) {
+      LOG_WARN("Failed to create session for %s", player[player_id].name);
+  }
+
   player[player_id].note[0] = 0;
   show_online_users(player_id);
   list_stat(player[player_id].sockfd, player[player_id].name);
@@ -672,6 +678,9 @@ void close_id(int player_id) {
 }
 
 void close_connection(int player_id) {
+  if (player[player_id].login == 2) {
+      session_destroy(player[player_id].name);
+  }
   close(player[player_id].sockfd);
   FD_CLR(player[player_id].sockfd, &afds);
   if (player[player_id].join && player[player[player_id].join].serv)
@@ -1285,6 +1294,8 @@ int main(int argc, char** argv) {
     LOG_FATAL("Failed to connect to MongoDB at %s", mongo_uri);
     exit(1);
   }
+
+  session_mgmt_init();
 
   init_socket();
   init_variable();
