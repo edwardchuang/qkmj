@@ -114,9 +114,11 @@ bool mongo_connect(const char* uri_string) {
 void mongo_disconnect(void) {
   if (client) {
     mongoc_client_destroy(client);
+    client = NULL;
   }
   if (uri) {
     mongoc_uri_destroy(uri);
+    uri = NULL;
   }
   mongoc_cleanup();
 }
