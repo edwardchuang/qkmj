@@ -1,0 +1,50 @@
+# Stage 1: Build QKMJ Client
+FROM alpine:latest AS builder
+
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    pkgconf \
+    git \
+    ncurses-dev \
+    cjson-dev \
+    curl-dev \
+    linux-headers
+
+WORKDIR /src
+COPY . .
+
+# Build only the client target (qkmj)
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build --target qkmj
+
+# Stage 2: Runtime with TTYD
+FROM alpine:latest
+
+# Install runtime deps and ttyd
+# ttyd is available in community repo
+RUN apk add --no-cache \
+    ttyd \
+    ncurses-libs \
+    cjson \
+    libcurl \
+    ca-certificates
+
+WORKDIR /app
+
+# Copy compiled client
+COPY --from=builder /src/build/qkmj .
+
+# Environment variables for connection
+ENV SERVER_IP="127.0.0.1"
+ENV SERVER_PORT="7001"
+ENV PORT=8080
+
+# Expose the web port
+EXPOSE 8080
+
+# Run ttyd which launches qkmj
+# -W: Writeable (allows input)
+# -p: Port
+# qkmj arguments: IP PORT
+CMD ttyd -W -p ${PORT} ./qkmj ${SERVER_IP} ${SERVER_PORT}
