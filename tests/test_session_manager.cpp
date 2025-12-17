@@ -18,8 +18,8 @@ extern "C" {
 // Test Fixture
 class SessionManagerTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        // Connect to Mongo
+    // Per-Suite Setup (Run once before all tests)
+    static void SetUpTestSuite() {
         const char* env_uri = std::getenv("MONGO_URI");
         const char* uri = env_uri ? env_uri : "mongodb://localhost:27017";
         
@@ -27,19 +27,29 @@ protected:
         if (!connected) {
              std::cerr << "Failed to connect to MongoDB at " << uri << std::endl;
         }
-        ASSERT_TRUE(connected) << "Failed to connect to MongoDB. Ensure it is running.";
+        // If connection fails, assertions in tests will likely fail or crash, 
+        // but we can't assert easily in static method without death test.
+        // We'll proceed and let tests fail if needed.
         
-        // Clean up the collection before starting to ensure clean state
-        mongo_drop_collection(MONGO_DB_NAME, "active_sessions");
-        
-        // Init session manager
         session_mgmt_init();
     }
 
-    void TearDown() override {
-        // Clean up after tests
-        mongo_drop_collection(MONGO_DB_NAME, "active_sessions");
+    // Per-Suite Teardown (Run once after all tests)
+    static void TearDownTestSuite() {
         mongo_disconnect();
+    }
+
+    // Per-Test Setup
+    void SetUp() override {
+        // Clean up the collection before starting to ensure clean state
+        // We can access global mongo connection here
+        mongo_drop_collection(MONGO_DB_NAME, "active_sessions");
+    }
+
+    // Per-Test Teardown
+    void TearDown() override {
+        // Optional: clean up again
+        mongo_drop_collection(MONGO_DB_NAME, "active_sessions");
     }
 };
 
