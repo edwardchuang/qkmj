@@ -16,6 +16,8 @@ jobs:
   # ----------------------------------------------------------------
   test:
     runs-on: ubuntu-latest
+    env:
+      MONGO_URI: "mongodb://localhost:27017/?tls=false"
     steps:
       - uses: actions/checkout@v3
 
