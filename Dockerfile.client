@@ -9,6 +9,7 @@ RUN apk add --no-cache \
     ncurses-dev \
     cjson-dev \
     curl-dev \
+    mongo-c-driver-dev \
     linux-headers
 
 WORKDIR /src
