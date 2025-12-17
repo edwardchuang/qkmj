@@ -1,0 +1,70 @@
+steps:
+  # -------------------------------------------------------------------------
+  # 1. Build Server Image (mjgps)
+  # -------------------------------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'Dockerfile.server',
+      '-t', 'gcr.io/$PROJECT_ID/qkmj-server:$COMMIT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/qkmj-server:latest',
+      '.'
+    ]
+
+  # -------------------------------------------------------------------------
+  # 2. Build Client Image (qkmj-web)
+  # -------------------------------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-f', 'Dockerfile.client',
+      '-t', 'gcr.io/$PROJECT_ID/qkmj-client:$COMMIT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/qkmj-client:latest',
+      '.'
+    ]
+
+  # -------------------------------------------------------------------------
+  # 3. Push Images to Container Registry
+  # -------------------------------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/qkmj-server:$COMMIT_SHA']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/qkmj-client:$COMMIT_SHA']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/qkmj-server:latest']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/qkmj-client:latest']
+
+  # -------------------------------------------------------------------------
+  # 4. Deploy Client to Cloud Run
+  # 
+  # Note: You must set SERVER_IP manually in Cloud Run variables after first deploy,
+  # or use a fixed IP/DNS for your GCE server.
+  # We default to a placeholder or existing env var.
+  # -------------------------------------------------------------------------
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'qkmj-client'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/qkmj-client:$COMMIT_SHA'
+      - '--region'
+      - 'asia-east1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--timeout'
+      - '3600'
+      # We don't overwrite env vars here to preserve existing configuration (SERVER_IP)
+      # unless this is a fresh deploy.
+
+# Store images
+images:
+  - 'gcr.io/$PROJECT_ID/qkmj-server:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/qkmj-client:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/qkmj-server:latest'
+  - 'gcr.io/$PROJECT_ID/qkmj-client:latest'

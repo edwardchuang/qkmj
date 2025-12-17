@@ -1,22 +1,99 @@
-name: Docker Image CI
+name: QKMJ CI/CD
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, main, Gemini_3 ]
   pull_request:
-    branches: [ master ]
-  schedule:
-    - cron: 0 1 * * 0
+    branches: [ master, main, Gemini_3 ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-
-  build:
+  # ----------------------------------------------------------------
+  # Job 1: Run Unit Tests
+  # ----------------------------------------------------------------
+  test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Build the Docker image
-      run: "docker build . --file Dockerfile --tag ghcr.io/gjchentw/qkmj:latest"
-    - name: Login to ghcr.io
-      run: echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u ${GITHUB_ACTOR} --password-stdin
-    - name: Push to ghcr.io
-      run: "docker push ghcr.io/gjchentw/qkmj:latest"
+      - uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake build-essential \
+            libmongoc-dev libbson-dev \
+            libcjson-dev libcurl4-openssl-dev \
+            libncurses5-dev libncursesw5-dev
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build Tests
+        run: cmake --build build --target session_test test_ai
+
+      - name: Run Tests
+        working-directory: build
+        # We skip session_test in CI if Mongo is not available, OR we can spin up a Mongo service container
+        run: |
+          ctest -V
+    
+    # Optional: Spin up MongoDB service for integration tests
+    services:
+      mongo:
+        image: mongo:5.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd mongo
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+  # ----------------------------------------------------------------
+  # Job 2: Build and Push Docker Images
+  # ----------------------------------------------------------------
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      # Build & Push Server
+      - name: Build and push Server
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile.server
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-server:latest
+          labels: ${{ steps.meta.outputs.labels }}
+
+      # Build & Push Client
+      - name: Build and push Client
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: Dockerfile.client
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-client:latest
+          labels: ${{ steps.meta.outputs.labels }}
