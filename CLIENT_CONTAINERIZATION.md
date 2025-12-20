@@ -47,8 +47,17 @@ A multi-stage build:
 2.  **Runtime**: Minimal Alpine image with libraries + binaries.
 
 ### Step 2: Build & Test Locally
+The Dockerfiles now pull source code directly from the Git repository. You can customize the build using `--build-arg`.
+
 ```bash
+# Build using defaults (master branch of edwardchuang/qkmj)
 docker build -f Dockerfile.client -t qkmj-web .
+
+# Build from a specific branch or repository
+docker build -f Dockerfile.client -t qkmj-web \
+  --build-arg GIT_BRANCH=feature-ai \
+  --build-arg GIT_REPO=https://github.com/user/qkmj.git .
+
 docker run -p 8080:8080 -e SERVER_IP=host.docker.internal qkmj-web
 # Access http://localhost:8080
 ```

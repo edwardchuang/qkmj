@@ -11,7 +11,9 @@ RUN apk add --no-cache \
     linux-headers
 
 WORKDIR /src
-COPY . .
+ARG GIT_REPO=https://github.com/edwardchuang/qkmj.git
+ARG GIT_BRANCH=master
+RUN git clone --depth 1 --branch ${GIT_BRANCH} ${GIT_REPO} .
 
 # Build only the server target (mjgps)
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
