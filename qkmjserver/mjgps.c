@@ -25,6 +25,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <ifaddrs.h>
+#include <net/if.h>
 #include "mjgps_mongo_helpers.h"
 #include "mongo.h"
 #include "session_manager.h"
@@ -70,6 +72,28 @@ FILE *fp, *log_fp;
 struct ask_mode_info ask;
 
 struct rlimit fd_limit;
+
+/* Log local IP addresses */
+void log_local_ips() {
+  struct ifaddrs *ifaddr, *ifa;
+  char host[NI_MAXHOST];
+
+  if (getifaddrs(&ifaddr) == -1) {
+    LOG_ERROR("getifaddrs failed");
+    return;
+  }
+
+  for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+    if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) continue;
+    if (ifa->ifa_flags & IFF_LOOPBACK) continue;
+
+    if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST,
+                    NULL, 0, NI_NUMERICHOST) == 0) {
+      LOG_INFO("Local IP (%s): %s", ifa->ifa_name, host);
+    }
+  }
+  freeifaddrs(ifaddr);
+}
 
 /* Helper functions for JSON extraction */
 static const char* j_str(cJSON *json, const char *name) {
@@ -1262,6 +1286,7 @@ int main(int argc, char** argv) {
   signal(SIGALRM, time_out);
 
   LOG_INFO("QKMJ MJGPS Server Ver %s (Build: %s) Starting...", MJGPS_VERSION, GIT_HASH);
+  log_local_ips();
   
   /* Environment Variable Configuration (Cloud Native) */
   char *env_port = getenv("PORT");

@@ -1,5 +1,8 @@
 #include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <net/if.h>
 #include <locale.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
@@ -23,6 +26,27 @@
 #ifndef GIT_HASH
 #define GIT_HASH "unknown"
 #endif
+
+/* Display local IP addresses on splash screen */
+void display_local_ips() {
+  struct ifaddrs *ifaddr, *ifa;
+  char host[NI_MAXHOST];
+  char msg[256];
+
+  if (getifaddrs(&ifaddr) == -1) return;
+
+  for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+    if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) continue;
+    if (ifa->ifa_flags & IFF_LOOPBACK) continue;
+
+    if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST,
+                    NULL, 0, NI_NUMERICHOST) == 0) {
+      snprintf(msg, sizeof(msg), "本機 IP (%s): %s", ifa->ifa_name, host);
+      display_comment(msg);
+    }
+  }
+  freeifaddrs(ifaddr);
+}
 
 /*gloable variables*/
 fd_set rfds, afds;
@@ -718,6 +742,7 @@ void gps() {
   display_comment(msg_buf);
   display_comment("原作者 sywu (吳先祐 Shian-Yow Wu) ");
   display_comment("Forked Source: https://github.com/edwardchuang/qkmj");
+  display_local_ips();
   get_my_info();
 
   /* 100 MSG_CHECK_VERSION */
