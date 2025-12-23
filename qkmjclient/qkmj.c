@@ -704,9 +704,9 @@ void gps() {
   display_comment(msg_buf);
   status = init_socket(GPS_IP, GPS_PORT, &gps_sockfd);
   if (status < 0) {
-    err("無法連往 QKMJ Server");
     endwin();
-    exit(0);
+    fprintf(stderr, "無法連往 QKMJ Server %s:%d\n", GPS_IP, GPS_PORT);
+    exit(1);
   }
   snprintf(msg_buf, sizeof(msg_buf), 
            "歡迎來到 QKMJ 休閑麻將 Ver %c.%2s 特別板 ", QKMJ_VERSION[0],
@@ -773,8 +773,9 @@ void gps() {
 
     if (select(nfds, &rfds, (fd_set*)0, (fd_set*)0, tv_ptr) < 0) {
       if (errno != EINTR) {
-        display_comment("Select Error!");
-        exit(0);
+        endwin();
+        fprintf(stderr, "Select Error: %s\n", strerror(errno));
+        exit(1);
       }
       continue;
     }
@@ -837,11 +838,11 @@ void gps() {
       int msg_id_val = 0;
       cJSON *data = NULL;
       if (!recv_json(gps_sockfd, &msg_id_val, &data)) {
-        display_comment("Closed by QKMJ Server.");
         shutdown(gps_sockfd, 2);
         if (in_join) close_join();
         if (in_serv) close_serv();
         endwin();
+        fprintf(stderr, "Closed by QKMJ Server.\n");
         exit(0);
       } else {
         process_msg(0, msg_id_val, data, FROM_GPS);
