@@ -20,6 +20,10 @@
 #include "socket.h"
 #include "ai_client.h"
 
+#ifndef GIT_HASH
+#define GIT_HASH "unknown"
+#endif
+
 /*gloable variables*/
 fd_set rfds, afds;
 int nfds;
@@ -29,7 +33,7 @@ int GPS_PORT;
 char my_username[20];
 char my_address[70];
 int PLAYER_NUM = 4;
-char QKMJ_VERSION[] = "094";
+char QKMJ_VERSION[] = "200";
 char menu_item[25][10] = {"  ", "A ", "B ", "C ", "D ", "E ", "F ",
                           "G ", "H ", "I ", "J ", "K ", "L ", "M ",
                           "N ", "O ", "P ", "Q ", "R ", "  "};
@@ -709,16 +713,17 @@ void gps() {
     exit(1);
   }
   snprintf(msg_buf, sizeof(msg_buf), 
-           "歡迎來到 QKMJ 休閑麻將 Ver %c.%2s 特別板 ", QKMJ_VERSION[0],
-           QKMJ_VERSION + 1);
+           "歡迎來到 QKMJ 休閑麻將 Ver %c.%2s AI (Build: %s)", QKMJ_VERSION[0],
+           QKMJ_VERSION + 1, GIT_HASH);
   display_comment(msg_buf);
   display_comment("原作者 sywu (吳先祐 Shian-Yow Wu) ");
-  display_comment("Forked Source: https://github.com/gjchentw/qkmj");
+  display_comment("Forked Source: https://github.com/edwardchuang/qkmj");
   get_my_info();
 
   /* 100 MSG_CHECK_VERSION */
   payload = cJSON_CreateObject();
   cJSON_AddStringToObject(payload, "version", QKMJ_VERSION);
+  cJSON_AddStringToObject(payload, "build", GIT_HASH);
   send_json(gps_sockfd, MSG_CHECK_VERSION, payload);
 
   /* 99 MSG_GET_USERNAME */

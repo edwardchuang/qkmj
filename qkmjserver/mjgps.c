@@ -32,6 +32,12 @@
 #include "protocol_def.h"
 #include "logger.h"
 
+#ifndef GIT_HASH
+#define GIT_HASH "unknown"
+#endif
+
+#define MJGPS_VERSION "2.00 AI"
+
 /*
  * Global variables
  */
@@ -1254,6 +1260,8 @@ int main(int argc, char** argv) {
   signal(SIGBUS, bus_err);
   signal(SIGPIPE, broken_pipe);
   signal(SIGALRM, time_out);
+
+  LOG_INFO("QKMJ MJGPS Server Ver %s (Build: %s) Starting...", MJGPS_VERSION, GIT_HASH);
   
   /* Environment Variable Configuration (Cloud Native) */
   char *env_port = getenv("PORT");

@@ -12,6 +12,33 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDEBUG)
 endif()
 
+# Get the latest git commit hash
+execute_process(
+  COMMAND git rev-parse --short HEAD
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+  OUTPUT_VARIABLE GIT_COMMIT_HASH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  ERROR_QUIET
+)
+
+if(NOT GIT_COMMIT_HASH)
+  set(GIT_COMMIT_HASH "unknown")
+else()
+  # Check if there are local changes
+  execute_process(
+    COMMAND git diff --quiet
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    RESULT_VARIABLE IS_DIRTY
+    ERROR_QUIET
+  )
+  if(IS_DIRTY)
+    set(GIT_COMMIT_HASH "${GIT_COMMIT_HASH}-dirty")
+  endif()
+endif()
+
+# Pass the hash to the compiler as a definition
+add_definitions("-DGIT_HASH=\"${GIT_COMMIT_HASH}\"")
+
 # Find PkgConfig
 find_package(PkgConfig REQUIRED)
 
