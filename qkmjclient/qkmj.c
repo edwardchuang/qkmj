@@ -1008,8 +1008,9 @@ void read_qkmjrc() {
 
 int main(int argc, char** argv) {
 #ifdef DEBUG
-  printf("Ready for debugger. PID: %d\nPress Enter to continue...", getpid());
-  getchar();
+  printf("Ready for debugger. PID: %d\n", getpid());
+  printf("Press 'g' and Enter to start the game...\n");
+  while (getchar() != 'g');
 #endif
 
   setlocale(LC_ALL, "");
