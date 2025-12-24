@@ -3,7 +3,7 @@
 ## Phase 1: Artifact Registry & GitHub Actions Setup
 **Goal:** Establish the foundation for container image management and automated builds.
 
-- [x] Task: Create Google Artifact Registry via Terraform. 4f269d5
+- [x] Task: Create Google Artifact Registry via Terraform. 1983a8a
 - [x] Task: Configure GitHub Actions Secrets for GCP authentication. 04592d0
 - [x] Task: Implement CI workflow to build and test C code. 04592d0
 - [x] Task: Implement CD workflow to build and push Docker images to Artifact Registry. 04592d0
