@@ -8,10 +8,11 @@ if [ -z "$SERVER_IP" ]; then
     exit 1
 fi
 
-echo "🔍 Verifying GCE Deployment at $SERVER_IP..."
+echo "🔍 Verifying GCE Internal Deployment at $SERVER_IP..."
+echo "Note: Ensure you are connected via VPN or using IAP Tunnel to reach this internal IP."
 
 # 1. Check if port 7001 is open
-echo "Step 1: Checking connectivity to port 7001..."
+echo "Step 1: Checking connectivity to internal port 7001..."
 if nc -zv -w5 $SERVER_IP 7001 2>&1 | grep -q "succeeded"; then
     echo "✅ Port 7001 is open and reachable."
 else

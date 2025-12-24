@@ -4,12 +4,7 @@ provider "google" {
   zone    = var.zone
 }
 
-# 1. Static IP Address for the Game Server
-resource "google_compute_address" "static_ip" {
-  name = "qkmj-server-ip"
-}
-
-# 2. Firewall Rule: Allow Game Port (7001)
+# 1. Firewall Rule: Allow Game Port (7001)
 resource "google_compute_firewall" "allow_qkmj" {
   name    = "allow-qkmj-server"
   network = "default"
@@ -23,7 +18,7 @@ resource "google_compute_firewall" "allow_qkmj" {
   target_tags   = ["qkmj-server"]
 }
 
-# 3. Service Account for the VM
+# 2. Service Account for the VM
 resource "google_service_account" "qkmj_sa" {
   account_id   = "qkmj-server-sa"
   display_name = "QKMJ Server Service Account"
@@ -36,7 +31,7 @@ resource "google_project_iam_member" "artifact_registry_reader" {
   member  = "serviceAccount:${google_service_account.qkmj_sa.email}"
 }
 
-# 4. Artifact Registry Repository
+# 3. Artifact Registry Repository
 resource "google_artifact_registry_repository" "qkmj_repo" {
   location      = var.region
   repository_id = "qkmj-repo"
@@ -44,7 +39,7 @@ resource "google_artifact_registry_repository" "qkmj_repo" {
   format        = "DOCKER"
 }
 
-# 5. The GCE Instance
+# 4. The GCE Instance
 resource "google_compute_instance" "qkmj_server" {
   name         = "qkmj-server"
   machine_type = "e2-medium" # Cost-effective but capable
@@ -58,9 +53,7 @@ resource "google_compute_instance" "qkmj_server" {
 
   network_interface {
     network = "default"
-    access_config {
-      nat_ip = google_compute_address.static_ip.address
-    }
+    # access_config {} removed for internal-only IP
   }
 
   service_account {
@@ -68,7 +61,7 @@ resource "google_compute_instance" "qkmj_server" {
     scopes = ["cloud-platform"]
   }
 
-  # Startup Script: Run Mongo and Game Server
+  # Startup Script: Run Game Server
   metadata_startup_script = <<-EOT
     #! /bin/bash
     set -e
@@ -78,17 +71,8 @@ resource "google_compute_instance" "qkmj_server" {
     
     # Create Docker Network
     docker network create qkmj-net || true
-    
-    # 1. Start MongoDB
-    echo "Starting MongoDB..."
-    docker run -d \
-      --name mongo \
-      --network qkmj-net \
-      --restart always \
-      -v /var/lib/mongo:/data/db \
-      mongo:5.0
       
-    # 2. Start QKMJ Server
+    # 1. Start QKMJ Server
     echo "Starting QKMJ Server..."
     # Remove old container if exists (for updates)
     docker stop qkmj-server || true
@@ -103,7 +87,7 @@ resource "google_compute_instance" "qkmj_server" {
       --network qkmj-net \
       --restart always \
       -p 7001:7001 \
-      -e MONGO_URI="mongodb://mongo:27017" \
+      -e MONGO_URI="${var.mongo_uri}" \
       ${var.region}-docker.pkg.dev/${var.project_id}/qkmj-repo/qkmj-server:latest
       
     echo "Deployment Complete."

@@ -14,7 +14,9 @@ gcloud services enable \
     iamcredentials.googleapis.com \
     artifactregistry.googleapis.com \
     compute.googleapis.com \
-    run.googleapis.com
+    run.googleapis.com \
+    aiplatform.googleapis.com \
+    dialogflow.googleapis.com
 ```
 
 ### 2. Create Service Account and Assign Roles
@@ -39,7 +41,16 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/compute.admin"
 
-# Service Account User (Needed to deploy Cloud Run)
+# Agent Engine (Vertex AI Agents)
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/aiplatform.admin"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/dialogflow.admin"
+
+# Service Account User (Needed to deploy Cloud Run & Agents)
 gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/iam.serviceAccountUser"

@@ -20,6 +20,9 @@ REMOTE_COMMANDS=$(cat <<EOF
   echo "Logging into Artifact Registry..."
   gcloud auth configure-docker ${REGION}-docker.pkg.dev -q
 
+  echo "Extracting current configuration..."
+  CURRENT_URI=\$(docker inspect qkmj-server --format '{{range .Config.Env}}{{if contains . "MONGO_URI"}}{{index (split . "=") 1}}{{end}}{{end}}' || echo "")
+
   echo "Pulling latest image: ${IMAGE_PATH}"
   docker pull ${IMAGE_PATH}
 
@@ -32,15 +35,18 @@ REMOTE_COMMANDS=$(cat <<EOF
     --network qkmj-net \
     --restart always \
     -p 7001:7001 \
-    -e MONGO_URI="mongodb://mongo:27017" \
+    -e MONGO_URI="\${CURRENT_URI}" \
     ${IMAGE_PATH}
 
   echo "✅ Server successfully restarted."
 EOF
 )
 
-# Execute the commands via SSH
-gcloud compute ssh ${INSTANCE_NAME} --zone=${ZONE} --command="${REMOTE_COMMANDS}"
+# Execute the commands via SSH using IAP tunnel
+gcloud compute ssh ${INSTANCE_NAME} \
+  --zone=${ZONE} \
+  --tunnel-through-iap \
+  --command="${REMOTE_COMMANDS}"
 
 echo "🎉 Deployment to GCE complete!"
 

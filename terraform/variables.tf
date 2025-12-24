@@ -14,3 +14,9 @@ variable "zone" {
   type        = string
   default     = "asia-east1-a"
 }
+
+variable "mongo_uri" {
+  description = "The MongoDB connection string"
+  type        = string
+  sensitive   = true
+}
