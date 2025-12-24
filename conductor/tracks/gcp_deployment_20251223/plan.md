@@ -12,7 +12,7 @@
 ## Phase 2: Server Deployment (GCE)
 **Goal:** Provision and deploy the `mjgps` server to Google Compute Engine.
 
-- [ ] Task: Finalize Terraform for GCE instance and networking (firewall).
+- [x] Task: Finalize Terraform for GCE instance and networking (firewall). 199c6a7
 - [ ] Task: Implement deployment script/automation to pull and run the server container on GCE.
 - [ ] Task: Verify server connectivity and MongoDB integration on GCE.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Server Deployment (GCE)' (Protocol in workflow.md)
