@@ -12,9 +12,9 @@
 ## Phase 2: Server Deployment (GCE)
 **Goal:** Provision and deploy the `mjgps` server to Google Compute Engine.
 
-- [x] Task: Finalize Terraform for GCE instance and networking (firewall). 199c6a7
-- [x] Task: Implement deployment script/automation to pull and run the server container on GCE. abb8b0c
-- [x] Task: Verify server connectivity and MongoDB integration on GCE. cd569b5
+- [x] Task: Finalize Terraform for GCE instance and networking (firewall). de1b633
+- [x] Task: Implement deployment script/automation to pull and run the server container on GCE. de1b633
+- [x] Task: Verify server connectivity and MongoDB integration on GCE. de1b633
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Server Deployment (GCE)' (Protocol in workflow.md)
 
 ## Phase 3: Client Deployment (Cloud Run)
@@ -28,7 +28,7 @@
 ## Phase 4: AI Agent Deployment (Agent Engine)
 **Goal:** Deploy the Python AI Agent to GCP Vertex AI Agent Engine.
 
-- [ ] Task: Implement CI workflow for Python AI Agent (testing/linting).
-- [ ] Task: Implement CD workflow for Python AI Agent (deployment to Agent Engine).
+- [~] Task: Implement CI workflow for Python AI Agent (testing/linting). de1b633
+- [~] Task: Implement CD workflow for Python AI Agent (deployment to Agent Engine). de1b633
 - [ ] Task: Verify Agent Engine connectivity and model response.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: AI Agent Deployment (Agent Engine)' (Protocol in workflow.md)
