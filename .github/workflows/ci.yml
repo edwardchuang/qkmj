@@ -9,11 +9,11 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  GCP_REGION: asia-east1
+  GAR_REPO: qkmj-repo
 
 jobs:
-  # ----------------------------------------------------------------
-  # Job 1: Run Unit Tests
-  # ----------------------------------------------------------------
+  # ... (test job remains same) ...
   test:
     runs-on: ubuntu-latest
     env:
@@ -63,6 +63,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v3
@@ -74,11 +75,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPO }}/qkmj
 
       # Build & Push Server
       - name: Build and push Server
@@ -87,7 +102,9 @@ jobs:
           context: .
           file: Dockerfile.server
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-server:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-server:latest
+            ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPO }}/qkmj-server:latest
           labels: ${{ steps.meta.outputs.labels }}
 
       # Build & Push Client
@@ -97,5 +114,7 @@ jobs:
           context: .
           file: Dockerfile.client
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-client:latest
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-client:latest
+            ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPO }}/qkmj-client:latest
           labels: ${{ steps.meta.outputs.labels }}
