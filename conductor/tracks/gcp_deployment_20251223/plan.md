@@ -4,9 +4,9 @@
 **Goal:** Establish the foundation for container image management and automated builds.
 
 - [x] Task: Create Google Artifact Registry via Terraform. 4f269d5
-- [ ] Task: Configure GitHub Actions Secrets for GCP authentication.
-- [ ] Task: Implement CI workflow to build and test C code.
-- [ ] Task: Implement CD workflow to build and push Docker images to Artifact Registry.
+- [x] Task: Configure GitHub Actions Secrets for GCP authentication. 04592d0
+- [x] Task: Implement CI workflow to build and test C code. 04592d0
+- [x] Task: Implement CD workflow to build and push Docker images to Artifact Registry. 04592d0
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Artifact Registry & GitHub Actions Setup' (Protocol in workflow.md)
 
 ## Phase 2: Server Deployment (GCE)
