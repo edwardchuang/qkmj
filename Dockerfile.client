@@ -13,9 +13,8 @@ RUN apk add --no-cache \
     linux-headers
 
 WORKDIR /src
-ARG GIT_REPO=https://github.com/edwardchuang/qkmj.git
-ARG GIT_BRANCH=master
-RUN git clone --depth 1 --branch ${GIT_BRANCH} ${GIT_REPO} .
+# Copy everything including .git (needed for GIT_HASH in CMake)
+COPY . .
 
 # Build only the client target (qkmj)
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
@@ -35,8 +34,9 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-# Copy compiled client
+# Copy compiled client and the optimized HTML template
 COPY --from=builder /src/build/qkmj .
+COPY qkmjclient/qkmj.html index.html
 
 # Environment variables for connection
 ENV SERVER_IP="127.0.0.1"
@@ -49,5 +49,6 @@ EXPOSE 8080
 # Run ttyd which launches qkmj
 # -W: Writeable (allows input)
 # -p: Port
+# -i: Use our custom index.html
 # qkmj arguments: IP PORT
-CMD ttyd -W -p ${PORT} ./qkmj ${SERVER_IP} ${SERVER_PORT}
+CMD ttyd -W -p ${PORT} -i index.html ./qkmj ${SERVER_IP} ${SERVER_PORT}
