@@ -15,8 +15,15 @@ gcloud services enable \
     artifactregistry.googleapis.com \
     compute.googleapis.com \
     run.googleapis.com \
+    vpcaccess.googleapis.com \
     aiplatform.googleapis.com \
-    dialogflow.googleapis.com
+    storage.googleapis.com \
+    logging.googleapis.com \
+    monitoring.googleapis.com \
+    cloudtrace.googleapis.com \
+    telemetry.googleapis.com \
+    dialogflow.googleapis.com \
+    cloudresourcemanager.googleapis.com
 ```
 
 ### 2. Create Service Account and Assign Roles
@@ -41,19 +48,13 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/compute.admin"
 
+# VPC Access (For Cloud Run to reach GCE Internal IP)
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/vpcaccess.user"
+
 # Agent Engine (Vertex AI Agents)
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/aiplatform.admin"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/dialogflow.admin"
-
-# Service Account User (Needed to deploy Cloud Run & Agents)
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/iam.serviceAccountUser"
+# ... (rest of the file)
 ```
 
 ### 3. Configure Workload Identity Federation

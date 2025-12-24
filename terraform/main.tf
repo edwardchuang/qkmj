@@ -93,3 +93,44 @@ resource "google_compute_instance" "qkmj_server" {
     echo "Deployment Complete."
   EOT
 }
+
+# 5. Serverless VPC Access Connector (to reach GCE Internal IP)
+resource "google_vpc_access_connector" "connector" {
+  name          = "qkmj-vpc-connector"
+  ip_cidr_range = "10.8.0.0/28"
+  network       = "default"
+  region        = var.region
+}
+
+# 6. Cloud Run Service (The Client)
+resource "google_cloud_run_v2_service" "qkmj_client" {
+  name     = "qkmj-client"
+  location = var.region
+  ingress  = "INGRESS_TRAFFIC_ALL"
+
+  template {
+    vpc_access {
+      connector = google_vpc_access_connector.connector.id
+      egress    = "ALL_TRAFFIC"
+    }
+
+    containers {
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/qkmj-repo/qkmj-client:latest"
+      
+      ports {
+        container_port = 8080
+      }
+
+      env {
+        name  = "SERVER_IP"
+        value = google_compute_instance.qkmj_server.network_interface.0.network_ip
+      }
+      env {
+        name  = "SERVER_PORT"
+        value = "7001"
+      }
+    }
+  }
+
+  depends_on = [google_compute_instance.qkmj_server]
+}
