@@ -36,7 +36,7 @@ WORKDIR /app
 
 # Copy compiled client and the optimized HTML template
 COPY --from=builder /src/build/qkmj .
-COPY qkmjclient/qkmj.html index.html
+COPY web/index.html index.html
 
 # Environment variables for connection
 ENV SERVER_IP="127.0.0.1"
@@ -51,4 +51,4 @@ EXPOSE 8080
 # -p: Port
 # -i: Use our custom index.html
 # qkmj arguments: IP PORT
-CMD ttyd -W -p ${PORT} -i index.html ./qkmj ${SERVER_IP} ${SERVER_PORT}
+CMD ["/bin/sh", "-c", "exec ttyd -W -p ${PORT} -i index.html ./qkmj ${SERVER_IP} ${SERVER_PORT}"]
