@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: qkmj-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: qkmj-server
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - PORT=7001
+    ports:
+      - "7001:7001"
+    depends_on:
+      - mongo
+
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: qkmj-client
+    environment:
+      - SERVER_IP=server
+      - SERVER_PORT=7001
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - server
+
+volumes:
+  mongo_data:
