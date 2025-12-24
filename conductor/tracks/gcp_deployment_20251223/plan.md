@@ -14,7 +14,7 @@
 
 - [x] Task: Finalize Terraform for GCE instance and networking (firewall). 199c6a7
 - [x] Task: Implement deployment script/automation to pull and run the server container on GCE. abb8b0c
-- [ ] Task: Verify server connectivity and MongoDB integration on GCE.
+- [x] Task: Verify server connectivity and MongoDB integration on GCE. cd569b5
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Server Deployment (GCE)' (Protocol in workflow.md)
 
 ## Phase 3: Client Deployment (Cloud Run)
