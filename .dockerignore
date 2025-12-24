@@ -1,0 +1,22 @@
+# Ignore build artifacts
+build/
+build_release/
+bin/
+lib/
+*.o
+*.a
+
+# Ignore CI config but KEEP .git for versioning
+.github/
+
+# Ignore IDE settings
+.vscode/
+.idea/
+.DS_Store
+
+# Ignore documentation and other non-essentials
+docs/
+*.md
+Dockerfile*
+docker-compose.yml
+terraform/
