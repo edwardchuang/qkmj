@@ -75,7 +75,10 @@ gcloud iam service-accounts add-iam-policy-binding "github-actions-deploy@${PROJ
 ### 4. Configure GitHub Secrets
 Add the following secrets to your repository (**Settings > Secrets and variables > Actions**):
 - `GCP_PROJECT_ID`: Your project ID.
-- `GCP_WORKLOAD_IDENTITY_PROVIDER`: The full path to the provider (e.g. `projects/123456789/locations/global/workloadIdentityPools/github-pool/providers/github-provider`).
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`: The **Full Resource Name** of the provider. 
+  - **CRITICAL**: You MUST use the **Project Number**, not the Project ID.
+  - **Format**: `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github-pool/providers/github-provider`
+  - **Find your number**: `gcloud projects describe $(gcloud config get-value project) --format='value(projectNumber)'`
 
 ---
 
