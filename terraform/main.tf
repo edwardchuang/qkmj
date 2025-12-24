@@ -29,14 +29,22 @@ resource "google_service_account" "qkmj_sa" {
   display_name = "QKMJ Server Service Account"
 }
 
-# Allow SA to pull images from GCR/Artifact Registry
+# Allow SA to pull images from Artifact Registry
 resource "google_project_iam_member" "artifact_registry_reader" {
   project = var.project_id
-  role    = "roles/storage.objectViewer" # Access to GCR
+  role    = "roles/artifactregistry.reader"
   member  = "serviceAccount:${google_service_account.qkmj_sa.email}"
 }
 
-# 4. The GCE Instance
+# 4. Artifact Registry Repository
+resource "google_artifact_registry_repository" "qkmj_repo" {
+  location      = var.region
+  repository_id = "qkmj-repo"
+  description   = "Docker repository for QKMJ images"
+  format        = "DOCKER"
+}
+
+# 5. The GCE Instance
 resource "google_compute_instance" "qkmj_server" {
   name         = "qkmj-server"
   machine_type = "e2-medium" # Cost-effective but capable
@@ -65,8 +73,8 @@ resource "google_compute_instance" "qkmj_server" {
     #! /bin/bash
     set -e
     
-    # Configure Docker Auth for GCR
-    gcloud auth configure-docker gcr.io -q
+    # Configure Docker Auth for Artifact Registry
+    gcloud auth configure-docker ${var.region}-docker.pkg.dev -q
     
     # Create Docker Network
     docker network create qkmj-net || true
@@ -86,8 +94,8 @@ resource "google_compute_instance" "qkmj_server" {
     docker stop qkmj-server || true
     docker rm qkmj-server || true
     
-    # Pull latest image
-    docker pull gcr.io/${var.project_id}/qkmj-server:latest
+    # Pull latest image from Artifact Registry
+    docker pull ${var.region}-docker.pkg.dev/${var.project_id}/qkmj-repo/qkmj-server:latest
     
     # Run Server
     docker run -d \
@@ -96,7 +104,7 @@ resource "google_compute_instance" "qkmj_server" {
       --restart always \
       -p 7001:7001 \
       -e MONGO_URI="mongodb://mongo:27017" \
-      gcr.io/${var.project_id}/qkmj-server:latest
+      ${var.region}-docker.pkg.dev/${var.project_id}/qkmj-repo/qkmj-server:latest
       
     echo "Deployment Complete."
   """
