@@ -24,3 +24,11 @@
 - [ ] Task: Implement deployment automation for Cloud Run.
 - [ ] Task: Verify client connectivity to the GCE server and AI backend.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Client Deployment (Cloud Run)' (Protocol in workflow.md)
+
+## Phase 4: AI Agent Deployment (Agent Engine)
+**Goal:** Deploy the Python AI Agent to GCP Vertex AI Agent Engine.
+
+- [ ] Task: Implement CI workflow for Python AI Agent (testing/linting).
+- [ ] Task: Implement CD workflow for Python AI Agent (deployment to Agent Engine).
+- [ ] Task: Verify Agent Engine connectivity and model response.
+- [ ] Task: Conductor - User Manual Verification 'Phase 4: AI Agent Deployment (Agent Engine)' (Protocol in workflow.md)
