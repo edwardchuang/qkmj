@@ -69,7 +69,7 @@ resource "google_compute_instance" "qkmj_server" {
   }
 
   # Startup Script: Run Mongo and Game Server
-  metadata_startup_script = """
+  metadata_startup_script = <<-EOT
     #! /bin/bash
     set -e
     
@@ -107,5 +107,5 @@ resource "google_compute_instance" "qkmj_server" {
       ${var.region}-docker.pkg.dev/${var.project_id}/qkmj-repo/qkmj-server:latest
       
     echo "Deployment Complete."
-  """
+  EOT
 }
