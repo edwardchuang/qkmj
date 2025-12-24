@@ -20,7 +20,7 @@
 ## Phase 3: Client Deployment (Cloud Run)
 **Goal:** Deploy the `qkmj` client to Google Cloud Run.
 
-- [ ] Task: Finalize Terraform for Cloud Run service.
+- [x] Task: Finalize Terraform for Cloud Run service. 0197b4e
 - [ ] Task: Implement deployment automation for Cloud Run.
 - [ ] Task: Verify client connectivity to the GCE server and AI backend.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Client Deployment (Cloud Run)' (Protocol in workflow.md)
