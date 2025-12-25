@@ -664,7 +664,7 @@ void show_online_users(int player_id) {
     if (player[i].login == 2) online_num++;
   }
   snprintf(msg_buf, sizeof(msg_buf),
-           "◇目前上線人數: %d 人       注冊人數: %d 人", online_num,
+           "◇目前上線人數: %d 人       註冊人數: %d 人", online_num,
            total_num);
   payload = cJSON_CreateObject(); cJSON_AddStringToObject(payload, "text", msg_buf); send_json(player[player_id].sockfd, MSG_TEXT_MESSAGE, payload);
 }
