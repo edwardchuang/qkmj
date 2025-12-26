@@ -1,2 +1,4 @@
-google-adk
+google-adk>=1.21.0
 google-adk[eval]
+google-cloud-aiplatform[adk,agent_engines]>=1.111
+google-genai>=1.55.0

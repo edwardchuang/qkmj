@@ -21,14 +21,14 @@
 **Goal:** Deploy the `qkmj` client to Google Cloud Run.
 
 - [x] Task: Finalize Terraform for Cloud Run service. 0197b4e
-- [ ] Task: Implement deployment automation for Cloud Run.
+- [~] Task: Implement deployment automation for Cloud Run.
 - [ ] Task: Verify client connectivity to the GCE server and AI backend.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Client Deployment (Cloud Run)' (Protocol in workflow.md)
 
 ## Phase 4: AI Agent Deployment (Agent Engine)
 **Goal:** Deploy the Python AI Agent to GCP Vertex AI Agent Engine.
 
-- [~] Task: Implement CI workflow for Python AI Agent (testing/linting). de1b633
-- [~] Task: Implement CD workflow for Python AI Agent (deployment to Agent Engine). de1b633
+- [x] Task: Implement CI workflow for Python AI Agent (testing/linting). cdbe005
+- [x] Task: Implement CD workflow for Python AI Agent (deployment to Agent Engine). cdbe005
 - [ ] Task: Verify Agent Engine connectivity and model response.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: AI Agent Deployment (Agent Engine)' (Protocol in workflow.md)

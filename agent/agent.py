@@ -1,7 +1,7 @@
-from google.adk.agents.llm_agent import Agent
+from google.adk.agents import LlmAgent
 
-root_agent = Agent(
-    model='gemini-2.5-flash',
+root_agent = LlmAgent(
+    model='gemini-3-flash-preview',
     name='qk_agent',
     description='QKMJ Mahjong Agent, My name is Agent Q',
     instruction="""

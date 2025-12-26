@@ -179,10 +179,10 @@ jobs:
 
       - name: Deploy to Agent Engine
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && env.HAS_GCP_SECRET == 'true'
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ env.GCP_REGION }}
+          GCS_STAGING_BUCKET: ${{ secrets.GCS_STAGING_BUCKET }}
         run: |
           echo "Deploying qk_agent to Agent Engine..."
-          # The specific command for google-adk deployment to Agent Engine
-          # Example: gcloud alpha genai agents versions create ...
-          # For now, we use a placeholder or the adk tool if available.
-          # if command -v adk &> /dev/null; then adk deploy agent/agent.py; fi
-          echo "Deployment command would go here."
+          python agent/deploy.py
