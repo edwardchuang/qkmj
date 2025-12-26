@@ -53,8 +53,22 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/vpcaccess.user"
 
-# Agent Engine (Vertex AI Agents)
-# ... (rest of the file)
+# Agent Engine (Vertex AI Agents / Reasoning Engines)
+# This role is CRITICAL for 'aiplatform.reasoningEngines.create' permissions
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/aiplatform.admin"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/dialogflow.admin"
+
+# Storage (For Agent Engine Staging Bucket)
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-deploy@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/storage.admin"
+
+# Service Account User (Needed to deploy Cloud Run & Agents)
 ```
 
 ### 3. Configure Workload Identity Federation
