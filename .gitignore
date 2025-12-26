@@ -28,3 +28,5 @@ CMakeCache.txt
 
 .gemini/
 gha-creds-*.json
+.adk/
+.terraform/

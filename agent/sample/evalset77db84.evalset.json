@@ -1,0 +1,40 @@
+{
+  "eval_set_id": "evalset77db84",
+  "name": "evalset77db84",
+  "description": "Action validation: Agent Pongs a Dragon tile (Red Dragon - 41) to complete a triplet.",
+  "eval_cases": [
+    {
+      "eval_id": "cased512b1",
+      "conversation": [
+        {
+          "invocation_id": "e-daa22f8c-e3ab-48f8-830d-02b91fb2907d",
+          "user_content": {
+            "parts": [
+              {
+                "text": "{ \"hand\": [1,2,3, 11,12,13, 21,22,23, 41,41, 34, 5,6,7], \"event\": {\"new_card\": 41, \"from_seat\": 2, \"type\": \"discard\"}, \"legal_actions\": {\"can_pong\": true, \"can_discard\": false} }"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "{\"action\": \"pong\", \"card\": 41, \"meld_cards\": [41, 41]}",
+                "thought_signature": "CpMHAY89a18jxGO2JljHg2T7XNJ2J7JFKyP4G9Ab8ir3lu-HmMDuu2j7PsgxLy4d4vlX6zcgjtlWj6Bz01dEwO25F0CEwRMMER4H8mchdWWXmW2zaoxOIaaHEC3D5pmOLMWm_tORYtARctt5rkgyDFN-OPu-Pxz6AbmYl-e1c3PtmDT5D8OqdH28ZmbnfVI53qiBNSOxg2YvdAShdFxZq4X670sriC9hsFyoo5rihPdILMRaJFgzcv9t6yX078DuesKz-CMIW64CfraFKcy6gdWNar46c17tFCSV4FkOQYh7YxmCq6UDr3Hv7jM2IMCCFFBkmJUw45ZXl_DVhhQjDs3NMqme0r_tw3wX_Pj9J5CIxi4Z6eiZBD3bw2qT3QEh85yxFLgAUu1_Yw_cHhg2dRwN_Nh_ge8wPTj3BgKaRST_rzZiqbmhGOVQePiAFh2cwVOK07E43gdGTxbXKBkiEVcello-QvR3ZklfAopsQ_MCowGPrbzzD3iqF2AUksPzrHDXcRz0eFhCYtVjEBHayF0kZnTP4kKXNmTh7hqyt6idkWakyIFtL-TMF8CYOM35VjbiT-ipOJQgFWJ6oNqsWZV7dJHjOR4MGxHwMxJ4DZNDf19xUWX7mMmqfKzLa31bCFjSnjY93ukDuMWCL4g9sDtMxl1q6jgWYS-o0qxuAqFYEIdVlS-6OQbKs6BMvxV3y1cHd9SKXPstesVY7NIVDB5d6EqJWwoe2pMtMK_sCRixbLb6JGMnjs6-fwbyXhSboq7DfMSik9oWjmJavC2dxN0BJ3ptwCtjYXD3aDw-g5_nKzZRh10ziITY0zf6RlwG4rc-PpwEB4IUuJR97OKf0eAaKpCV0azIB52_EV27_lhLwFe2g9kb9lC9MRB0YGtkgD-RLQiN-keRLwBsis1RSv88OLEm94fo7SEi1ya57-_4ilmXVuNv010qoIJwdVMDpdMKt3qHpIkFY0OCp4RNwZSRfkBX75W7PzZ8Za6FJh2ZTBDkay0BIIkr2qbo1k0l1hcB4DRf3QHe-e277A5F7ywP8nlfDfuXxz_OXycgaoiCrv1rorUFoSQKBmwGww3F2CDTWu5Tq2JDGDl2vZjyVywevZC6oVWh9lZAvG0jZHbuHZxC-IIZR8DFWn_JivOeWFYMcPmCfQudXCvn8Mtykv11o0j4IAgOZFOVImvoxUnGgLpNkQ1vexuIczEDjBNi74GSaaoh"
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1766734689.054127
+        }
+      ],
+      "session_input": {
+        "app_name": "agent",
+        "user_id": "user"
+      },
+      "creation_timestamp": 1766734699.938312
+    }
+  ],
+  "creation_timestamp": 1766734692.1121721
+}

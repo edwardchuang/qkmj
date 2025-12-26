@@ -1,0 +1,40 @@
+{
+  "eval_set_id": "evalset697d1c",
+  "name": "evalset697d1c",
+  "description": "Efficiency test: Agent discards isolated simple tile (8) after drawing a tile that completes a pair (34).",
+  "eval_cases": [
+    {
+      "eval_id": "case697d1c",
+      "conversation": [
+        {
+          "invocation_id": "e-9fcd5dba-4c52-48f2-a93d-d130474bc4bb",
+          "user_content": {
+            "parts": [
+              {
+                "text": "{ \"hand\": [1,2,3, 11,12,13, 22,22, 34, 41,41,41, 5,6,7, 8], \"event\": {\"new_card\": 34}, \"legal_actions\": {\"can_discard\": true} }"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "{\"action\": \"discard\", \"card\": 8}",
+                "thought_signature": "Cp8OAY89a19eioPFL8U6Th6qm1Ip5GhkXRFNkGSVW3VYO-b6yOIv_epHM9tv2BeIL964UZ_CQ_mpni1zVTKdY6NPx295V6m8wrUJyA1qLGj1WoyLV5nevLqgvxeBdbbMZNEj4utHuvh-O5uFFHrksCr9KM5JoBVJmvh1DpndoCXAuN8yeQZMoR6CkV7677ybTYIaGjtaDAH0iT4FXXMWXjbaX6hGjI5liTMx3Cyfio4qybmhhpAGH8clKS_lWM4ndR7r2ksx9W5p8uE8-D0rTRsDoHZJrmaA9klOEGG-ltKpHp-ysYSKCJC3qeOOdlECgNxL8-bmX_bHfbFNvGVF1-GXsgIGuTbNUb3anzxuz7iZNG4WomrH-_GCTUb9JB3woBz88de1B1m2cJBgUJ_c2UAOFJEABWcPuwJswcFzjKjwVRwfqfCge-YOZhvkylq8nIjC8tLTMc2liGg7UKV0HiXDAVjPSCvIWtLoGnTRYpDIKONzSrIgDAsOWwJnj3qZOuce8WdY1k-GjWJ4FN8y_nqb8P2ZOckol4Rq7dCGPQrmJ038TBjhrubwb8y_cym_PMnQHdehp2XL1YO2uqC1GuTJUOidyKgBxXQmFWLHiplOLePw_chagGB9wD9sr9YVkL8-kM4G4bxP08l3JpghQZZ14tcxuFAHJi5XvzdoEQx9ZCEZ8T-0GDF0EHk7ZjP2IcmReqLdAGvp4HhmOzMKCQ6cFGu2Fgs1zbVfDCR8wUIX_unmo_cVTDX6eezG6ci76JqEbXOMtFcBcdzICetCdPBF3wsF806NGEE5_X0pxF8Qxrt4dC3YHouuY1XbELRffT4pSsPfMo_nnDOoYvQAjVkIKDNVrfWhDnq0yx-FztZVjiU0kvGdlkPfx6sUGJgvMr0uzrlFMs1wD-M1MmrV6W1z92CnnXQwCAsvuQYnUd1Oy9bQSIKC59S0cTzE1fQt9okBIKuu1bnEf0v5_8AhrAmpQoa6ejk_1sdVd3tEy30rnIS6f15b-3FYn7VB0oJBOGhgK6dTU3XX55zHcSDG8vB2UEnWbvV4QkzMHpjrFVv936tZb3ToysgFLeScwYxtTAXV32JOhPOabCw4H8p4LRE_xROMjfniXwmAkoThFJmfbbEetNbrPKMXPtA_vyPZW1rmDqu6Y7zVmCHTPfOhgUVJ6l3Lwy9HYvn3S-OOHeqd0Qmr5sWMLhiae9IQbB4owTpxwcNERBBdfhGbiR2alhi2PNyWXwYWjsC8SkHs2p1YpA-G7egUIeO3F-6v42b0pSzEewc9MXKtPch2YI6lwI7Mi-zH8ggH1JXDq5NxAuwY-VIVFGcHCK4jr8Nmd_FADrTazgji7wH-jumpAmFS4Z1KLszrB27wJcPeKa8Sr1YCkBY9RUOBC0eQuTOkCt1AL5sAL2SXt-4SHKhHjDome2sBgDt9HySbP5GAJbSOt3EWUQcTFvbXSlwL-PadKkxbZsYMPb-nB_vxWP0278EwfVZgfsGKl5A8uGXJUFtCPJp5EjBYQE5d7FAAiWVLq1y1QMFLeDWUqbyWgBklPR6wzhvz6g9cEMPgreOygCtE2heSuqjZDps5c-of5-qcldyhDuPAhteWuKrdB_fT1WIqj3ObTftWKLxnD9QcoJrNlDcwdKPWD3qYUF7fStYswK61Zjo4GNugcqG2382GCM01HKAf1e6rES7u9TVIL7q5U4LrhyS0MTayjTX7qz0lcmI6dax6essdZN4Z4l6XY5bQGZ4wnfVCsCpYhO55jZgezP9YMcYeRPe7-E5lVZmUEGHcbusTjbYAdcKqYzmXW9h9oMj7tGjVG6QSvFkQDMJzr1r_PyvGz8Ti072w0vbCTbSU5kp_nHwo4095zauIx86O23RzrmjH9y9UQqk__5a4nv_cdzDfsXCayNJeh00w6H2dA0ot_EOqOckA_FIl21ZjourjwDvCIcS8uGd98T-NjFv58epeycdOAKd_RVDOsVQj2oG2Uco3AiVGeDbiknpvfM8XcnCWZ0PeAtV8klympqLgdBO6ZE3-Lahacqd18zrg7wTDr0W1EApr_qrh0O9hcDQ66G0xdzM7_Wh9v6yTH41SsmZ9MHOm7dQ0VJefgj1O7mXMfz5zKMcNVgyv2I_TjoM2U7KCezu4a0GgyipTAzdhV_Gxnf3k7RAsb3yXFGKC8OF46U-ZivSdj0FtnU1qg79UPWCFPyeLOv-Q7oTSAdu1T6IgzvOC0bb0X1WuqSgCuB2F-4SoC1vKv253xoLA5oZBhVWvmsF_GydrWjy6JX9hkhcgjZowX4GrggFHNl0xcycMh1JYTzaYQdee9mrd_mFB6A53kSVy5QqlqpGHcmCIYLDCXLFPs5zlKaMQrGPOyv2fmUHKs_WvWEGpeYrwvBD3pGvAPsHSWpm2x_ErlpjeWpPGH7ZBSuDoy-iYpRJWJck="
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1766733708.793914
+        }
+      ],
+      "session_input": {
+        "app_name": "agent",
+        "user_id": "user"
+      },
+      "creation_timestamp": 1766733776.162838
+    }
+  ],
+  "creation_timestamp": 1766733771.045654
+}

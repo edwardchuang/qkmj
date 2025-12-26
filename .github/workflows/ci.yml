@@ -157,12 +157,6 @@ jobs:
           if [ -f agent/requirements.txt ]; then pip install -r agent/requirements.txt; fi
           pip install pytest google-adk
 
-      - name: Run Agent Tests
-        run: |
-          # Placeholder for agent tests
-          # pytest agent/
-          echo "Running agent tests..."
-
       - name: Google Auth
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && env.HAS_GCP_SECRET == 'true'
         uses: google-github-actions/auth@v2
@@ -176,6 +170,11 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
         with:
           install_components: 'alpha'
+
+      - name: Run Agent Evaluations
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && env.HAS_GCP_SECRET == 'true'
+        run: |
+          adk eval agent agent/sample/*.json --config_file_path=agent/eval_config.json
 
       - name: Deploy to Agent Engine
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && env.HAS_GCP_SECRET == 'true'

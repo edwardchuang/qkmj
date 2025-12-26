@@ -1,0 +1,40 @@
+{
+  "eval_set_id": "evalsetfb44a1",
+  "name": "evalsetfb44a1",
+  "description": "Action validation: Verifying 'Eat' (Chi) logic to complete a sequence.",
+  "eval_cases": [
+    {
+      "eval_id": "casefc2880",
+      "conversation": [
+        {
+          "invocation_id": "e-bc121aae-26b9-4ea7-a7e4-ae384648ee91",
+          "user_content": {
+            "parts": [
+              {
+                "text": "{ \"hand\": [1,2, 11,12,13, 21,22,23, 31,31,31, 41,41, 5,6,7], \"event\": {\"new_card\": 3, \"from_seat\": 3, \"type\": \"discard\"}, \"legal_actions\": {\"can_eat\": true, \"can_discard\": false} }"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "{\"action\": \"eat\", \"card\": 3, \"meld_cards\": [1, 2]}",
+                "thought_signature": "Ct0cAY89a19sfKLKsYNKnQZ0HEa83F6CgtwuBfC3ae6QDxzZru1vHurib2gpY5zz8J7ZvdiLYawX3EXTLrJH8MDd5Urc-dhTuYvqcZAsWhaPpJc3vFuafZw8QFVyXA1F269OgcUwBggow_fxjvoxc5nM7nIYUz0lnTsP37sXnZYmJCkz6SAqwJcyGCIdT54ghDN9Y00pxvlLM_TuHY3d34-byL_9R0yVjEZN8npma6uu44XWLOnHyHgTxzASkUfapuwyTSsrSuHdEDBDoX6ihr4yGe039yBeb1WCasTbDvH3Jf_IZzQlnBeHd2MBhVtuvCu9VfPtppM1rcfgDldk2tRwEtjy4c4kSx15TTmdbaI9IPa8av0gNKBmk3zwk2_ETRwUUcztP3WwqaHOdojHyUrhTk6zCbWXTVcFyWr51H3qhhdcKOkIFNVCWtAnzGLTsDvSinJEjfuNapCI60qm8KbE_dIa0iEoshObes2STJKkPZ8cGCjvE2Nkz8BBBYBXI4F1cbzq79992PzhI9_vsUj48PxrniR3r4Rq26Rr21PrXN-hjZ4DYlDa_ptTFys-pQg67YcEGdSbnOEMrKUPsJqfDpI7kHaoo_HGknI6ynI6CgIb9GrxxnkvD454YiLSd72JMZQRdVQ98M6JKgwVdTUuvYEsBp5T9AXx1bGNFhXutCEgWzDTr79b-UCVX4sGANjsngVvaLryzKBDisr2m9h0lBHp2Xqc8CGV2MUgA0cl_ZJU6ZckuBaucoRcyWPsRDX1bSZUCn7O0Jh9CV63gtTvDZ42z0_za3R3o_YJ2ANJlzOI014H282lkSXLDW8zeV6fcjcVQcoZuywCzBfV_I2lKu8RHd_2iDmBhgWH4meB4tWkiUnWjWcZmzPkWea5AS_yQ4CTV3spkhrZt7femj32WDJyFXNWyNmOQxYVyvDOV9GD9_P4HkR_uz0tNJESAA2NPxZu3F8oqCj8s-rkT2bBf_HKJpJjHYNhAODWe16t4sWSbeGBh9bIq0iPzG7qoOtnpqwzWR_wYE-5e8Rbt8M5MJWaGGaPCgMu9FgCaJbbjfiMGhUtFiy8pItvL9qsDLCVz_N3XV7GJRz59t4pQhfOO9xTlVMqtmfXwO6W_hjlyuUeuuvXpHqEnMxI-ird5w0lbAzjxk9pfDamiRgsllc7IW3cuPqs-mfp_USmxz67CcLbnlgZHVR5-zLOIdHD52NGYMKHX3uekaAOZfQrySAcCzZ66YEiAcm3k0OAcG8jQHQLhFbpmhsIlJUTfBmo0cYUbQ_16HQOMbLHM3N7L8tF1muYbtyW759llbCMqGOfJjiM40ILQiKcYdbQ_ettT3_55ZNNJEX52HpUUpkdnENH4G0SELtK_TdFI7ebgRRFe-je0QpVxEl2GuGWzSUiSKivsby-IcdQP88uu4Xa5NyXx5lOHLO2xkX6XcwHUJLoaNjpWX7pAbnOCiG6QQkFSGUdw6EUfScesG05GJsmRonFUaNs5nPgJka0ytsndpeanBhUr7yTam2oFZ1d3fkqgj48vSF-Zjjyimgg0ess58of3rSEcHFLcf-ydc2A9rYtndKZPyFtePWzbsRSaOS2fcn1yMdIayI2c_DZfcgcL67GiM-c3eTjqsJG6eR0qAVjcC6WByCDcABnIN3OpvZFsyTfgANZoY84a133JsszusUTbGYxn0Ji_ptkzWr23o3ieWsLqku3AoGTiAUJUXlAzbsohc8DT6WpV21n7-Y-7UOyyBpYDpPT8zAFODO7RQ2VqnEkzAEwK8FkGc4hnr9Pdfz3E5GZgxhl4dvm7yjzLOxhJSvMOSTzZag69-t2Xhr3Pi8Jt4PLqcC2dhguWDkuaNPgTy2fNOkFeUp-xIsuYWzb2x9-oTDzHFyfpN4gQrmUDfSaHoXzjXlvenPp0TtmEWVn1_DieMKzTtcsHQrr17thnanHBqYJqsgyW1C441IcykvIQ1qePE3WAmresgziL0ScHaU93XwKuSGQDnMqwjbVGMz8O67pfhRVDBJncdxyBNhEv3oCJaKQE6ed7P0ugK0Ql5dV-B7kukVZqrr4OmCn4VnnHuPigMBX1tFkuRHtqVMNhk5rsj8HGnIZubB7GKErmPK91N23QTrndq1ExVT0v_sF_6XhhFLhLtJK8EW-Ayf46n7oNnK-GHn8jIja0WUAWLlJxJLw_w-7wsO1N2GGDK3CNMaITHPFBwX-oj3QfHlkBCvVQNvG2dWgjQu0_p0zKvOPm4-oZlM9iZtGVo81dsDuLEUxNZ3GplU_ySOMHpSAHm7zX5Ljb1l9Zc7eOoGI6Qfup41hP7E4_XfaJctSy0kFyBU8MVa8tlQaLEl9e05L7k_SjrCp7Qh7td9wOPiI6TfzvMGyxijUzs077k8NfO58Bsv0DdBSYgZsA8tnnGyIM-zN1CrA2eGC0CJmixUvm-MKYAK3KO06BB68CJkyDzPPyU3JQLQ7mKoDwY63Ww09pNSBzue3jsv2hqy-MABiTkWlNTuuMCq4TdlWBP5MURCZIFWOMuFbD2ChfHdFGpIjYBS9zVNVebe9vuybIsVCNn35wyMyxFKVmrNrolneuY8AOIQqlTmwaPh84CLEwaZRviNdTnGezHiwZt4dtg2Jl4GzANp2i_vSMZnX_f-C5ThCkFcvA_4KNcPM4MDsF0sT6aiL9QZwRSG1CGTLbiyqbIf0hsLV_e4BdaO24JakDK8zgSOjC8LMYKg8Qqr97gnFzG_Bi-OxeDr2mh_Gc3fRhIAmEECcb0YqkYRgHwgyFZtLzi0_Y27Y2sn-_dd4U3_JjgN988b9rrfHO7yz6TwOU9XAeB7h-BYeIillfe3UFXYkK4kkz-sgaTRFBE4K3C4FaXEWS_gsZhVLl46hvc3xKZvZDTmNIhFZvcdnru3AZynnEL7VdFflzPYx2kr-LK23Kw3ohJ2ik7F5cV3lVAt1dfr4F_oxUjXDG0KMJY-rknCVLS-S8Rk-11WhzhmeODlVsdNonMOfkMldeod4UIsMeg3-U1XBEsoQ5vUNyDbnqgDjYDAS2x-VQ_a1Mluvd6yq9BAmvclb-_jVGft-wLMqKPP4wpIn97-Sr78G-BZykNSN6JuTgo7zhxykndkKwS_6xK7W7krOoRGTlP3W5auA8vyxMwKCCdJty4ALwTldHsmLDUcEkQM_7H4Z8kuESfwNLEyhavrfDzWFr_u-ivF05OWAHqYcUAhi_WM1DRcU1kmPz8QyI0uG8fplW3ShXtVL8_HjMNJ-_P_unFncrVkR3MqClGV_IO8_Y0PVkhAYdHhUmZg-J9tDYpBm4y1LbE55RKCCSDQ7J6GCCn5bwqGOPg6nZdps45deUdNqtF9uyjFBB5oNtKv_1seqBR7KlIrUH_auDfiY7BsOUiUH4Xkj9ZAB-2AdfC3wpRniPkCFA8TPjsXAHthrDfXnGEi2EqsXMs_0bjYlHWNmdf_gsjV4caPkFtMPUnA5B08UH3H4EFvz8eVghAcXB4czapDiC3lDVcQAROWx4vgHTm4-kkydJii9HytswPjrkxxxyX3Kf9pvVdqoaYj2DYhMREao-TCVTrUaOWnjxLYKxbHaYIopiqeUCcgxmrBGjTFnDjlwCGqtbszxkBAmXr8HbF6Zv706HIoE1yOEoiORdmMlLiNEGaRO2VxegM-uzXnrPo0pxCKqn52WH4fBs8kaXPeFaKqrfRaQeBNySXarGLXcrMV4Br3SBRHZsmnkIbVopgWvn9tZGdAIdpO8AI5oR_g0rPZnqCi8d1dbCYN71fc46NOhO2_5Cxd0ZDD33-3_JWyCebZDNasxtcW8oLcpCRXPm_h1tKCsU-iMKV4UqiZRNn-vbKYvAvqBjqY7ID2uuhSk3d20I6enVVKrJeHNBr2YA3c2J4N9EkDXVg4SFWjx5o8ll5A3bn4R99CObmnPNJ5z7cK8gxUc5AfWMopv7N6p75bHJoducQlVtYuFhSPvmbltDxLidiPPWNRrwQVguBYhEPwAykP-XWJAKaTcw0U48IWXptqv7FstL84Td5T-TYfzIfHnj5ankQgGVrMI8ih5_CMkDvpj97T84P1OLF9s0k1IUYIPWN8Nbw-6bPFko2TXc1dCoIgWlI67m5fXJ1iY5HmwKuDFBS0wvvKLoJD_H3F0YemBJcUDIz9dV3vZq2ScEHQvRYcj2lPn5W3AKMPAEwFedxipDdpCCHDxutm2_HKcuVI_VUFYSLzI65m5jsIU5d5gHLIXWTYuY30wbVLCuRpXgS1w8RzVoQ_X5NmvY8CNQ3RUeu-5dAkGcX_gWOc75bt5TQVcz2FNqKzUowUJIqcB3CC6NiJnmupVVt1e09kcKXmhu5VYdKpKT73xdXfrCYdKn7u6XvusjiAD79l1pDSms_IBHabIs0xZZ01Y0M6QwLIRBvUguoKe-C4jMSnU68pngSKER_O2Pjn8Rcc2PmgO3vJ954Nvk7T4VXZ9a_bt3P-rET13RzpOLNx_0faTerp7LjqxD6p3iaFECVyENxayFd46ox3N1-K4s5jT2YPzDmcc6tmIJX7mTewgvGy1JdX2Bto8_0TwJjl0tv6bRsXmKOnnpL-UfThD-tCOIntZ8LVrewofCmWG762hCSZaYPqtCpU8ntzaodjv8jtIWsNLFnHtwl1az5E-1tPY-xPoECPov-zHCerMoudULlxaV0p6oyq4CTBo-vYARGz1DoACsf7TdblWptYn6TS7g6OX6GVkgTUD-KP5PNvPUH0PK23rIlq2DfYSJqwqtuQaWWLnJG5rjmebNJ8aBF6KqkxtMhGX1fTYRO8YX5duhboLIHuILucLqN8arcQZwZSCTAX-k-dQ6fK-eKKTpaoHa9xV_cVJVUIUIGNMz8Z1mlHsr11jkXcy8KTvGfETLdz3gPDYwet-iv5fPR_DXLI="
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1766734583.325144
+        }
+      ],
+      "session_input": {
+        "app_name": "agent",
+        "user_id": "user"
+      },
+      "creation_timestamp": 1766734619.136385
+    }
+  ],
+  "creation_timestamp": 1766734615.935148
+}

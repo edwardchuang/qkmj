@@ -1,0 +1,40 @@
+{
+  "eval_set_id": "evalsetcbd0b9",
+  "name": "evalsetcbd0b9",
+  "description": "Win condition: Verifying the agent correctly identifies a winning hand (Hu) upon drawing the final tile.",
+  "eval_cases": [
+    {
+      "eval_id": "casebe6813",
+      "conversation": [
+        {
+          "invocation_id": "e-27016155-bc07-4d06-a9ef-e50c5faceb02",
+          "user_content": {
+            "parts": [
+              {
+                "text": "{ \"hand\": [1,1,1, 11,11,11, 21,21,21, 31,31,31, 41,41, 42,42], \"event\": {\"new_card\": 41, \"type\": \"draw\"}, \"legal_actions\": {\"can_win\": true, \"can_discard\": true} }"
+              }
+            ],
+            "role": "user"
+          },
+          "final_response": {
+            "parts": [
+              {
+                "text": "{\"action\": \"win\"}",
+                "thought_signature": "CtgIAY89a18T4b8XV6iwytBiBN8RSwXbOTI77enLBx1g8ZPS3uaQKYl0hu5ARgx6vWpbW2WzHQtpn6hkkroK6Jd85eLzUJsQc3qq2UV3ox6PheDHBS7TmbS53DNdt5epyX58NIMG3925zgpkeYkmzaytsdgoYXpUTn0hzI7fiWXDtV1af6j-MZ-2oUPDkWnh3Y4uxKt544CuHellZ1HTCFKbpK7P5kkh_m9lFNykbSyr7KZxEzcGV51CUYgHLU_bMP5pI3YAIpn4c0q_LTSeFZeA7rE_tVOq3YfwW9Ar_m7QKTXpYvJNV8FcdXXIYM9ZGjWedWaPkAltpwYzKiksyePCCj4qsr1rRuJkjBkMJtjLSCKOP3ZRhCeXB7kHGuKTjr3-rCd4KnJimfdr9meMEPF8n-Bp6QHKIY6IBeg4Cz63cYUe0imyz_7Va21JtN8lsEmC4v-coy-nvsVR9cyaELh1Vo72JnokjTLJXlpVHeE277GWo4RwIc5DnkPq3fpfphVj4DZoXLQysR3odk1ey0MKNRBECjrwXD421V6bCTqmsUn0IdFh1bEO6A7rKY81lFeQxIok1_CJtlCimg30-cibuLeDZlu5i70zxa_6l_X3w6nsodyyDechUc17MokgVVhmTSw4ugShOBXg86OQOvNCyYhs8QZOsDASXpLWdnAoQR8RUeMug092boYL8GWa2gJ-sJk-O3vPUaVqEuMTmd9vezCTt63kyyaIYcJsFOndqU7cpfNjTe4beJULNm4F7SdDqzQXmzxytdA35yOoXSpyVGFutq_NygXY3ULO3P2pDmXYBjo-mW61cB-EQp8j3k_h4829JRNBrdfB0JG4F6Vwdh1No6LfotJpbqoKZfwvH_YwP0NMMrYmcmKBPVfJy7juqBJ0a2Of7gX8Q0FPzFQt9vUmlFngYSJEcS99lH2AVJV5d1mMbceBkcDkTsG9yIr5TjBiHYHbcbVfPT3dnbXCYistJ7KMI39N9qieoiYNolCmuGAZr7Hp-7UJHNEmSB7wRBPE-F1WDMfJy5V30ZwWHOaBiZjxgnjI7MFvGp5a1BkXJYfqhG0TvtYE0iDnucBk1ojNHJeqS9AgSiWJQHDS0OhD240CAuzZPuYFCRg3T_5CdctP4XhgHoHijHIRiLhXbM-tFdC2-KOPGsO-Oezo-TaQdDMdhpEroQagF-qg_v2EdFPT9RZ6iKZt8Kdh0onnVSSGLBFiTyebyjSl8LVAl9Q-6XAwTmABwZiroK03tC80SUFynEFmiD4tMYXeia1Cj1Rjsu8Qj4D-loRBKPzh9s4BKBxhrUMEQu9A_FUqd0qLIxIzh69IZiLC1j-Ouasm7c1i0bxC0KvtaTff7FE9_XjLjArcymOtI1Wj9y06q9ssI29gEx8O47CcfBdITe68OrdoSc_l_OY7pDxgzhkyo1sNyiS-EeL6CIvyi7eCAhXsqWIf0fxJaj38TXaHo8n5rVQ6t1gq29I="
+              }
+            ],
+            "role": "model"
+          },
+          "intermediate_data": {},
+          "creation_timestamp": 1766734731.029642
+        }
+      ],
+      "session_input": {
+        "app_name": "agent",
+        "user_id": "user"
+      },
+      "creation_timestamp": 1766734741.7858539
+    }
+  ],
+  "creation_timestamp": 1766734707.02615
+}
