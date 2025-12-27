@@ -34,7 +34,6 @@ static int check_socket_read(int fd, int timeout_sec, int timeout_usec) {
 int send_json(int fd, int msg_id, cJSON* data) {
   cJSON* root = cJSON_CreateObject();
   if (!root) {
-    if (data) cJSON_Delete(data);
     return 0;
   }
 
@@ -95,6 +94,9 @@ int recv_json(int fd, int* msg_id, cJSON** data) {
   char peek_buf[PEEK_SIZE];
   int found_null;
   int i;
+
+  if (data) *data = NULL;
+  if (msg_id) *msg_id = 0;
 
   /* Wait for data with timeout */
   if (check_socket_read(fd, 5, 0) <= 0) {

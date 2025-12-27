@@ -1159,6 +1159,7 @@ void gps_processing() {
                 break;
               case MSG_STATUS: /* 201 */
                 show_current_state(player_id);
+                break;
               case MSG_SHUTDOWN: /* 500 */
                 if (strcmp(player[player_id].name, ADMIN_USER) == 0) {
                   LOG_WARN("ADMIN ACTION: [%s] initiated shutdown", ADMIN_USER);
