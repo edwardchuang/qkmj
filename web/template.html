@@ -146,6 +146,99 @@
         .xterm-rows {
             font-variant-ligatures: none;
         }
+
+        /* 聲明彈窗樣式 */
+        #consent-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+        }
+
+        #consent-modal {
+            max-width: 650px;
+            width: 90%;
+            background: #121212;
+            border: 4px solid var(--wood-dark);
+            outline: 1px solid var(--gold);
+            outline-offset: -5px;
+            padding: 40px;
+            color: #dcdccc;
+            box-shadow: 0 0 100px rgba(0,0,0,1);
+            position: relative;
+            animation: modalFadeIn 0.5s ease-out;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #consent-modal h2 {
+            font-family: 'Noto Serif TC', serif;
+            color: var(--gold);
+            margin-top: 0;
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 15px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .consent-content {
+            font-size: 14px;
+            line-height: 1.8;
+            max-height: 60vh;
+            overflow-y: auto;
+            margin: 25px 0;
+            padding-right: 15px;
+            text-align: justify;
+        }
+
+        .consent-content h3 {
+            color: var(--gold);
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .consent-content hr {
+            border: 0;
+            border-top: 1px dashed var(--text-muted);
+            margin: 25px 0;
+        }
+
+        #consent-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: var(--table-felt);
+            color: white;
+            border: 2px solid var(--gold);
+            cursor: pointer;
+            font-family: 'Noto Sans TC', sans-serif;
+            font-weight: bold;
+            font-size: 18px;
+            transition: all 0.3s;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        #consent-btn:hover {
+            background: var(--gold);
+            color: var(--wood-dark);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+        }
+
+        /* 隱藏滾動條但保持功能 */
+        .consent-content::-webkit-scrollbar { width: 4px; }
+        .consent-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        .consent-content::-webkit-scrollbar-thumb { background: var(--wood-light); }
     </style>
 
     <% for (const css in htmlWebpackPlugin.files.css) { %>
@@ -153,6 +246,112 @@
     <% } %>
 </head>
 <body>
+
+<div id="consent-overlay">
+    <div id="consent-modal">
+        <h2>法律免責聲明 / Legal Disclaimer</h2>
+        <div class="consent-content">
+            <section>
+                <h3>【繁體中文】</h3>
+                <p>1. <strong>研究性質</strong>：本網站及其相關系統（以下簡稱「本服務」）係專為學術研究、演算法開發及技術測試之目的而設計，不具備任何博弈、賭博或非法營利之意圖。</p>
+                <p>2. <strong>非博弈性質</strong>：本服務與任何商業博弈行為無涉。系統內不提供任何真實金錢與虛擬點數之兌換功能。</p>
+                <p>3. <strong>無價值聲明</strong>：遊戲中所有積分、數值及排名僅作為技術測試與競爭模擬之指標。該等數值不具備任何物理價值、經濟價值，亦不得兌換為現金、商品、有價證券或其他形式之利益。</p>
+                <p>4. <strong>免責聲明</strong>：本服務按「現況」提供，開發者與託管者對於本服務之穩定性、可用性、資料準確性或安全性，不提供任何明示或暗示之保證。</p>
+                <p>5. <strong>合規與同意</strong>：進入本網站即代表您已充分閱讀、理解並無條件同意上述所有條款。</p>
+                <p>6. <strong>最終解釋權</strong>：本服務及其相關條款之最終解釋權，在法律允許之範圍內，均歸屬本網站託管人所有。</p>
+            </section>
+            
+            <hr>
+            
+            <section>
+                <h3>【English】</h3>
+                <p>1. <strong>Academic Nature</strong>: This website and its associated systems (the "Service") are developed exclusively for academic research, algorithmic development, and technical testing purposes. It is not intended for gambling or any commercial profit.</p>
+                <p>2. <strong>No Gambling Affiliation</strong>: The Service is not affiliated with any gambling enterprise. No real-money gambling or gambling-for-profit functionality is provided within this system.</p>
+                <p>3. <strong>No Monetary Value</strong>: All points, scores, and rankings within the game are strictly for simulation and testing purposes. These values hold no physical or economic value and are non-exchangeable for cash, goods, securities, or any other form of benefit.</p>
+                <p>4. <strong>Warranty Disclaimer</strong>: The Service is provided on an "AS IS" and "AS AVAILABLE" basis. The developers and hosts provide no warranties, express or implied, regarding the stability, accuracy, or security of the Service.</p>
+                <p>5. <strong>Consent</strong>: By accessing this website, you acknowledge that you have been informed of these terms and hereby provide your explicit and unconditional consent.</p>
+                <p>6. <strong>Final Interpretation</strong>: To the extent permitted by law, the host of this Service reserves the right of final interpretation regarding these terms and the Service itself.</p>
+            </section>
+        </div>
+        <button id="consent-btn">我已閱讀並同意上述條款 / I AGREE</button>
+    </div>
+</div>
+
+<script>
+    (function() {
+        try {
+            var STORAGE_KEY = 'qkmj_consent_data';
+            var TTL_MS = 24 * 60 * 60 * 1000;
+            
+            // Store the HTML template so we can re-inject it if wiped
+            var modalHtml = 
+                '<div id="consent-modal">' +
+                '    <h2>法律免責聲明 / Legal Disclaimer</h2>' +
+                '    <div class="consent-content">' +
+                '        <section>' +
+                '            <h3>【繁體中文】</h3>' +
+                '            <p>1. <strong>研究性質</strong>：本網站及其相關系統（以下簡稱「本服務」）係專為學術研究、演算法開發及技術測試之目的而設計，不具備任何博弈、賭博或非法營利之意圖。</p>' +
+                '            <p>2. <strong>非博弈性質</strong>：本服務與任何商業博弈行為無涉。系統內不提供任何真實金錢與虛擬點數之兌換功能。</p>' +
+                '            <p>3. <strong>無價值聲明</strong>：遊戲中所有積分、數值及排名僅作為技術測試與競爭模擬之指標。該等數值不具備任何物理價值、經濟價值，亦不得兌換為現金、商品、有價證券或其他形式之利益。</p>' +
+                '            <p>4. <strong>免責聲明</strong>：本服務按「現況」提供，開發者與託管者對於本服務之穩定性、可用性、資料準確性或安全性，不提供任何明示或暗示之保證。</p>' +
+                '            <p>5. <strong>合規與同意</strong>：進入本網站即代表您已充分閱讀、理解並無條件同意上述所有條款。</p>' +
+                '            <p>6. <strong>最終解釋權</strong>：本服務及其相關條款之最終解釋權，在法律允許之範圍內，均歸屬本網站託管人所有。</p>' +
+                '        </section>' +
+                '        <hr>' +
+                '        <section>' +
+                '            <h3>【English】</h3>' +
+                '            <p>1. <strong>Academic Nature</strong>: This website and its associated systems (the "Service") are developed exclusively for academic research, algorithmic development, and technical testing purposes. It is not intended for gambling or any commercial profit.</p>' +
+                '            <p>2. <strong>No Gambling Affiliation</strong>: The Service is not affiliated with any gambling enterprise. No real-money gambling or gambling-for-profit functionality is provided within this system.</p>' +
+                '            <p>3. <strong>No Monetary Value</strong>: All points, scores, and rankings within the game are strictly for simulation and testing purposes. These values hold no physical or economic value and are non-exchangeable for cash, goods, securities, or any other form of benefit.</p>' +
+                '            <p>4. <strong>Warranty Disclaimer</strong>: The Service is provided on an "AS IS" and "AS AVAILABLE" basis. The developers and hosts provide no warranties, express or implied, regarding the stability, accuracy, or security of the Service.</p>' +
+                '            <p>5. <strong>Consent</strong>: By accessing this website, you acknowledge that you have been informed of these terms and hereby provide your explicit and unconditional consent.</p>' +
+                '            <p>6. <strong>Final Interpretation</strong>: To the extent permitted by law, the host of this Service reserves the right of final interpretation regarding these terms and the Service itself.</p>' +
+                '        </section>' +
+                '    </div>' +
+                '    <button id="consent-btn">我已閱讀並同意上述條款 / I AGREE</button>' +
+                '</div>';
+
+            window.isConsentValid = function() {
+                var itemStr = localStorage.getItem(STORAGE_KEY);
+                if (!itemStr) return false;
+                try {
+                    var item = JSON.parse(itemStr);
+                    return (new Date().getTime() <= item.expiry) && (item.value === 'true');
+                } catch (e) { return false; }
+            };
+
+            function ensureModal() {
+                if (window.isConsentValid()) return;
+                
+                var overlay = document.getElementById('consent-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'consent-overlay';
+                    document.body.appendChild(overlay);
+                }
+                
+                if (!document.getElementById('consent-modal')) {
+                    overlay.innerHTML = modalHtml;
+                    document.getElementById('consent-btn').addEventListener('click', function() {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                            value: 'true',
+                            expiry: new Date().getTime() + TTL_MS
+                        }));
+                        overlay.style.display = 'none';
+                    });
+                }
+                overlay.style.display = 'flex';
+            }
+
+            // Run immediately
+            ensureModal();
+            // Also run after terminal might have wiped the body
+            setTimeout(ensureModal, 500);
+            setTimeout(ensureModal, 2000);
+            
+        } catch (e) { console.error("Consent script error:", e); }
+    })();
+</script>
 
 <div id="ui-overlay">
     <h1>QKMJ ONLINE</h1>
