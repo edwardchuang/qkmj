@@ -10,8 +10,11 @@
 
 static int ai_enabled = 0;
 static int ai_debug_enabled = 0;
-static char ai_endpoint[256] = "http://localhost:8000";
+static int is_reasoning_engine = 0;
+static char ai_endpoint[512] = "http://localhost:8000";
 static char ai_session_id[40] = "";
+static char ai_gcp_session_name[512] = "";
+static char ai_auth_token[1024] = "";
 
 #define AI_LOG(...) if (ai_debug_enabled) { printf(__VA_ARGS__); }
 #define AI_ERR(...) fprintf(stderr, __VA_ARGS__)
@@ -20,6 +23,44 @@ struct memory {
   char *response;
   size_t size;
 };
+
+static size_t write_callback(void *data, size_t size, size_t nmemb, void *userp);
+
+static void ai_refresh_token() {
+    if (!is_reasoning_engine) return;
+
+    struct memory chunk = {NULL, 0};
+    CURL *curl = curl_easy_init();
+    struct curl_slist *headers = NULL;
+
+    if (curl) {
+        AI_LOG("[AI DEBUG] Attempting to fetch token from Metadata Server...\n");
+        headers = curl_slist_append(headers, "Metadata-Flavor: Google");
+        curl_easy_setopt(curl, CURLOPT_URL, "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L); 
+
+        if (curl_easy_perform(curl) == CURLE_OK && chunk.response) {
+            cJSON *json = cJSON_Parse(chunk.response);
+            if (json) {
+                cJSON *token = cJSON_GetObjectItem(json, "access_token");
+                if (cJSON_IsString(token)) {
+                    strncpy(ai_auth_token, token->valuestring, sizeof(ai_auth_token) - 1);
+                    ai_auth_token[sizeof(ai_auth_token) - 1] = '\0';
+                    AI_LOG("[AI DEBUG] Token refreshed via Metadata Server\n");
+                }
+                cJSON_Delete(json);
+            }
+        } else {
+            AI_LOG("[AI DEBUG] Metadata Server unreachable. AI_TOKEN will be used if provided.\n");
+        }
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+    }
+    if (chunk.response) free(chunk.response);
+}
 
 // Helper to log to server (MongoDB)
 static void ai_send_log_to_server(const char* type, cJSON* req, cJSON* resp, const char* err) {
@@ -38,33 +79,6 @@ static void ai_send_log_to_server(const char* type, cJSON* req, cJSON* resp, con
 
     /* Use send_json to send message ID 901 (AI Log) */
     send_json(gps_sockfd, 901, log); 
-    
-    /* send_json consumes the object? No, checking protocol.c:
-       cJSON_AddItemToObject(root, "data", data);
-       send_json TAKES OWNERSHIP of 'data' because it adds it to 'root' and then deletes 'root'.
-       Wait, let's double check protocol.c implementation I read earlier.
-    */
-    /* protocol.c:
-       int send_json(int fd, int msg_id, cJSON *data) {
-           cJSON *root = cJSON_CreateObject();
-           // ...
-           if (data) {
-               cJSON_AddItemToObject(root, "data", data);
-           }
-           // ...
-           cJSON_Delete(root);
-           return 1;
-       }
-       cJSON_AddItemToObject transfers ownership.
-       When root is deleted, data is deleted.
-       So we DO NOT need to cJSON_Delete(log) here if send_json is called.
-       BUT, if send_json returns 0 (failure) early?
-       protocol.c:
-       if (!root) { if (data) cJSON_Delete(data); return 0; }
-       ...
-       cJSON_Delete(root); // Deletes data
-       So yes, send_json takes ownership.
-    */
 }
 
 static size_t write_callback(void *data, size_t size, size_t nmemb, void *userp) {
@@ -79,8 +93,8 @@ static size_t write_callback(void *data, size_t size, size_t nmemb, void *userp)
   mem->size += realsize;
   mem->response[mem->size] = 0;
   
-  // Debug log: print response chunk
-  AI_LOG("[AI DEBUG] Received chunk: %s\n", (char*)data);
+  // Debug log: print response chunk safely using precision specifier
+  AI_LOG("[AI DEBUG] Received chunk: %.*s\n", (int)realsize, (char*)data);
  
   return realsize;
 }
@@ -152,23 +166,73 @@ static int ai_register_session() {
     char url[1024];
     char *encoded_name;
     int success = 0;
+    struct curl_slist *headers = NULL;
+    struct memory chunk = {NULL, 0};
 
     if (!ai_session_id[0]) return 0;
 
     curl = curl_easy_init();
     if (curl) {
-        encoded_name = curl_easy_escape(curl, (char*)my_name, 0);
-        snprintf(url, sizeof(url), "%s/apps/agent/users/%s/sessions/%s", 
-                 ai_endpoint, encoded_name ? encoded_name : "unknown", ai_session_id);
-        if (encoded_name) curl_free(encoded_name);
+        // Both use the same base URL logic, but Reasoning Engine uses :query endpoint
+        strncpy(url, ai_endpoint, sizeof(url) - 1);
+        url[sizeof(url) - 1] = '\0';
+        
+        if (!is_reasoning_engine) {
+            encoded_name = curl_easy_escape(curl, (char*)my_name, 0);
+            snprintf(url, sizeof(url), "%s/apps/agent/users/%s/sessions/%s", 
+                     ai_endpoint, encoded_name ? encoded_name : "unknown", ai_session_id);
+            if (encoded_name) curl_free(encoded_name);
+            AI_LOG("[AI DEBUG] Registering Local Session. URL: %s\n", url);
+        } else {
+            // Fix: Registration must use :query even if decision uses :streamQuery.
+            // Also strip query parameters like ?alt=sse for the registration call.
+            char *sq = strstr(url, ":streamQuery");
+            if (sq) {
+                sprintf(sq, ":query");
+            } else {
+                // Ensure it has :query if it's missing (GCP requirement for method dispatch)
+                if (strstr(url, ":query") == NULL) {
+                    char *q = strchr(url, '?');
+                    if (q) *q = '\0'; // Strip params
+                    strncat(url, ":query", sizeof(url) - strlen(url) - 1);
+                } else {
+                    // Strip params after :query
+                    char *q = strchr(strstr(url, ":query"), '?');
+                    if (q) *q = '\0';
+                }
+            }
+            AI_LOG("[AI DEBUG] Creating Agent Engine Session. URL: %s\n", url);
+        }
 
-        AI_LOG("[AI DEBUG] Registering Session. URL: %s\n", url);
+        if (is_reasoning_engine && ai_auth_token[0]) {
+            char auth_hdr[1100];
+            snprintf(auth_hdr, sizeof(auth_hdr), "Authorization: Bearer %s", ai_auth_token);
+            headers = curl_slist_append(headers, auth_hdr);
+        }
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, ""); // Empty body
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, registration_write_callback);
-        // SSL verification off for localhost
+        
+        char *reg_data = NULL;
+        cJSON *reg_root = NULL;
+
+        if (is_reasoning_engine) {
+            reg_root = cJSON_CreateObject();
+            cJSON_AddStringToObject(reg_root, "class_method", "async_create_session");
+            cJSON *input_obj = cJSON_CreateObject();
+            cJSON_AddStringToObject(input_obj, "user_id", (char*)my_name);
+            cJSON_AddItemToObject(reg_root, "input", input_obj);
+            reg_data = cJSON_PrintUnformatted(reg_root);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, reg_data);
+        } else {
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "{}");
+        }
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+        
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
@@ -176,23 +240,91 @@ static int ai_register_session() {
         res = curl_easy_perform(curl);
         hide_ai_thinking();
 
-        // Log registration attempt
-        cJSON *req_json = cJSON_CreateObject();
-        cJSON_AddStringToObject(req_json, "url", url);
-        cJSON *resp_json = cJSON_CreateObject(); // Empty for now as we don't capture it easily without custom struct
-        
-        if (res != CURLE_OK) {
-            AI_ERR("[AI ERROR] AI Registration failed: %s\n", curl_easy_strerror(res));
-            ai_send_log_to_server("registration", req_json, NULL, curl_easy_strerror(res));
+        long response_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+
+        if (reg_data) free(reg_data);
+        if (reg_root) cJSON_Delete(reg_root);
+
+        if (res == CURLE_OK && response_code >= 200 && response_code < 300) {
+            if (is_reasoning_engine) {
+                cJSON *json = cJSON_Parse(chunk.response);
+                if (json) {
+                    // Agent Engine returns the session resource name in the "output" field
+                    cJSON *output = cJSON_GetObjectItem(json, "output");
+                    if (cJSON_IsString(output)) {
+                        strncpy(ai_gcp_session_name, output->valuestring, sizeof(ai_gcp_session_name) - 1);
+                        success = 1;
+                        AI_LOG("[AI DEBUG] Agent Engine Session Created: %s\n", ai_gcp_session_name);
+                    } else if (cJSON_IsObject(output)) {
+                        // Some reasoning engines might return an object with a session ID
+                        char *obj_str = cJSON_PrintUnformatted(output);
+                        AI_LOG("[AI DEBUG] Agent Engine returned object output: %s\n", obj_str);
+                        
+                        cJSON *sid = cJSON_GetObjectItem(output, "session_id");
+                        if (!sid) sid = cJSON_GetObjectItem(output, "session");
+                        if (!sid) sid = cJSON_GetObjectItem(output, "id");
+                        
+                        if (sid && cJSON_IsString(sid)) {
+                            strncpy(ai_gcp_session_name, sid->valuestring, sizeof(ai_gcp_session_name) - 1);
+                            success = 1;
+                            AI_LOG("[AI DEBUG] Session name extracted from object: %s\n", ai_gcp_session_name);
+                        } else {
+                            // Fallback: use the whole object string as the session name if it fits
+                            strncpy(ai_gcp_session_name, obj_str, sizeof(ai_gcp_session_name) - 1);
+                            success = 1; 
+                        }
+                        free(obj_str);
+                    } else {
+                        AI_ERR("[AI ERROR] Agent Engine response missing string/object 'output' field\n");
+                        AI_LOG("[AI DEBUG] Full Response: %s\n", chunk.response);
+                    }
+                    cJSON_Delete(json);
+                } else {
+                    AI_ERR("[AI ERROR] Failed to parse Agent Engine JSON response\n");
+                    AI_LOG("[AI DEBUG] Raw Response: %s\n", chunk.response);
+                }
+            } else {
+                success = 1;
+                AI_LOG("[AI DEBUG] Local Session Registered (HTTP %ld)\n", response_code);
+            }
         } else {
-            AI_LOG("[AI DEBUG] Session Registration Successful\n");
-            success = 1;
-            ai_send_log_to_server("registration", req_json, NULL, NULL);
+            AI_ERR("[AI ERROR] AI Registration failed. HTTP %ld, CURL code %d\n", response_code, res);
+            if (chunk.response) {
+                AI_LOG("[AI DEBUG] Failure Response: %s\n", chunk.response);
+            }
+            
+            // Special case: if we get 404 on local registration, maybe the backend doesn't support it.
+            // For local development, we might want to "fail upward" if the endpoint exists but path doesn't.
+            if (!is_reasoning_engine && response_code == 404) {
+                AI_LOG("[AI DEBUG] 404 detected on registration. Proceeding anyway (Local Fallback).\n");
+                success = 1; 
+            }
         }
         
+        cJSON *req_json = cJSON_CreateObject();
+        cJSON_AddStringToObject(req_json, "url", url);
+        cJSON_AddNumberToObject(req_json, "http_code", (double)response_code);
+        
+        cJSON *resp_body = NULL;
+        if (chunk.response) {
+            resp_body = cJSON_Parse(chunk.response);
+            if (!resp_body) resp_body = cJSON_CreateString(chunk.response);
+        }
+
+        if (!success) {
+            AI_ERR("[AI ERROR] AI Registration failed: %s\n", res == CURLE_OK ? "Invalid Response" : curl_easy_strerror(res));
+            ai_send_log_to_server("registration", req_json, resp_body, curl_easy_strerror(res));
+        } else {
+            ai_send_log_to_server("registration", req_json, resp_body, NULL);
+        }
+        
+        if (resp_body) cJSON_Delete(resp_body);
+        
         cJSON_Delete(req_json);
-        cJSON_Delete(resp_json);
         curl_easy_cleanup(curl);
+        if (headers) curl_slist_free_all(headers);
+        if (chunk.response) free(chunk.response);
     }
     return success;
 }
@@ -200,18 +332,46 @@ static int ai_register_session() {
 void ai_init() {
     char *env_mode = getenv("AI_MODE");
     char *env_endpoint = getenv("AI_ENDPOINT");
+    char *env_ae_region = getenv("AI_AGENTENGINE_REGION");
+    char *env_ae_projectid = getenv("AI_AGENTENGINE_PROJECTID");
+    char *env_ae_reid = getenv("AI_AGENTENGINE_RESOURCEID");
+    char *env_token = getenv("AI_TOKEN");
     char *env_debug = getenv("AI_DEBUG");
     
-    if (env_endpoint) {
+    if (env_ae_region && env_ae_projectid && env_ae_reid) {
+        snprintf(ai_endpoint, sizeof(ai_endpoint), 
+                 "https://%s-aiplatform.googleapis.com/v1/projects/%s/locations/%s/reasoningEngines/%s:query",
+                 env_ae_region, env_ae_projectid, env_ae_region, env_ae_reid);
+        is_reasoning_engine = 1;
+    } else if (env_endpoint) {
         strncpy(ai_endpoint, env_endpoint, sizeof(ai_endpoint) - 1);
         ai_endpoint[sizeof(ai_endpoint) - 1] = '\0';
+        
+        // Check if explicitly provided endpoint is a reasoning engine using strstr
+        // to handle URLs with query parameters like ?alt=sse
+        if (strstr(ai_endpoint, ":query") != NULL || strstr(ai_endpoint, ":streamQuery") != NULL) {
+            is_reasoning_engine = 1;
+        }
+    } else {
+        strcpy(ai_endpoint, "http://localhost:8000");
+    }
+
+    if (env_token) {
+        strncpy(ai_auth_token, env_token, sizeof(ai_auth_token) - 1);
+        ai_auth_token[sizeof(ai_auth_token) - 1] = '\0';
     }
     
     if (env_debug && (strcmp(env_debug, "1") == 0 || strcasecmp(env_debug, "true") == 0)) {
         ai_debug_enabled = 1;
     }
-
+    
+    if (is_reasoning_engine) {
+        ai_refresh_token();
+    }
+    
     AI_LOG("[AI DEBUG] AI Init. Endpoint: %s\n", ai_endpoint);
+    if (is_reasoning_engine) AI_LOG("[AI DEBUG] Mode: Reasoning Engine\n");
+    if (ai_auth_token[0]) AI_LOG("[AI DEBUG] Auth Token: Loaded\n");
 
     curl_global_init(CURL_GLOBAL_ALL);
 
@@ -227,6 +387,14 @@ void ai_cleanup() {
 
 int ai_is_enabled() {
     return ai_enabled;
+}
+
+const char* ai_get_session_id() {
+    return ai_session_id;
+}
+
+const char* ai_get_endpoint() {
+    return ai_endpoint;
 }
 
 void ai_set_enabled(int enabled) {
@@ -294,6 +462,10 @@ void add_player_state(cJSON *players_array, int seat_idx) {
     cJSON_AddItemToArray(players_array, player_obj);
 }
 
+void ai_set_reasoning_engine(int enabled) {
+    is_reasoning_engine = enabled;
+}
+
 char* ai_serialize_state(ai_phase_t phase, int card, int from_seat) {
     cJSON *root, *context, *event, *players, *legal;
     char *json_payload;
@@ -302,6 +474,7 @@ char* ai_serialize_state(ai_phase_t phase, int card, int from_seat) {
     // Build JSON
     root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "cmd", "decision");
+    cJSON_AddStringToObject(root, "user_id", (char*)my_name);
     
     // Note: session_id is now sent in the wrapper, but we can keep it here too if useful for debugging
     if (ai_session_id[0] != '\0') {
@@ -354,17 +527,41 @@ char* ai_serialize_state(ai_phase_t phase, int card, int from_seat) {
 
 ai_decision_t ai_parse_decision(const char* json_response) {
     ai_decision_t decision = {AI_ACTION_NONE, 0, {0, 0}};
-    cJSON *resp_root = cJSON_Parse(json_response);
+    const char *clean_json = json_response;
+    
+    if (!json_response) return decision;
+
+    // Skip leading whitespace
+    while (*clean_json == ' ' || *clean_json == '\n' || *clean_json == '\r' || *clean_json == '\t') clean_json++;
+    
+    // Support SSE (Server-Sent Events) by stripping 'data: ' prefix
+    if (strncmp(clean_json, "data:", 5) == 0) {
+        clean_json += 5;
+        while (*clean_json == ' ') clean_json++;
+    }
+
+    // Skip Markdown code block markers if they exist at the very beginning
+    if (strncmp(clean_json, "```json", 7) == 0) {
+        clean_json += 7;
+    } else if (strncmp(clean_json, "```", 3) == 0) {
+        clean_json += 3;
+    }
+
+    cJSON *resp_root = cJSON_Parse(clean_json);
     cJSON *target_root = NULL;
     cJSON *temp_root = NULL;
     
     if (!resp_root) {
+        // If it failed to parse, maybe there is a trailing ```? 
+        // cJSON_Parse is usually okay with trailing garbage if it found a valid object, 
+        // but let's see.
         AI_LOG("[AI ERROR] Failed to parse JSON response\n");
         return decision;
     }
 
-    // Check if it's the specific array format from the agent
+    // Check if it's the specific format from the agent (Gemini/Reasoning Engine style)
     if (cJSON_IsArray(resp_root)) {
+        // Handle wrapped array format: [{ "content": { "parts": [{ "text": "..." }] } }]
         cJSON *item0 = cJSON_GetArrayItem(resp_root, 0);
         if (item0) {
             cJSON *content = cJSON_GetObjectItem(item0, "content");
@@ -375,28 +572,41 @@ ai_decision_t ai_parse_decision(const char* json_response) {
                     if (part0) {
                         cJSON *text = cJSON_GetObjectItem(part0, "text");
                         if (text && cJSON_IsString(text)) {
-                            AI_LOG("[AI DEBUG] Found wrapped JSON string: %s\n", text->valuestring);
-                            
-                            const char *clean_json = text->valuestring;
-                            // Skip leading markdown code block markers
-                            while (*clean_json == ' ' || *clean_json == '\n' || *clean_json == '\r' || *clean_json == '\t') clean_json++;
-                            if (strncmp(clean_json, "```json", 7) == 0) clean_json += 7;
-                            else if (strncmp(clean_json, "```", 3) == 0) clean_json += 3;
-                            
-                            temp_root = cJSON_Parse(clean_json);
-                            if (temp_root) {
-                                target_root = temp_root;
-                            } else {
-                                AI_LOG("[AI ERROR] Failed to parse wrapped JSON string\n");
-                            }
+                            const char *inner_json = text->valuestring;
+                            while (*inner_json == ' ' || *inner_json == '\n' || *inner_json == '\r' || *inner_json == '\t') inner_json++;
+                            if (strncmp(inner_json, "```json", 7) == 0) inner_json += 7;
+                            else if (strncmp(inner_json, "```", 3) == 0) inner_json += 3;
+                            temp_root = cJSON_Parse(inner_json);
+                            if (temp_root) target_root = temp_root;
                         }
                     }
                 }
             }
         }
-    } else {
-        // Fallback: maybe it's the direct object?
-        target_root = resp_root;
+    } else if (cJSON_IsObject(resp_root)) {
+        // Handle wrapped object format: { "content": { "parts": [{ "text": "..." }] } }
+        cJSON *content = cJSON_GetObjectItem(resp_root, "content");
+        if (content) {
+            cJSON *parts = cJSON_GetObjectItem(content, "parts");
+            if (parts && cJSON_IsArray(parts)) {
+                cJSON *part0 = cJSON_GetArrayItem(parts, 0);
+                if (part0) {
+                    cJSON *text = cJSON_GetObjectItem(part0, "text");
+                    if (text && cJSON_IsString(text)) {
+                        AI_LOG("[AI DEBUG] Found wrapped JSON in object: %s\n", text->valuestring);
+                        const char *inner_json = text->valuestring;
+                        while (*inner_json == ' ' || *inner_json == '\n' || *inner_json == '\r' || *inner_json == '\t') inner_json++;
+                        if (strncmp(inner_json, "```json", 7) == 0) inner_json += 7;
+                        else if (strncmp(inner_json, "```", 3) == 0) inner_json += 3;
+                        temp_root = cJSON_Parse(inner_json);
+                        if (temp_root) target_root = temp_root;
+                    }
+                }
+            }
+        } else {
+            // Direct object: { "action": "...", "card": ... }
+            target_root = resp_root;
+        }
     }
 
     if (target_root) {
@@ -431,6 +641,48 @@ ai_decision_t ai_parse_decision(const char* json_response) {
     return decision;
 }
 
+cJSON* ai_serialize_request(const char* inner_json) {
+    cJSON *wrapper = cJSON_CreateObject();
+
+    if (is_reasoning_engine) {
+        // GCP Agent Engine format: {"input": {"message": {...}}, "class_method": "..."}
+        
+        // Determine class_method based on endpoint content
+        if (strstr(ai_endpoint, ":streamQuery") != NULL) {
+            cJSON_AddStringToObject(wrapper, "class_method", "stream_query");
+        } else {
+            cJSON_AddStringToObject(wrapper, "class_method", "query");
+        }
+
+        cJSON *input_node = cJSON_CreateObject();
+        cJSON_AddStringToObject(input_node, "user_id", (char*)my_name);
+        
+        // Fix: Send inner_json as a raw string instead of a parsed object.
+        // This avoids 'Extra inputs' errors when the backend validates against the 'Content' model.
+        cJSON_AddStringToObject(input_node, "message", inner_json);
+        
+        cJSON_AddItemToObject(wrapper, "input", input_node);
+    } else {
+        // Local/Legacy wrapper
+        cJSON_AddStringToObject(wrapper, "appName", "agent");
+        cJSON_AddStringToObject(wrapper, "userId", (char*)my_name);
+        cJSON_AddStringToObject(wrapper, "sessionId", ai_session_id);
+        
+        cJSON *newMessage = cJSON_CreateObject();
+        cJSON_AddStringToObject(newMessage, "role", "user");
+        
+        cJSON *parts = cJSON_CreateArray();
+        cJSON *part = cJSON_CreateObject();
+        cJSON_AddStringToObject(part, "text", inner_json);
+        cJSON_AddItemToArray(parts, part);
+        
+        cJSON_AddItemToObject(newMessage, "parts", parts);
+        cJSON_AddItemToObject(wrapper, "newMessage", newMessage);
+    }
+    
+    return wrapper;
+}
+
 ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
     ai_decision_t decision = {AI_ACTION_NONE, 0, {0, 0}};
     CURL *curl;
@@ -438,6 +690,7 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
     struct curl_slist *headers = NULL;
     struct memory chunk = {0};
     char *inner_json;
+    cJSON *wrapper = NULL;
     char *final_payload = NULL;
     int retries = 0;
     const int max_retries = 3;
@@ -445,35 +698,30 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
     if (!ai_enabled) return decision;
 
     inner_json = ai_serialize_state(phase, card, from_seat);
-
-    // Wrap the payload
-    cJSON *wrapper = cJSON_CreateObject();
-    cJSON_AddStringToObject(wrapper, "appName", "agent");
-    cJSON_AddStringToObject(wrapper, "userId", (char*)my_name);
-    cJSON_AddStringToObject(wrapper, "sessionId", ai_session_id);
-    
-    cJSON *newMessage = cJSON_CreateObject();
-    cJSON_AddStringToObject(newMessage, "role", "user");
-    
-    cJSON *parts = cJSON_CreateArray();
-    cJSON *part = cJSON_CreateObject();
-    cJSON_AddStringToObject(part, "text", inner_json);
-    cJSON_AddItemToArray(parts, part);
-    
-    cJSON_AddItemToObject(newMessage, "parts", parts);
-    cJSON_AddItemToObject(wrapper, "newMessage", newMessage);
-    
+    wrapper = ai_serialize_request(inner_json);
     final_payload = cJSON_PrintUnformatted(wrapper);
+    
     AI_LOG("[AI DEBUG] Request Payload: %s\n", final_payload);
 
     // Send Request
     curl = curl_easy_init();
     if (curl) {
-        char run_url[300];
-        snprintf(run_url, sizeof(run_url), "%s/run", ai_endpoint);
+        char run_url[1024];
+        if (is_reasoning_engine) {
+            strncpy(run_url, ai_endpoint, sizeof(run_url) - 1);
+            run_url[sizeof(run_url) - 1] = '\0';
+        } else {
+            snprintf(run_url, sizeof(run_url), "%s/run", ai_endpoint);
+        }
         AI_LOG("[AI DEBUG] Sending Decision Request to: %s\n", run_url);
 
         headers = curl_slist_append(headers, "Content-Type: application/json");
+        if (is_reasoning_engine && ai_auth_token[0]) {
+            char auth_hdr[1100];
+            snprintf(auth_hdr, sizeof(auth_hdr), "Authorization: Bearer %s", ai_auth_token);
+            headers = curl_slist_append(headers, auth_hdr);
+        }
+
         curl_easy_setopt(curl, CURLOPT_URL, run_url);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, final_payload);
@@ -493,6 +741,32 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
                  if (chunk.response) { free(chunk.response); chunk.response = NULL; chunk.size = 0; }
             }
             res = curl_easy_perform(curl);
+            
+            // Handle Token Expiration for Reasoning Engines
+            if (res == CURLE_OK && is_reasoning_engine) {
+                long response_code;
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+                if (response_code == 401) {
+                    AI_LOG("[AI DEBUG] Received 401. Refreshing token...\n");
+                    ai_refresh_token();
+                    
+                    // Update headers with new token
+                    if (headers) curl_slist_free_all(headers);
+                    headers = NULL;
+                    headers = curl_slist_append(headers, "Content-Type: application/json");
+                    if (ai_auth_token[0]) {
+                        char auth_hdr[1100];
+                        snprintf(auth_hdr, sizeof(auth_hdr), "Authorization: Bearer %s", ai_auth_token);
+                        headers = curl_slist_append(headers, auth_hdr);
+                    }
+                    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+                    
+                    // Reset chunk and retry immediately (counts as a retry)
+                    if (chunk.response) { free(chunk.response); chunk.response = NULL; chunk.size = 0; }
+                    res = curl_easy_perform(curl);
+                }
+            }
+
             if (res == CURLE_OK) break;
             retries++;
         } while (retries < max_retries);
@@ -548,8 +822,8 @@ ai_decision_t ai_get_decision(ai_phase_t phase, int card, int from_seat) {
         curl_slist_free_all(headers);
     }
     
-    cJSON_Delete(wrapper);
-    free(inner_json); // Free the inner string as it's now in final_payload
+    if (wrapper) cJSON_Delete(wrapper);
+    free(inner_json);
     if (final_payload) free(final_payload);
     if (chunk.response) free(chunk.response);
 

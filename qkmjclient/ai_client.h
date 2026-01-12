@@ -44,6 +44,18 @@ void ai_cleanup();
 int ai_is_enabled();
 
 /**
+ * @brief Get the current AI session ID.
+ * @return The session ID string.
+ */
+const char* ai_get_session_id();
+
+/**
+ * @brief Get the current AI endpoint URL.
+ * @return The endpoint URL string.
+ */
+const char* ai_get_endpoint();
+
+/**
  * @brief Enable or disable AI mode.
  * @param enabled 1 to enable, 0 to disable.
  */
@@ -74,5 +86,18 @@ char* ai_serialize_state(ai_phase_t phase, int card, int from_seat);
  * @return The parsed decision.
  */
 ai_decision_t ai_parse_decision(const char* json_response);
+
+/**
+ * @brief Enable or disable Reasoning Engine mode (GCP Agent Engine).
+ * @param enabled 1 to enable, 0 to disable.
+ */
+void ai_set_reasoning_engine(int enabled);
+
+/**
+ * @brief Wrap the inner JSON payload into the format required by the remote agent (local or GCP Agent Engine).
+ * @param inner_json The serialized game state JSON.
+ * @return Wrapped JSON object (must be deleted).
+ */
+cJSON* ai_serialize_request(const char* inner_json);
 
 #endif // AI_CLIENT_H
