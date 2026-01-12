@@ -49,6 +49,31 @@ def cleanup_old_agents(display_name: str, keep_count: int = 3):
     except Exception as e:
         print(f"Error during cleanup: {e}")
 
+def get_requirements():
+    """Reads requirements from requirements.txt and adds extra deployment dependencies."""
+    reqs = []
+    req_file = os.path.join(SCRIPT_DIR, "requirements.txt")
+    if os.path.exists(req_file):
+        with open(req_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    reqs.append(line)
+    
+    # Extra deployment-specific dependencies not usually in requirements.txt
+    extras = [
+        "pydantic==2.12.5",
+        "cloudpickle==3.1.2",
+    ]
+    
+    # Avoid duplicates if they are already in requirements.txt
+    for extra in extras:
+        base_name = extra.split("==")[0].split(">=")[0].strip()
+        if not any(base_name in r for r in reqs):
+            reqs.append(extra)
+            
+    return reqs
+
 def main():
     print("\nDeploying...")
     try:
@@ -76,13 +101,8 @@ def main():
             staging_bucket=staging_bucket
         )
 
-        requirements = [
-            "google-cloud-aiplatform[adk,agent_engines]>=1.111",
-            "google-adk>=1.21.0",
-            "google-genai>=1.55.0",
-            "pydantic==2.12.5", 
-            "cloudpickle==3.1.2",
-        ]
+        requirements = get_requirements()
+        print(f"Requirements: {requirements}")
 
         env_vars = {
             "GOOGLE_GENAI_USE_VERTEXAI": "TRUE",  # Use Vertex AI (not AI Studio)
