@@ -95,7 +95,9 @@ bool mongo_connect(const char* uri_string) {
     bson_destroy(command);
     bson_destroy(&reply);
     mongoc_client_destroy(client);
+    client = NULL;
     mongoc_uri_destroy(uri);
+    uri = NULL;
     mongoc_cleanup();
     return false;
   }
