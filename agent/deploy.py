@@ -115,8 +115,8 @@ def main():
             agent_engine=app,
             requirements=requirements,
             env_vars=env_vars,  # Pass env vars including GEMINI_MODEL_LOCATION
-            display_name="QK Agent",
-            description="QKMJ Mahjong Agent, My name is Agent Q",
+            display_name=root_agent.name,
+            description=root_agent.description,
         )
     except Exception as e:
         print(f"\nDeployment failed: {e}")

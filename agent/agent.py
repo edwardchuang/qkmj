@@ -2,10 +2,15 @@ from google.adk.agents import LlmAgent
 from google.adk.planners import BuiltInPlanner
 from google.genai import types
 
+try:
+    from .version import GIT_HASH
+except ImportError:
+    GIT_HASH = "unknown"
+
 root_agent = LlmAgent(
     model='gemini-3-flash-preview',
-    name='qk_agent',
-    description='QKMJ Mahjong Agent, My name is Agent Q',
+    name='QK_Agent',
+    description=f'QKMJ Mahjong Agent, My name is Agent Q [{GIT_HASH}]',
     planner=BuiltInPlanner(
         thinking_config=types.ThinkingConfig(
             thinking_level="minimal", #minimal, low, medium, high

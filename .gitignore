@@ -25,6 +25,7 @@ CMakeFiles/
 firebase-debug.log
 Testing/
 CMakeCache.txt
+agent/version.py
 
 .gemini/
 gha-creds-*.json

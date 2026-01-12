@@ -39,6 +39,9 @@ endif()
 # Pass the hash to the compiler as a definition
 add_definitions("-DGIT_HASH=\"${GIT_COMMIT_HASH}\"")
 
+# Generate version.py for the Python agent
+file(WRITE "${CMAKE_SOURCE_DIR}/agent/version.py" "GIT_HASH = \"${GIT_COMMIT_HASH}\"\n")
+
 # Find PkgConfig
 find_package(PkgConfig REQUIRED)
 
