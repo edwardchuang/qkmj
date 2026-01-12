@@ -151,8 +151,9 @@ TEST_F(AIClientTest, SerializeRequestReasoningEngine) {
     char* s = cJSON_PrintUnformatted(wrapped);
     std::string str(s);
     EXPECT_NE(str.find("\"class_method\":\"query\""), std::string::npos);
-    // In Reasoning Engine mode, it parses the inner JSON into the "input" field
-    EXPECT_NE(str.find("\"input\":{\"cmd\":\"decision\",\"test\":1}"), std::string::npos);
+    // In Reasoning Engine mode, it wraps inner JSON string into the "message" field inside "input"
+    EXPECT_NE(str.find("\"input\":{"), std::string::npos);
+    EXPECT_NE(str.find("\"message\":\"{\\\"cmd\\\":\\\"decision\\\",\\\"test\\\":1}\""), std::string::npos);
     
     free(s);
     cJSON_Delete(wrapped);
