@@ -1,9 +1,17 @@
 from google.adk.agents import LlmAgent
+from google.adk.planners import BuiltInPlanner
+from google.genai import types
 
 root_agent = LlmAgent(
     model='gemini-3-flash-preview',
     name='qk_agent',
     description='QKMJ Mahjong Agent, My name is Agent Q',
+    planner=BuiltInPlanner(
+        thinking_config=types.ThinkingConfig(
+            thinking_level="minimal", #minimal, low, medium, high
+            include_thoughts=True,
+        )
+    ),
     instruction="""
 IMPORTANT: YOU ARE A FAST, HIGH-PERFORMANCE MAHJONG AGENT.
 OUTPUT PROTOCOL: RAW JSON ONLY. NO MARKDOWN. NO EXPLANATIONS.
