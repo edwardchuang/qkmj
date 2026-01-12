@@ -21,7 +21,7 @@ protected:
     // Per-Suite Setup (Run once before all tests)
     static void SetUpTestSuite() {
         const char* env_uri = std::getenv("MONGO_URI");
-        const char* uri = env_uri ? env_uri : "mongodb://localhost:27017";
+        const char* uri = env_uri ? env_uri : "mongodb://localhost:27017/?tls=false";
         
         bool connected = mongo_connect(uri);
         if (!connected) {
