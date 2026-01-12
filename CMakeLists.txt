@@ -207,6 +207,46 @@ target_link_libraries(test_ai
 
 add_test(NAME AIClientTest COMMAND test_ai)
 
+# --- AI Debug Utility ---
+add_executable(ai_debug
+    tests/ai_debug_tool.c
+    tests/mock_qkmj.c
+    qkmjclient/ai_client.c
+    qkmjclient/protocol.c
+)
+
+target_include_directories(ai_debug PRIVATE 
+    ${CMAKE_SOURCE_DIR}/qkmjclient 
+    ${CMAKE_SOURCE_DIR}/qkmjserver
+    ${CJSON_INCLUDE_DIRS}
+    ${CURL_INCLUDE_DIR}
+)
+
+target_link_libraries(ai_debug
+    PkgConfig::CJSON
+    ${CURL_LIBRARIES}
+)
+
+# --- AI Interactive Tester (Sensei) ---
+add_executable(sensei
+    tests/ai_interactive_client.c
+    tests/mock_qkmj.c
+    qkmjclient/ai_client.c
+    qkmjclient/protocol.c
+)
+
+target_include_directories(sensei PRIVATE 
+    ${CMAKE_SOURCE_DIR}/qkmjclient 
+    ${CMAKE_SOURCE_DIR}/qkmjserver
+    ${CJSON_INCLUDE_DIRS}
+    ${CURL_INCLUDE_DIR}
+)
+
+target_link_libraries(sensei
+    PkgConfig::CJSON
+    ${CURL_LIBRARIES}
+)
+
 add_executable(conn_test
     tests/connection_test.c
     qkmjclient/ai_client.c

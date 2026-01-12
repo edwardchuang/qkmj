@@ -52,12 +52,20 @@ TEST_F(AIClientTest, ParseDecisionEat) {
     EXPECT_EQ(decision.meld_cards[1], 25);
 }
 
-TEST_F(AIClientTest, ParseDecisionWrappedArray) {
-    const char* json = "[{\"content\": {\"parts\": [{\"text\": \"{\\\"action\\\": \\\"discard\\\", \\\"card\\\": 33}\"}]}}]";
+TEST_F(AIClientTest, ParseDecisionWrappedArrayWithMarkdown) {
+    const char* json = "[{\"content\": {\"parts\": [{\"text\": \"```json\\n{\\\"action\\\": \\\"discard\\\", \\\"card\\\": 33}\\n```\"}]}}]";
     ai_decision_t decision = ai_parse_decision(json);
     
     EXPECT_EQ(decision.action, AI_ACTION_DISCARD);
     EXPECT_EQ(decision.card, 33);
+}
+
+TEST_F(AIClientTest, ParseDecisionMarkdownDirect) {
+    const char* json = "```json\n{\"action\": \"pong\", \"card\": 15}\n```";
+    ai_decision_t decision = ai_parse_decision(json);
+    
+    EXPECT_EQ(decision.action, AI_ACTION_PONG);
+    EXPECT_EQ(decision.card, 15);
 }
 
 TEST_F(AIClientTest, ParseDecisionPass) {
@@ -73,10 +81,14 @@ TEST_F(AIClientTest, SerializeStateDiscardPhase) {
     pool[1].card[0] = 11;
     pool[1].card[1] = 12;
     
+    // Setup flags
+    check_flag[1][4] = 1; // Can Win
+    check_flag[1][3] = 0; // Cannot Kang
+    
     char* json_str = ai_serialize_state(AI_PHASE_DISCARD, 13, 0);
     ASSERT_NE(json_str, nullptr);
     
-    // Simple string check (using cJSON to verify would be better but complex)
+    // Simple string check
     std::string s(json_str);
     EXPECT_NE(s.find("\"cmd\":\"decision\""), std::string::npos);
     EXPECT_NE(s.find("\"phase\":\"discard\""), std::string::npos);
@@ -84,6 +96,8 @@ TEST_F(AIClientTest, SerializeStateDiscardPhase) {
     
     // Check legal actions
     EXPECT_NE(s.find("\"can_discard\":true"), std::string::npos);
+    EXPECT_NE(s.find("\"can_win\":true"), std::string::npos);
+    EXPECT_NE(s.find("\"can_kang\":false"), std::string::npos);
     
     free(json_str);
 }
@@ -91,6 +105,7 @@ TEST_F(AIClientTest, SerializeStateDiscardPhase) {
 TEST_F(AIClientTest, SerializeStateClaimPhase) {
     // Setup legal action
     check_flag[1][1] = 1; // Can Eat
+    check_flag[1][4] = 1; // Can Win
     
     char* json_str = ai_serialize_state(AI_PHASE_CLAIM, 23, 2);
     ASSERT_NE(json_str, nullptr);
@@ -101,6 +116,45 @@ TEST_F(AIClientTest, SerializeStateClaimPhase) {
     EXPECT_NE(s.find("\"from_seat\":2"), std::string::npos);
     EXPECT_NE(s.find("\"can_eat\":true"), std::string::npos);
     EXPECT_NE(s.find("\"can_pong\":false"), std::string::npos);
+    EXPECT_NE(s.find("\"can_win\":true"), std::string::npos);
     
     free(json_str);
+}
+
+TEST_F(AIClientTest, ParseDecisionInvalid) {
+    const char* json = "this is not json";
+    ai_decision_t decision = ai_parse_decision(json);
+    
+    EXPECT_EQ(decision.action, AI_ACTION_NONE);
+}
+
+TEST_F(AIClientTest, SerializeRequestLegacy) {
+    const char* inner = "{\"cmd\":\"decision\",\"test\":1}";
+    cJSON* wrapped = ai_serialize_request(inner);
+    ASSERT_NE(wrapped, nullptr);
+    
+    char* s = cJSON_PrintUnformatted(wrapped);
+    std::string str(s);
+    EXPECT_NE(str.find("\"appName\":\"agent\""), std::string::npos);
+    EXPECT_NE(str.find("\"text\":\"{\\\"cmd\\\":\\\"decision\\\",\\\"test\\\":1}\""), std::string::npos);
+    
+    free(s);
+    cJSON_Delete(wrapped);
+}
+
+TEST_F(AIClientTest, SerializeRequestReasoningEngine) {
+    ai_set_reasoning_engine(1);
+    const char* inner = "{\"cmd\":\"decision\",\"test\":1}";
+    cJSON* wrapped = ai_serialize_request(inner);
+    ASSERT_NE(wrapped, nullptr);
+    
+    char* s = cJSON_PrintUnformatted(wrapped);
+    std::string str(s);
+    EXPECT_NE(str.find("\"class_method\":\"query\""), std::string::npos);
+    // In Reasoning Engine mode, it parses the inner JSON into the "input" field
+    EXPECT_NE(str.find("\"input\":{\"cmd\":\"decision\",\"test\":1}"), std::string::npos);
+    
+    free(s);
+    cJSON_Delete(wrapped);
+    ai_set_reasoning_engine(0); // Reset
 }
