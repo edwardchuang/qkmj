@@ -293,3 +293,49 @@ target_link_libraries(session_test
 
 add_test(NAME SessionManagerTest COMMAND session_test)
 
+# --- Logging Tests ---
+add_executable(test_logging
+    tests/test_logging.cpp
+    tests/mock_qkmj.c
+    qkmjclient/misc.c
+    qkmjclient/ai_client.c
+)
+
+target_include_directories(test_logging PRIVATE 
+    ${CMAKE_SOURCE_DIR}/qkmjclient 
+    ${CMAKE_SOURCE_DIR}/qkmjserver
+    ${CJSON_INCLUDE_DIRS}
+    ${CURL_INCLUDE_DIR}
+)
+
+target_compile_definitions(test_logging PRIVATE LOGGING_TEST)
+
+target_link_libraries(test_logging
+    gtest_main
+    PkgConfig::CJSON
+    ${CURL_LIBRARIES}
+    ${MATH_LIB}
+)
+
+add_test(NAME LoggingTest COMMAND test_logging)
+
+# --- Kifu (Match Browser) Tool ---
+add_executable(kifu
+    tests/kifu_tool.c
+    tests/mock_qkmj.c
+)
+
+target_include_directories(kifu PRIVATE 
+    ${CMAKE_SOURCE_DIR}/qkmjclient 
+    ${CMAKE_SOURCE_DIR}/qkmjserver
+    ${CJSON_INCLUDE_DIRS}
+    ${MONGOC_INCLUDE_DIRS}
+    ${BSON_INCLUDE_DIRS}
+)
+
+target_link_libraries(kifu
+    PkgConfig::MONGOC
+    PkgConfig::BSON
+    PkgConfig::CJSON
+)
+

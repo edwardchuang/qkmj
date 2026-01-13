@@ -74,6 +74,8 @@ unsigned int my_gps_id;
 unsigned char my_name[50];
 unsigned char my_pass[10];
 unsigned char my_note[255];
+char current_match_id[64] = "";
+int move_serial = 0;
 struct ask_mode_info ask;
 struct timeval before, after;
 int new_client;
@@ -109,9 +111,11 @@ void display_comment(char* msg) {
     printf("MOCK DISPLAY: %s\n", msg);
 }
 
+#ifndef LOGGING_TEST
 void wmvaddstr(WINDOW* win, int y, int x, char* str) {
     // Mock implementation
 }
+#endif
 
 void redraw_screen() {
     // Mock implementation
@@ -129,3 +133,11 @@ int wmove(WINDOW *win, int y, int x) { return 0; }
 chtype winch(WINDOW *win) { return 0; }
 int waddch(WINDOW *win, const chtype ch) { return 0; }
 int wrefresh(WINDOW *win) { return 0; }
+
+// Missing mocks for test_logging
+int beep() { return 0; }
+int keypad(WINDOW *win, bool bf) { return 0; }
+int meta(WINDOW *win, bool bf) { return 0; }
+int waddnstr(WINDOW *win, const char *str, int n) { return 0; }
+
+int my_getch() { return 0; }
