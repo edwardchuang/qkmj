@@ -537,6 +537,11 @@ void display_info() {
     show_num(0, 71, info.cont_dealer, 1);
   else
     show_num(0, 70, info.cont_dealer, 2);
+
+  if (current_match_id[0] != '\0') {
+    mvwprintw(stdscr, 1, 58, "ID:%.18s", current_match_id);
+  }
+
   wmvaddstr(stdscr, 22, 66, sit_name[my_sit]);
   wmvaddstr(stdscr, 21, 68, sit_name[(my_sit) % 4 + 1]);
   wmvaddstr(stdscr, 20, 66, sit_name[(my_sit + 1) % 4 + 1]);

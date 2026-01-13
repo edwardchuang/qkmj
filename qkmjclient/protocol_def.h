@@ -22,6 +22,7 @@
 #define MSG_OPEN_TABLE       12
 #define MSG_LIST_TABLES_FREE 13
 #define MSG_CHECK_OPEN       14
+#define MSG_GAME_START_REQ   15
 #define MSG_WIN_GAME         20
 #define MSG_FIND_USER        21
 #define MSG_GAME_RECORD      900
@@ -71,6 +72,7 @@
 #define MSG_REQUEST_CARD     313
 #define MSG_SHOW_NEW_CARD    314
 #define MSG_FINISH           315
+#define MSG_MATCH_ID         320
 #define MSG_SEA_BOTTOM       330
 #define MSG_THROW_CARD       401
 #define MSG_CARD_THROWN      402

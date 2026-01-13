@@ -100,6 +100,8 @@ extern unsigned int my_gps_id;
 extern unsigned char my_name[50];
 extern unsigned char my_pass[10];
 extern unsigned char my_note[255];
+extern char current_match_id[64];
+extern int move_serial;
 
 struct ask_mode_info {
   int question;

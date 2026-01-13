@@ -228,6 +228,32 @@ void handle_gps_message(int msg_id, cJSON* data) {
       new_client = 1;
       break;
 
+    case MSG_GAME_START_REQ: /* 15 response from GPS */
+      strncpy(current_match_id, j_str(data, "match_id"), sizeof(current_match_id) - 1);
+      current_match_id[sizeof(current_match_id) - 1] = '\0';
+      move_serial = 0;
+      
+      /* Broadcast match_id to all other players */
+      payload = cJSON_CreateObject();
+      cJSON_AddStringToObject(payload, "match_id", current_match_id);
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table) {
+          send_json(player[i].sockfd, MSG_MATCH_ID, cJSON_Duplicate(payload, 1));
+        }
+      }
+      cJSON_Delete(payload);
+
+      /* Start the game */
+      init_playing_screen();
+      for (int i = 2; i < MAX_PLAYER; i++) {
+        if (player[i].in_table) {
+          send_json(player[i].sockfd, MSG_INIT_SCREEN, NULL);
+        }
+      }
+      opening();
+      open_deal();
+      break;
+
     default:
       snprintf(msg_buf, sizeof(msg_buf), "Unknown msg_id=%d", msg_id);
       display_comment(msg_buf);
@@ -671,6 +697,15 @@ void handle_serv_message(int msg_id, cJSON* data) {
 
     case MSG_NEW_ROUND: /* 290 */
       opening();
+      break;
+
+    case MSG_MATCH_ID: /* 320 */
+      strncpy(current_match_id, j_str(data, "match_id"), sizeof(current_match_id) - 1);
+      current_match_id[sizeof(current_match_id) - 1] = '\0';
+      move_serial = 0;
+      if (screen_mode == PLAYING_SCREEN_MODE) {
+        display_info();
+      }
       break;
 
     case MSG_INIT_SCREEN: /* 300 */

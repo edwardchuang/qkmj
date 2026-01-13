@@ -142,6 +142,8 @@ unsigned int my_gps_id;
 unsigned char my_name[50];
 unsigned char my_pass[10];
 unsigned char my_note[255];
+char current_match_id[64] = "";
+int move_serial = 0;
 struct ask_mode_info ask;
 struct player_info player[MAX_PLAYER];
 struct pool_info pool[5];

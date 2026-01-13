@@ -1074,6 +1074,19 @@ void gps_processing() {
                 }
                 send_json(player[player_id].sockfd, MSG_OPEN_OK, NULL);
                 break;
+              case MSG_GAME_START_REQ: /* 15 */
+                {
+                    char match_id[64];
+                    unsigned int ts = (unsigned int)time(NULL);
+                    unsigned int salt = (unsigned int)(rand() & 0xFFFF);
+                    /* Format: 8-char Hex Time + 4-char Hex Salt/PID mix (12 chars total) */
+                    snprintf(match_id, sizeof(match_id), "%08X%04X", ts, (unsigned int)((player_id ^ salt) & 0xFFFF));
+                    
+                    payload = cJSON_CreateObject();
+                    cJSON_AddStringToObject(payload, "match_id", match_id);
+                    send_json(player[player_id].sockfd, MSG_GAME_START_REQ, payload);
+                }
+                break;
               case MSG_WIN_GAME: /* 20 */
                 {
                     int id = j_int(data, "winner_id");

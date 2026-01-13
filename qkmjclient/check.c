@@ -204,27 +204,6 @@ int check_flower(int sit, int card) {
   return 0;
 }
 
-void write_check(int check) {
-  const char *action_str = "Unknown";
-  if (check == EAT || (check >= 7 && check <= 9)) action_str = "Eat";
-  else if (check == PONG) action_str = "Pong";
-  else if (check == KANG) action_str = "Kang";
-  else if (check == MAKE) action_str = "Make";
-  
-  if (strcmp(action_str, "Unknown") != 0) {
-      send_game_log(action_str, 0, NULL);
-  }
-
-  if (in_join) {
-    cJSON* payload = cJSON_CreateObject();
-    cJSON_AddNumberToObject(payload, "action", check);
-    send_json(table_sockfd, MSG_CHECK_RESULT, payload);
-  } else {
-    in_check[player[1].sit] = 0;
-    check_for[player[1].sit] = check;
-  }
-}
-
 void send_pool_card() {
   cJSON* payload = cJSON_CreateObject();
   cJSON* p_array = cJSON_CreateArray();

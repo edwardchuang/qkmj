@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "mjdef.h"
 
@@ -76,6 +77,8 @@ void action_throw_card(int index) {
       }
     }
     cJSON_Delete(payload);
+
+    send_game_log("Throw", pool[my_sit].card[index], NULL);
 
     current_card = pool[my_sit].card[index];
     for (int i = 1; i <= 4; i++) {
@@ -431,6 +434,10 @@ void process_key() {
           talk_x++;
           return_cursor();
           break;
+        case CTRL_P:
+        case KEY_UP:
+          if (h_point == h_head) break;
+          h_point = (h_point + HISTORY_SIZE - 1) % HISTORY_SIZE;
           werase(inputwin);
           mvwaddstr(inputwin, 0, 0, history[h_point]);
           wrefresh(inputwin);
@@ -443,6 +450,7 @@ void process_key() {
         case CTRL_N:
         case KEY_DOWN:
           if (h_point == h_tail) break;
+          h_point = (h_point + 1) % HISTORY_SIZE;
           werase(inputwin);
           mvwaddstr(inputwin, 0, 0, history[h_point]);
           wrefresh(inputwin);
@@ -463,7 +471,16 @@ void process_key() {
           wrefresh(inputwin);
           break;
         case CTRL_D:
-          talk_x++;
+          if (talk_x == talk_buf_count) break;
+          for (int i = talk_x; i < talk_buf_count; i++)
+            talk_buf[i] = talk_buf[i + 1];
+          talk_buf[talk_buf_count--] = '\0';
+          strncpy(history[h_tail], talk_buf, sizeof(history[h_tail]) - 1);
+          history[h_tail][sizeof(history[h_tail]) - 1] = '\0';
+          mvprintstr(inputwin, talk_y, talk_x, (char*)talk_buf + talk_x);
+          printch(inputwin, ' ');
+          return_cursor();
+          break;
         case CTRL_H:
         case BACKSPACE:
         case KEY_BACKSPACE: /* ncurses */

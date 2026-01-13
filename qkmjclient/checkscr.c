@@ -299,6 +299,9 @@ void process_make(int sit, int card) {
     }
     cJSON_AddItemToObject(root, "moneys", moneys_array);
     cJSON_AddNumberToObject(root, "time", (double)time(NULL) * 1000.0);
+    if (current_match_id[0] != '\0') {
+      cJSON_AddStringToObject(root, "match_id", current_match_id);
+    }
 
     send_json(gps_sockfd, MSG_GAME_RECORD, root);
     /* Do not cJSON_Delete(root) as send_json takes ownership */

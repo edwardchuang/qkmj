@@ -204,17 +204,9 @@ void accept_new_client() {
   }
   /* Check the number of player in table */
   if (player_in_table == PLAYER_NUM) {
-    init_playing_screen();
-
-    /* 300 MSG_INIT_SCREEN */
-    for (int j = 2; j < MAX_PLAYER; j++) {
-      if (player[j].in_table) {
-        send_json(player[j].sockfd, MSG_INIT_SCREEN, NULL);
-      }
-    }
-
-    opening();
-    open_deal();
+    /* Request match_id from GPS before starting */
+    send_json(gps_sockfd, MSG_GAME_START_REQ, NULL);
+    /* The game will actually start in handle_gps_message when MSG_GAME_START_REQ response arrives */
   }
 }
 
