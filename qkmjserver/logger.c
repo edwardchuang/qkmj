@@ -91,12 +91,33 @@ void log_game_record(const char *json_str) {
     // Print to console for verification
     fprintf(stderr, "[%s] [GAME] %s\n", time_buf, json_str);
 
-    // Save to MongoDB
-    bson_t *doc = BCON_NEW(
-        "level", BCON_UTF8("game"),
-        "message", BCON_UTF8(json_str),
-        "timestamp", BCON_DATE_TIME(now * 1000)
-    );
-    mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
-    bson_destroy(doc);
+    // Parse JSON to BSON for structured storage
+    bson_error_t error;
+    bson_t *data_bson = bson_new_from_json((const uint8_t *)json_str, -1, &error);
+    
+    if (data_bson) {
+        bson_t *doc = bson_new();
+        BSON_APPEND_UTF8(doc, "level", "game_record");
+        BSON_APPEND_DATE_TIME(doc, "timestamp", now * 1000);
+        BSON_APPEND_DOCUMENT(doc, "data", data_bson);
+        
+        // Also extract match_id to top level if present for easier indexing
+        bson_iter_t iter;
+        if (bson_iter_init_find(&iter, data_bson, "match_id")) {
+            BSON_APPEND_UTF8(doc, "match_id", bson_iter_utf8(&iter, NULL));
+        }
+
+        mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
+        bson_destroy(doc);
+        bson_destroy(data_bson);
+    } else {
+        // Fallback to old format if JSON is invalid
+        bson_t *doc = BCON_NEW(
+            "level", BCON_UTF8("game_record"),
+            "message", BCON_UTF8(json_str),
+            "timestamp", BCON_DATE_TIME(now * 1000)
+        );
+        mongo_insert_document(MONGO_DB_NAME, MONGO_COLLECTION_LOGS, doc);
+        bson_destroy(doc);
+    }
 }
