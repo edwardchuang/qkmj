@@ -1078,9 +1078,15 @@ void gps_processing() {
                 {
                     char match_id[64];
                     unsigned int ts = (unsigned int)time(NULL);
+                    /* Byte-swap the timestamp: [0][1][2][3] -> [3][2][1][0] */
+                    unsigned int rev_ts = ((ts & 0x000000FF) << 24) |
+                                          ((ts & 0x0000FF00) << 8)  |
+                                          ((ts & 0x00FF0000) >> 8)  |
+                                          ((ts & 0xFF000000) >> 24);
+                    
                     unsigned int salt = (unsigned int)(rand() & 0xFFFF);
-                    /* Format: 8-char Hex Time + 4-char Hex Salt/PID mix (12 chars total) */
-                    snprintf(match_id, sizeof(match_id), "%08X%04X", ts, (unsigned int)((player_id ^ salt) & 0xFFFF));
+                    /* Format: 8-char Hex (Reversed Time) + 4-char Hex (Salt/PID mix) */
+                    snprintf(match_id, sizeof(match_id), "%08X%04X", rev_ts, (unsigned int)((player_id ^ salt) & 0xFFFF));
                     
                     payload = cJSON_CreateObject();
                     cJSON_AddStringToObject(payload, "match_id", match_id);
