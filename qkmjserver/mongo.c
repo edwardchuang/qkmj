@@ -52,6 +52,11 @@ bool mongo_connect(const char* uri_string) {
     return false;
   }
 
+  // Enforce timeouts to prevent blocking the game loop indefinitely
+  mongoc_uri_set_option_as_int32(uri, "socketTimeoutMS", 2000);
+  mongoc_uri_set_option_as_int32(uri, "connectTimeoutMS", 2000);
+  mongoc_uri_set_option_as_int32(uri, "serverSelectionTimeoutMS", 2000);
+
   // Auto-detect CA file if not specified in URI.
   // Priority:
   // 1. SSL_CERT_FILE environment variable (if set and file exists)
