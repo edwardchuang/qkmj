@@ -73,7 +73,6 @@ void kifu_list() {
         return;
     }
 
-    // Build pipeline using cJSON
     cJSON *pipe = cJSON_CreateArray();
     cJSON *match = cJSON_CreateObject();
     cJSON *match_q = cJSON_CreateObject();
@@ -123,7 +122,7 @@ void kifu_list() {
         char time_buf[32];
         strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", localtime(&t));
 
-        printf("%s | %s | %-6lld | ", mid, time_buf, (long long)moves);
+        printf("%s | %s | %-6lld | ", mid, time_buf, (long long)moves); 
         
         if (bson_iter_init_find(&iter, doc, "players") && BSON_ITER_HOLDS_ARRAY(&iter)) {
             const uint8_t *data;
@@ -231,14 +230,67 @@ void kifu_show(const char* match_id) {
         printf("\n");
         count++;
     }
+    mongoc_cursor_destroy(cursor);
+    bson_destroy(b_filter);
+    bson_destroy(b_opts);
+
+    // Fetch Game Result (MSG_GAME_RECORD / Level "game_record")
+    cJSON *r_filter = cJSON_CreateObject();
+    cJSON_AddStringToObject(r_filter, "match_id", match_id);
+    // The server logs these with CMD 900, but let's check level
+    // In mjgps.c, MSG_GAME_RECORD logs the object as-is.
+    // We added "match_id" to the root in checkscr.c
+    bson_t *br_filter = cjson_to_bson(r_filter);
+    cJSON_Delete(r_filter);
+
+    // Query without level restriction first to find any record with this match_id
+    cursor = mongoc_collection_find_with_opts(collection, br_filter, NULL, NULL);
+    if (mongoc_cursor_next(cursor, &doc)) {
+        printf("\n%s--- Final Result ---%s\n", CLR_SUCCESS, CLR_RESET);
+        char *json = bson_as_canonical_extended_json(doc, NULL);
+        cJSON *res = cJSON_Parse(json);
+        if (res) {
+            // "data" contains the original payload from send_json
+            cJSON *data_obj = cJSON_GetObjectItem(res, "data");
+            if (!data_obj) data_obj = res; // Fallback if logged differently
+
+            const char *winner = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "winer"));
+            const char *loser = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "card_owner"));
+            
+            if (winner) {
+                if (loser && strcmp(winner, loser) == 0) {
+                    printf("%sWinner: %s (Self-Drawn 自摸)%s\n", CLR_SUCCESS, winner, CLR_RESET);
+                } else {
+                    printf("%sWinner: %s%s | %sLoser: %s (Discarder 放槍)%s\n", 
+                           CLR_SUCCESS, winner, CLR_RESET, CLR_ERROR, loser ? loser : "Unknown", CLR_RESET);
+                }
+            }
+
+            const char *tais = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "tais"));
+            if (tais) printf("Tai: %s\n", tais);
+
+            cJSON *moneys = cJSON_GetObjectItem(data_obj, "moneys");
+            if (cJSON_IsArray(moneys)) {
+                printf("Money Changes:\n");
+                int sz = cJSON_GetArraySize(moneys);
+                for (int i=0; i<sz; i++) {
+                    cJSON *m = cJSON_GetArrayItem(moneys, i);
+                    const char *name = cJSON_GetStringValue(cJSON_GetObjectItem(m, "name"));
+                    int change = (int)cJSON_GetNumberValue(cJSON_GetObjectItem(m, "change_money"));
+                    printf("  %-10s : %s%d%s\n", name, (change >= 0 ? CLR_SUCCESS : CLR_ERROR), change, CLR_RESET);
+                }
+            }
+            cJSON_Delete(res);
+        }
+        bson_free(json);
+    }
+    mongoc_cursor_destroy(cursor);
+    bson_destroy(br_filter);
 
     if (count == 0) {
         printf("%sNo logs found for this Match ID.%s\n", CLR_WARN, CLR_RESET);
     }
 
-    mongoc_cursor_destroy(cursor);
-    bson_destroy(b_filter);
-    bson_destroy(b_opts);
     mongoc_collection_destroy(collection);
     mongoc_client_destroy(client);
 }
@@ -246,7 +298,7 @@ void kifu_show(const char* match_id) {
 void print_help() {
     printf("%sKifu Tool Commands:%s\n", CLR_HEADER, CLR_RESET);
     printf("  %slist%s            : List 20 most recent matches\n", CLR_INFO, CLR_RESET);
-    printf("  %sshow <id>%s       : Show move history for a match\n", CLR_INFO, CLR_RESET);
+    printf("  %sshow <id>%s       : Show move history and final result\n", CLR_INFO, CLR_RESET);
     printf("  %sdebug <on|off>%s  : Toggle diagnostic logs (DEADLOCK/STALL)\n", CLR_INFO, CLR_RESET);
     printf("  %shelp%s            : Show this message\n", CLR_INFO, CLR_RESET);
     printf("  %sexit%s            : Exit tool\n", CLR_INFO, CLR_RESET);
