@@ -18,6 +18,8 @@
 #define CLR_ERROR  "\x1b[1;31m"
 #define CLR_JSON   "\x1b[0;37m"
 
+static int debug_enabled = 0;
+
 // Global Match ID for display
 extern char current_match_id[64];
 
@@ -27,7 +29,7 @@ static const char* get_card_name(int card) {
     switch(card) {
         case 0: return "??";
         case 10: return "摸牌";
-        case 20: return "＊＊";
+        case 20: return "**";
         case 30: return "東"; case 40: return "南"; case 50: return "西"; case 60: return "北";
         case 31: return "東風"; case 32: return "南風"; case 33: return "西風"; case 34: return "北風";
         case 41: return "紅中"; case 42: return "白板"; case 43: return "青發";
@@ -35,7 +37,7 @@ static const char* get_card_name(int card) {
     if (card >= 1 && card <= 9) { sprintf(buf, "%d萬", card); return buf; }
     if (card >= 11 && card <= 19) { sprintf(buf, "%d索", card-10); return buf; }
     if (card >= 21 && card <= 29) { sprintf(buf, "%d筒", card-20); return buf; }
-    if (card >= 51 && card <= 58) { sprintf(buf, "花%d", card-50); return buf; }
+    if (card >= 51 && card <= 58) { sprintf(buf, "花%%d", card-50); return buf; }
     sprintf(buf, "%d", card);
     return buf;
 }
@@ -73,42 +75,27 @@ void kifu_list() {
 
     // Build pipeline using cJSON
     cJSON *pipe = cJSON_CreateArray();
-    
-    // Stage 1: Match game_trace
     cJSON *match = cJSON_CreateObject();
     cJSON *match_q = cJSON_CreateObject();
     cJSON_AddStringToObject(match_q, "level", "game_trace");
     cJSON_AddItemToObject(match, "$match", match_q);
     cJSON_AddItemToArray(pipe, match);
 
-    // Stage 2: Group by match_id
     cJSON *group = cJSON_CreateObject();
     cJSON *group_q = cJSON_CreateObject();
     cJSON_AddStringToObject(group_q, "_id", "$match_id");
-    
-    cJSON *st = cJSON_CreateObject();
-    cJSON_AddStringToObject(st, "$min", "$timestamp");
-    cJSON_AddItemToObject(group_q, "start_time", st);
-    
-    cJSON *mv = cJSON_CreateObject();
-    cJSON_AddNumberToObject(mv, "$sum", 1);
-    cJSON_AddItemToObject(group_q, "moves", mv);
-    
-    cJSON *pl = cJSON_CreateObject();
-    cJSON_AddStringToObject(pl, "$addToSet", "$user_id");
-    cJSON_AddItemToObject(group_q, "players", pl);
-    
+    cJSON *st = cJSON_CreateObject(); cJSON_AddStringToObject(st, "$min", "$timestamp"); cJSON_AddItemToObject(group_q, "start_time", st);
+    cJSON *mv = cJSON_CreateObject(); cJSON_AddNumberToObject(mv, "$sum", 1); cJSON_AddItemToObject(group_q, "moves", mv);
+    cJSON *pl = cJSON_CreateObject(); cJSON_AddStringToObject(pl, "$addToSet", "$user_id"); cJSON_AddItemToObject(group_q, "players", pl);
     cJSON_AddItemToObject(group, "$group", group_q);
     cJSON_AddItemToArray(pipe, group);
 
-    // Stage 3: Sort by time desc
     cJSON *sort = cJSON_CreateObject();
     cJSON *sort_q = cJSON_CreateObject();
     cJSON_AddNumberToObject(sort_q, "start_time", -1);
     cJSON_AddItemToObject(sort, "$sort", sort_q);
     cJSON_AddItemToArray(pipe, sort);
 
-    // Stage 4: Limit
     cJSON *limit = cJSON_CreateObject();
     cJSON_AddNumberToObject(limit, "$limit", 20);
     cJSON_AddItemToArray(pipe, limit);
@@ -136,7 +123,7 @@ void kifu_list() {
         char time_buf[32];
         strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", localtime(&t));
 
-        printf("%s | %s | %-6d | ", mid, time_buf, moves);
+        printf("%s | %s | %-6lld | ", mid, time_buf, (long long)moves);
         
         if (bson_iter_init_find(&iter, doc, "players") && BSON_ITER_HOLDS_ARRAY(&iter)) {
             const uint8_t *data;
@@ -207,27 +194,38 @@ void kifu_show(const char* match_id) {
         if (bson_iter_init_find(&iter, doc, "card") && BSON_ITER_HOLDS_INT32(&iter)) card = bson_iter_int32(&iter);
         if (bson_iter_init_find(&iter, doc, "is_ai") && BSON_ITER_HOLDS_BOOL(&iter)) is_ai = bson_iter_bool(&iter);
 
+        bool is_diag = (strcmp(action, "DEADLOCK_DIAG") == 0 || strcmp(action, "CLIENT_STALL_DIAG") == 0);
+        if (is_diag && !debug_enabled) continue;
+
         printf("#%-3d %-10s %-4s | %-8s | %-4s", 
                serial, user, is_ai ? "[AI]" : "", action, get_card_name(card));
 
-        if (strcmp(action, "Pass") == 0 && bson_iter_init_find(&iter, doc, "extra") && BSON_ITER_HOLDS_DOCUMENT(&iter)) {
+        if ((strcmp(action, "Pass") == 0 || is_diag) && bson_iter_init_find(&iter, doc, "extra") && BSON_ITER_HOLDS_DOCUMENT(&iter)) {
             const uint8_t *data;
             uint32_t len;
             bson_iter_document(&iter, &len, &data);
             bson_t *extra = bson_new_from_data(data, len);
             bson_iter_t e_iter;
-            printf(" (Passed: ");
-            int first = 1;
-            if (bson_iter_init(&e_iter, extra)) {
-                while (bson_iter_next(&e_iter)) {
-                    if (BSON_ITER_HOLDS_BOOL(&e_iter) && bson_iter_bool(&e_iter)) {
-                        if (!first) printf(", ");
-                        printf("%s", bson_iter_key(&e_iter));
-                        first = 0;
+            
+            if (is_diag) {
+                printf("\n      %s[DIAG] %s", CLR_WARN, CLR_RESET);
+                char *json = bson_as_canonical_extended_json(extra, NULL);
+                printf("%s%s", json, CLR_RESET);
+                bson_free(json);
+            } else {
+                printf(" (Passed: ");
+                int first = 1;
+                if (bson_iter_init(&e_iter, extra)) {
+                    while (bson_iter_next(&e_iter)) {
+                        if (BSON_ITER_HOLDS_BOOL(&e_iter) && bson_iter_bool(&e_iter)) {
+                            if (!first) printf(", ");
+                            printf("%s", bson_iter_key(&e_iter));
+                            first = 0;
+                        }
                     }
                 }
+                printf(")");
             }
-            printf(")");
             bson_destroy(extra);
         }
         printf("\n");
@@ -249,6 +247,7 @@ void print_help() {
     printf("%sKifu Tool Commands:%s\n", CLR_HEADER, CLR_RESET);
     printf("  %slist%s            : List 20 most recent matches\n", CLR_INFO, CLR_RESET);
     printf("  %sshow <id>%s       : Show move history for a match\n", CLR_INFO, CLR_RESET);
+    printf("  %sdebug <on|off>%s  : Toggle diagnostic logs (DEADLOCK/STALL)\n", CLR_INFO, CLR_RESET);
     printf("  %shelp%s            : Show this message\n", CLR_INFO, CLR_RESET);
     printf("  %sexit%s            : Exit tool\n", CLR_INFO, CLR_RESET);
 }
@@ -272,6 +271,14 @@ int main() {
             kifu_list();
         } else if (strncmp(line, "show ", 5) == 0) {
             kifu_show(line + 5);
+        } else if (strncmp(line, "debug ", 6) == 0) {
+            if (strstr(line, "on")) {
+                debug_enabled = 1;
+                printf("%sDebug mode ENABLED (showing diagnostic logs).%s\n", CLR_SUCCESS, CLR_RESET);
+            } else {
+                debug_enabled = 0;
+                printf("%sDebug mode DISABLED (hiding diagnostic logs).%s\n", CLR_WARN, CLR_RESET);
+            }
         } else if (strncmp(line, "help", 4) == 0) {
             print_help();
         } else if (strncmp(line, "exit", 4) == 0 || strncmp(line, "quit", 4) == 0) {
