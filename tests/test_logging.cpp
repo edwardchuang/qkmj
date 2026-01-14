@@ -7,6 +7,7 @@ extern "C" {
 #include "qkmj.h"
 #include "protocol.h"
 #include "misc.h"
+#include "ai_client.h"
 #include <cjson/cJSON.h>
 }
 
@@ -37,7 +38,8 @@ protected:
         gps_sockfd = 123;
         
         strncpy(current_match_id, "TEST-MATCH-123", sizeof(current_match_id));
-        move_serial = 0;
+        info.wind = 1;
+        info.dealer = 2;
     }
 };
 
@@ -55,9 +57,10 @@ TEST_F(LoggingTest, SendGameLogBasic) {
     ASSERT_NE(log, nullptr);
     
     EXPECT_STREQ(cJSON_GetObjectItem(log, "match_id")->valuestring, "TEST-MATCH-123");
-    EXPECT_EQ(cJSON_GetObjectItem(log, "move_serial")->valueint, 1);
     EXPECT_STREQ(cJSON_GetObjectItem(log, "action")->valuestring, "TestMove");
     EXPECT_EQ(cJSON_GetObjectItem(log, "card")->valueint, 23);
+    EXPECT_EQ(cJSON_GetObjectItem(log, "round_wind")->valueint, 1);
+    EXPECT_EQ(cJSON_GetObjectItem(log, "dealer")->valueint, 2);
     
     cJSON* state = cJSON_GetObjectItem(log, "state");
     ASSERT_NE(state, nullptr);
@@ -70,7 +73,7 @@ TEST_F(LoggingTest, SendGameLogBasic) {
     cJSON_Delete(log);
 }
 
-TEST_F(LoggingTest, MoveSerialIncrements) {
+TEST_F(LoggingTest, MultipleLogs) {
     send_game_log("Move1", 1, NULL);
     send_game_log("Move2", 2, NULL);
     
@@ -79,8 +82,8 @@ TEST_F(LoggingTest, MoveSerialIncrements) {
     cJSON* log1 = cJSON_Parse(captured_json[0].second.c_str());
     cJSON* log2 = cJSON_Parse(captured_json[1].second.c_str());
     
-    EXPECT_EQ(cJSON_GetObjectItem(log1, "move_serial")->valueint, 1);
-    EXPECT_EQ(cJSON_GetObjectItem(log2, "move_serial")->valueint, 2);
+    EXPECT_STREQ(cJSON_GetObjectItem(log1, "action")->valuestring, "Move1");
+    EXPECT_STREQ(cJSON_GetObjectItem(log2, "action")->valuestring, "Move2");
     
     cJSON_Delete(log1);
     cJSON_Delete(log2);
@@ -109,41 +112,21 @@ TEST_F(LoggingTest, PassActionOptions) {
 }
 
 TEST_F(LoggingTest, MatchIdFormat) {
-
     // Simulating new Hex-based match_id generation with byte-swap
-
     char match_id[64];
-
     unsigned int ts = (unsigned int)time(NULL);
-
     unsigned int rev_ts = ((ts & 0x000000FF) << 24) |
-
                           ((ts & 0x0000FF00) << 8)  |
-
                           ((ts & 0x00FF0000) >> 8)  |
-
                           ((ts & 0xFF000000) >> 24);
-
     
-
     int player_id = 5;
-
     unsigned int salt = 0xABCD;
-
     snprintf(match_id, sizeof(match_id), "%08X%04X", rev_ts, (unsigned int)((player_id ^ salt) & 0xFFFF));
-
     
-
     EXPECT_EQ(strlen(match_id), 12);
-
     // Should be all hex (0-9, A-F)
-
     for(int i=0; i<12; i++) {
-
         EXPECT_TRUE(isxdigit(match_id[i]));
-
     }
-
 }
-
-
