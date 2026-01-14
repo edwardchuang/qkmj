@@ -110,17 +110,27 @@ TEST_F(LoggingTest, PassActionOptions) {
 
 TEST_F(LoggingTest, MatchIdFormat) {
 
-    // Simulating new Hex-based match_id generation
+    // Simulating new Hex-based match_id generation with byte-swap
 
     char match_id[64];
 
     unsigned int ts = (unsigned int)time(NULL);
 
+    unsigned int rev_ts = ((ts & 0x000000FF) << 24) |
+
+                          ((ts & 0x0000FF00) << 8)  |
+
+                          ((ts & 0x00FF0000) >> 8)  |
+
+                          ((ts & 0xFF000000) >> 24);
+
+    
+
     int player_id = 5;
 
     unsigned int salt = 0xABCD;
 
-    snprintf(match_id, sizeof(match_id), "%08X%04X", ts, (unsigned int)((player_id ^ salt) & 0xFFFF));
+    snprintf(match_id, sizeof(match_id), "%08X%04X", rev_ts, (unsigned int)((player_id ^ salt) & 0xFFFF));
 
     
 
@@ -135,3 +145,5 @@ TEST_F(LoggingTest, MatchIdFormat) {
     }
 
 }
+
+
