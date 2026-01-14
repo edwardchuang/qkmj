@@ -77,8 +77,8 @@ void write_check(int check) {
     cJSON_AddNumberToObject(payload, "action", check);
     send_json(table_sockfd, MSG_CHECK_RESULT, payload);
   } else {
-    in_check[player[1].sit] = 0;
-    check_for[player[1].sit] = check;
+    in_check[my_sit] = 0;
+    check_for[my_sit] = check;
   }
 }
 
