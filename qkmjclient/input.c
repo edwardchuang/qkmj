@@ -26,6 +26,7 @@ int my_getch();
 void action_throw_card(int index) {
   play_mode = WAIT_CARD;
   in_kang = 0;
+  getting_card = 0;
   pool[my_sit].first_round = 0;
 
   if (in_join) {
@@ -106,11 +107,10 @@ void action_throw_card(int index) {
         }
       }
     }
-    in_check[1] = 0;
+    in_check[my_sit] = 0;
     check_on = 1;
     current_id = 1;
     send_card_on = 0;
-    next_player_request = 1;
     next_player_on = 0;
   }
   throw_card(pool[my_sit].card[index]);

@@ -369,6 +369,7 @@ void handle_client_message(int player_id, int msg_id, cJSON* data) {
 
       current_id = player_id;
       current_card = card;
+      getting_card = 0;
       show_cardmsg(player[player_id].sit, card);
       throw_card(card);
       return_cursor();
@@ -406,10 +407,10 @@ void handle_client_message(int player_id, int msg_id, cJSON* data) {
       for (int j = 1; j < check_number; j++)
         if (check_flag[my_sit][j]) {
           init_check_mode();
-          in_check[1] = 1;
+          in_check[my_sit] = 1;
           goto in_check_now1;
         }
-      in_check[1] = 0;
+      in_check[my_sit] = 0;
     in_check_now1:;
       break;
 
@@ -418,7 +419,11 @@ void handle_client_message(int player_id, int msg_id, cJSON* data) {
       break;
 
     case MSG_CHECK_CARD: /* 501 */
-      who(player[player_id].name);
+      check_flag[my_sit][1] = j_int(data, "eat");
+      check_flag[my_sit][2] = j_int(data, "pong");
+      check_flag[my_sit][3] = j_int(data, "kang");
+      check_flag[my_sit][4] = j_int(data, "win");
+      init_check_mode();
       break;
 
     case MSG_CHECK_RESULT: /* 510 */

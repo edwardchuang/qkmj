@@ -61,6 +61,18 @@ int send_json(int fd, int msg_id, cJSON* data) {
 
   /* Write the string */
   while (written < len) {
+    /* Safety: Check if socket is writable with 2s timeout */
+    fd_set wfds;
+    struct timeval tv = {2, 0};
+    FD_ZERO(&wfds);
+    FD_SET(fd, &wfds);
+    if (select(fd + 1, NULL, &wfds, NULL, &tv) <= 0) {
+        fprintf(stderr, "Error: send_json write timeout on fd %d\n", fd);
+        free(json_str);
+        cJSON_Delete(root);
+        return 0;
+    }
+
     n = write(fd, json_str + written, len - written);
     if (n < 0) {
       if (errno == EINTR) continue;

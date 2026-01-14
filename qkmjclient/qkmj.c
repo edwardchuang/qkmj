@@ -462,6 +462,7 @@ void opening() {
   pos_x = INDEX_X + current_item * 2 + 1;
   pos_y = INDEX_Y;
   play_mode = 0;
+  getting_card = 0;
   card_count = 0;
   check_on = 0;
   for (i = 1; i <= 4; i++) {
@@ -786,23 +787,31 @@ void gps() {
 
   for (;;) {
     memmove((char*)&rfds, (char*)&afds, sizeof(rfds));
-
-    if (table_sockfd >= nfds) {
-      nfds = table_sockfd + 1;
-    }
-    if (serv_sockfd >= nfds) {
-      nfds = serv_sockfd + 1;
+    
+    /* Dynamically calculate nfds to be max(all active FDs) + 1 */
+    nfds = gps_sockfd + 1;
+    if (table_sockfd >= nfds) nfds = table_sockfd + 1;
+    if (serv_sockfd >= nfds) nfds = serv_sockfd + 1;
+    if (in_serv) {
+        for (i = 2; i < MAX_PLAYER; i++) {
+            if (player[i].in_table && player[i].sockfd >= nfds) {
+                nfds = player[i].sockfd + 1;
+            }
+        }
     }
 
     struct timeval ai_tv;
-    struct timeval *tv_ptr = 0;
+    struct timeval* tv_ptr = &ai_tv;
 
     if (ai_is_enabled()) {
-        ai_tv.tv_sec = 0;
-        ai_tv.tv_usec = 100000; // 0.1s timeout for AI polling
-        tv_ptr = &ai_tv;
+      ai_tv.tv_sec = 0;
+      ai_tv.tv_usec = 100000;  // 0.1s timeout for AI polling
+    } else {
+      ai_tv.tv_sec = 1;
+      ai_tv.tv_usec = 0;  // 1s fallback
     }
 
+    // fprintf(stderr, "[DEBUG] select() nfds=%d\n", nfds);
     if (select(nfds, &rfds, (fd_set*)0, (fd_set*)0, tv_ptr) < 0) {
       if (errno != EINTR) {
         endwin();
@@ -821,7 +830,7 @@ void gps() {
     }
 
     /* AI Hook: Check Mode (Self-Draw Win/Kang) */
-    if (input_mode == CHECK_MODE && in_check[1] && ai_is_enabled()) {
+    if (input_mode == CHECK_MODE && in_check[my_sit] && ai_is_enabled()) {
         ai_decision_t dec = ai_get_decision(AI_PHASE_DISCARD, current_card, 0);
         if (dec.action == AI_ACTION_WIN) {
              write_check(4);
@@ -882,6 +891,38 @@ void gps() {
       }
     }
     if (in_serv) {
+      /* Deadlock Detection */
+      static time_t last_progress = 0;
+      static int last_serial = -1;
+      if (last_serial != move_serial) {
+          last_serial = move_serial;
+          last_progress = time(NULL);
+      } else if (time(NULL) - last_progress > 10) { // 10 seconds without move
+          /* Trigger diagnostic if we are during a match but not progressing */
+          if (in_play || check_on || next_player_request || send_card_request) {
+              cJSON *diag = cJSON_CreateObject();
+              cJSON_AddStringToObject(diag, "error", "Potential Deadlock Detected");
+              cJSON_AddBoolToObject(diag, "in_play", in_play);
+              cJSON_AddBoolToObject(diag, "check_on", check_on);
+              cJSON_AddBoolToObject(diag, "next_player_request", next_player_request);
+              cJSON_AddBoolToObject(diag, "next_player_on", next_player_on);
+              cJSON_AddBoolToObject(diag, "send_card_request", send_card_request);
+              cJSON_AddBoolToObject(diag, "send_card_on", send_card_on);
+              cJSON_AddNumberToObject(diag, "move_serial", move_serial);
+              cJSON_AddNumberToObject(diag, "turn", turn);
+              cJSON_AddNumberToObject(diag, "play_mode", play_mode);
+              cJSON_AddNumberToObject(diag, "input_mode", input_mode);
+              
+              cJSON *in_chk_arr = cJSON_CreateArray();
+              for(int k=1; k<=4; k++) cJSON_AddItemToArray(in_chk_arr, cJSON_CreateNumber(in_check[k]));
+              cJSON_AddItemToObject(diag, "in_check_states", in_chk_arr);
+              
+              send_game_log("DEADLOCK_DIAG", 0, diag);
+              cJSON_Delete(diag);
+              last_progress = time(NULL); // Only log once every 10s
+          }
+      }
+
       /* Check for new connections */
       if (FD_ISSET(serv_sockfd, &rfds)) {
         if (new_client) {
@@ -967,6 +1008,25 @@ void gps() {
       }
     }
     if (in_join) {
+      /* Deadlock Detection for Client */
+      static time_t last_join_progress = 0;
+      static int last_join_serial = -1;
+      if (last_join_serial != move_serial) {
+          last_join_serial = move_serial;
+          last_join_progress = time(NULL);
+      } else if (time(NULL) - last_join_progress > 15) { // 15s leeway
+          if (play_mode != WAIT_CARD || input_mode == CHECK_MODE) {
+              cJSON *diag = cJSON_CreateObject();
+              cJSON_AddStringToObject(diag, "error", "Client Stall Detected");
+              cJSON_AddNumberToObject(diag, "play_mode", play_mode);
+              cJSON_AddNumberToObject(diag, "input_mode", input_mode);
+              cJSON_AddNumberToObject(diag, "move_serial", move_serial);
+              send_game_log("CLIENT_STALL_DIAG", 0, diag);
+              cJSON_Delete(diag);
+              last_join_progress = time(NULL);
+          }
+      }
+
       if (FD_ISSET(table_sockfd, &rfds)) {
         int msg_id_val = 0;
         cJSON *data = NULL;
