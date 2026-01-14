@@ -182,6 +182,9 @@ void kifu_show(const char* match_id) {
     printf("\n%s--- Match Record: %s ---%s\n", CLR_HEADER, match_id, CLR_RESET);
 
     int count = 0;
+    int last_wind = -1;
+    int last_dealer = -1;
+
     while (mongoc_cursor_next(cursor, &doc)) {
         bson_iter_t iter;
         int serial = 0;
@@ -189,12 +192,26 @@ void kifu_show(const char* match_id) {
         const char *action = "None";
         int card = 0;
         bool is_ai = false;
+        int wind = -1;
+        int dealer = -1;
 
         if (bson_iter_init_find(&iter, doc, "move_serial") && BSON_ITER_HOLDS_INT32(&iter)) serial = bson_iter_int32(&iter);
         if (bson_iter_init_find(&iter, doc, "user_id") && BSON_ITER_HOLDS_UTF8(&iter)) user = bson_iter_utf8(&iter, NULL);
         if (bson_iter_init_find(&iter, doc, "action") && BSON_ITER_HOLDS_UTF8(&iter)) action = bson_iter_utf8(&iter, NULL);
         if (bson_iter_init_find(&iter, doc, "card") && BSON_ITER_HOLDS_INT32(&iter)) card = bson_iter_int32(&iter);
         if (bson_iter_init_find(&iter, doc, "is_ai") && BSON_ITER_HOLDS_BOOL(&iter)) is_ai = bson_iter_bool(&iter);
+        if (bson_iter_init_find(&iter, doc, "round_wind") && BSON_ITER_HOLDS_INT32(&iter)) wind = bson_iter_int32(&iter);
+        if (bson_iter_init_find(&iter, doc, "dealer") && BSON_ITER_HOLDS_INT32(&iter)) dealer = bson_iter_int32(&iter);
+
+        if (wind != last_wind || dealer != last_dealer) {
+            const char* wind_names[] = {"?", "東", "南", "西", "北"};
+            printf("\n%s>>> Round: %s風 %s家開莊 <<<%s\n", CLR_INFO, 
+                   (wind >= 1 && wind <= 4) ? wind_names[wind] : "?",
+                   (dealer >= 1 && dealer <= 4) ? wind_names[dealer] : "?",
+                   CLR_RESET);
+            last_wind = wind;
+            last_dealer = dealer;
+        }
 
         bool is_diag = (strcmp(action, "DEADLOCK_DIAG") == 0 || strcmp(action, "CLIENT_STALL_DIAG") == 0);
         if (is_diag && !debug_enabled) continue;
