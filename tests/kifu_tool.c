@@ -26,18 +26,21 @@ extern char current_match_id[64];
 // Mahjong Card Mapping
 static const char* get_card_name(int card) {
     static char buf[32];
+    static const char* zh_num[] = {"零", "一", "二", "三", "四", "五", "六", "七", "八", "九"};
+    static const char* flower_names[] = {"春１", "夏２", "秋３", "冬４", "梅１", "蘭２", "菊３", "竹４"};
+    
     switch(card) {
         case 0: return "??";
         case 10: return "摸牌";
-        case 20: return "**";
+        case 20: return "＊＊";
         case 30: return "東"; case 40: return "南"; case 50: return "西"; case 60: return "北";
         case 31: return "東風"; case 32: return "南風"; case 33: return "西風"; case 34: return "北風";
         case 41: return "紅中"; case 42: return "白板"; case 43: return "青發";
     }
-    if (card >= 1 && card <= 9) { sprintf(buf, "%d萬", card); return buf; }
-    if (card >= 11 && card <= 19) { sprintf(buf, "%d索", card-10); return buf; }
-    if (card >= 21 && card <= 29) { sprintf(buf, "%d筒", card-20); return buf; }
-    if (card >= 51 && card <= 58) { sprintf(buf, "花%%d", card-50); return buf; }
+    if (card >= 1 && card <= 9) { sprintf(buf, "%s萬", zh_num[card]); return buf; }
+    if (card >= 11 && card <= 19) { sprintf(buf, "%s索", zh_num[card-10]); return buf; }
+    if (card >= 21 && card <= 29) { sprintf(buf, "%s筒", zh_num[card-20]); return buf; }
+    if (card >= 51 && card <= 58) { return flower_names[card-51]; }
     sprintf(buf, "%d", card);
     return buf;
 }
