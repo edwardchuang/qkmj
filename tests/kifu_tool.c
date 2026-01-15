@@ -67,6 +67,40 @@ bson_t* cjson_to_bson(cJSON *json) {
     return bson;
 }
 
+void sanitize_mongo_json(cJSON *item) {
+    cJSON *curr = item;
+    while (curr) {
+        if (curr->type == cJSON_Object) {
+            cJSON *numInt = cJSON_GetObjectItem(curr, "$numberInt");
+            if (numInt && cJSON_IsString(numInt)) {
+                int val = atoi(numInt->valuestring);
+                cJSON *tmp = cJSON_DetachItemFromObject(curr, "$numberInt");
+                cJSON_Delete(tmp);
+                
+                curr->type = cJSON_Number;
+                curr->valueint = val;
+                curr->valuedouble = (double)val;
+            } else {
+                cJSON *numLong = cJSON_GetObjectItem(curr, "$numberLong");
+                if (numLong && cJSON_IsString(numLong)) {
+                    long long val = atoll(numLong->valuestring);
+                    cJSON *tmp = cJSON_DetachItemFromObject(curr, "$numberLong");
+                    cJSON_Delete(tmp);
+                    
+                    curr->type = cJSON_Number;
+                    curr->valueint = (int)val;
+                    curr->valuedouble = (double)val;
+                } else {
+                    sanitize_mongo_json(curr->child);
+                }
+            }
+        } else if (curr->type == cJSON_Array) {
+            sanitize_mongo_json(curr->child);
+        }
+        curr = curr->next;
+    }
+}
+
 void kifu_list() {
     mongoc_client_t *client;
     bson_error_t error;
@@ -161,6 +195,99 @@ void kifu_list() {
 
     mongoc_cursor_destroy(cursor);
     bson_destroy(bson_pipe);
+    mongoc_collection_destroy(collection);
+    mongoc_client_destroy(client);
+}
+
+void kifu_dump(const char* match_id, int target_serial) {
+    mongoc_client_t *client;
+    mongoc_collection_t *collection = get_logs_collection(&client);
+    if (!collection) return;
+
+    cJSON *filter = cJSON_CreateObject();
+    cJSON_AddStringToObject(filter, "match_id", match_id);
+    cJSON_AddStringToObject(filter, "level", "game_trace");
+    
+    // We cannot filter by "move_serial" directly because diagnostic logs 
+    // consume serial numbers but are hidden in the UI, causing a skew.
+    // We must fetch all logs and count valid moves manually.
+    
+    cJSON *opts = cJSON_CreateObject();
+    cJSON *sort = cJSON_CreateObject();
+    cJSON_AddNumberToObject(sort, "move_serial", 1);
+    cJSON_AddItemToObject(opts, "sort", sort);
+
+    bson_t *b_filter = cjson_to_bson(filter);
+    bson_t *b_opts = cjson_to_bson(opts);
+    
+    cJSON_Delete(filter);
+    cJSON_Delete(opts);
+
+    mongoc_cursor_t *cursor = mongoc_collection_find_with_opts(collection, b_filter, b_opts, NULL);
+    const bson_t *doc;
+    int found = 0;
+    int logical_serial = 0;
+
+    while (mongoc_cursor_next(cursor, &doc)) {
+        bson_iter_t iter;
+        const char *action = "";
+
+        // Check action type to filter diagnostics
+        if (bson_iter_init_find(&iter, doc, "action") && BSON_ITER_HOLDS_UTF8(&iter)) {
+            action = bson_iter_utf8(&iter, NULL);
+        }
+
+        if (strcmp(action, "DEADLOCK_DIAG") == 0 || strcmp(action, "CLIENT_STALL_DIAG") == 0) {
+            continue; // Skip diagnostic logs to align with 'list'/'show' counts
+        }
+
+        logical_serial++;
+
+        // If searching for specific move, skip until we reach it
+        if (target_serial > 0 && logical_serial != target_serial) {
+            continue;
+        }
+        
+        if (bson_iter_init_find(&iter, doc, "state") && BSON_ITER_HOLDS_DOCUMENT(&iter)) {
+            const uint8_t *data;
+            uint32_t len;
+            bson_iter_document(&iter, &len, &data);
+            bson_t *state_bson = bson_new_from_data(data, len);
+            
+            char *json_extended = bson_as_canonical_extended_json(state_bson, NULL);
+            if (json_extended) {
+                // Convert Extended JSON to Standard JSON
+                cJSON *root = cJSON_Parse(json_extended);
+                if (root) {
+                    sanitize_mongo_json(root); // Fix $numberInt
+                    char *json_standard = cJSON_PrintUnformatted(root);
+                    if (json_standard) {
+                        printf("%s\n", json_standard);
+                        free(json_standard);
+                        found++;
+                    }
+                    cJSON_Delete(root);
+                } else {
+                    // Fallback (shouldn't happen if BSON is valid)
+                    printf("%s\n", json_extended);
+                    found++;
+                }
+                bson_free(json_extended);
+            }
+            bson_destroy(state_bson);
+        }
+
+        // If we found the specific move we wanted, stop
+        if (target_serial > 0) break;
+    }
+
+    if (target_serial > 0 && found == 0) {
+         fprintf(stderr, "%sMove #%d not found in match %s%s\n", CLR_ERROR, target_serial, match_id, CLR_RESET);
+    }
+
+    mongoc_cursor_destroy(cursor);
+    bson_destroy(b_filter);
+    bson_destroy(b_opts);
     mongoc_collection_destroy(collection);
     mongoc_client_destroy(client);
 }
@@ -348,6 +475,7 @@ void print_help() {
     printf("%sKifu Tool Commands:%s\n", CLR_HEADER, CLR_RESET);
     printf("  %slist%s            : List 20 most recent matches\n", CLR_INFO, CLR_RESET);
     printf("  %sshow <id>%s       : Show move history and final result\n", CLR_INFO, CLR_RESET);
+    printf("  %sdump <id> [mv]%s  : Dump AI-ready JSON for all moves or specific move #\n", CLR_INFO, CLR_RESET);
     printf("  %sdebug <on|off>%s  : Toggle diagnostic logs (DEADLOCK/STALL)\n", CLR_INFO, CLR_RESET);
     printf("  %shelp%s            : Show this message\n", CLR_INFO, CLR_RESET);
     printf("  %sexit%s            : Exit tool\n", CLR_INFO, CLR_RESET);
@@ -372,6 +500,15 @@ int main() {
             kifu_list();
         } else if (strncmp(line, "show ", 5) == 0) {
             kifu_show(line + 5);
+        } else if (strncmp(line, "dump ", 5) == 0) {
+            char *args = line + 5;
+            char *id = strtok(args, " ");
+            char *mv = strtok(NULL, " ");
+            if (id) {
+                kifu_dump(id, mv ? atoi(mv) : 0);
+            } else {
+                printf("%sUsage: dump <match_id> [move_serial]%s\n", CLR_WARN, CLR_RESET);
+            }
         } else if (strncmp(line, "debug ", 6) == 0) {
             if (strstr(line, "on")) {
                 debug_enabled = 1;
