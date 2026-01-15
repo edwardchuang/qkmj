@@ -36,7 +36,7 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 
       - name: Build Tests
-        run: cmake --build build --target session_test test_ai
+        run: cmake --build build --target session_test test_ai test_logging
 
       - name: Run Tests
         working-directory: build
