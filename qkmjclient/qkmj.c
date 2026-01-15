@@ -1053,8 +1053,17 @@ void read_qkmjrc() {
   char event[80];
   char* str1;
   char rc_name[255];
+  char *env_path = getenv("QKMJRC_PATH");
 
-  snprintf(rc_name, sizeof(rc_name), "%s/%s", getenv("HOME"), QKMJRC);
+  if (env_path && strlen(env_path) > 0) {
+      strncpy(rc_name, env_path, sizeof(rc_name) - 1);
+      rc_name[sizeof(rc_name) - 1] = '\0';
+  } else {
+      snprintf(rc_name, sizeof(rc_name), "%s/%s", getenv("HOME"), QKMJRC);
+  }
+
+  printf("Loading configuration from: %s\n", rc_name);
+
   if ((qkmjrc_fp = fopen(rc_name, "r")) != NULL) {
     while (fgets(msg_buf, 80, qkmjrc_fp) != NULL) {
       Tokenize(msg_buf);
@@ -1085,6 +1094,14 @@ void read_qkmjrc() {
           str1 = strtok(NULL, "\n\t\r");
           strncpy((char*)my_note, str1, sizeof(my_note) - 1);
           my_note[sizeof(my_note) - 1] = '\0';
+        }
+      } else if (strcmp(event, "BASE_VALUE") == 0) {
+        if (narg > 1) {
+          info.base_value = atoi((char*)cmd_argv[2]);
+        }
+      } else if (strcmp(event, "TAI_VALUE") == 0) {
+        if (narg > 1) {
+          info.tai_value = atoi((char*)cmd_argv[2]);
         }
       } else if (strcmp(event, "BEEP") == 0) {
         if (narg > 1) {
