@@ -80,6 +80,15 @@ void kifu_list() {
     cJSON *match = cJSON_CreateObject();
     cJSON *match_q = cJSON_CreateObject();
     cJSON_AddStringToObject(match_q, "level", "game_trace");
+    
+    // Filter out DIAG actions so they don't count as moves
+    cJSON *action_filter = cJSON_CreateObject();
+    cJSON *nin_list = cJSON_CreateArray();
+    cJSON_AddItemToArray(nin_list, cJSON_CreateString("DEADLOCK_DIAG"));
+    cJSON_AddItemToArray(nin_list, cJSON_CreateString("CLIENT_STALL_DIAG"));
+    cJSON_AddItemToObject(action_filter, "$nin", nin_list);
+    cJSON_AddItemToObject(match_q, "action", action_filter);
+
     cJSON_AddItemToObject(match, "$match", match_q);
     cJSON_AddItemToArray(pipe, match);
 
@@ -163,7 +172,6 @@ void kifu_show(const char* match_id) {
 
     cJSON *filter = cJSON_CreateObject();
     cJSON_AddStringToObject(filter, "match_id", match_id);
-    cJSON_AddStringToObject(filter, "level", "game_trace");
     
     cJSON *opts = cJSON_CreateObject();
     cJSON *sort = cJSON_CreateObject();
@@ -187,6 +195,59 @@ void kifu_show(const char* match_id) {
 
     while (mongoc_cursor_next(cursor, &doc)) {
         bson_iter_t iter;
+        const char *level = "";
+        
+        if (bson_iter_init_find(&iter, doc, "level") && BSON_ITER_HOLDS_UTF8(&iter)) {
+            level = bson_iter_utf8(&iter, NULL);
+        }
+
+        if (strcmp(level, "game_record") == 0) {
+            printf("\n%s--- Round Result ---%s\n", CLR_SUCCESS, CLR_RESET);
+            char *json = bson_as_canonical_extended_json(doc, NULL);
+            cJSON *res = cJSON_Parse(json);
+            if (res) {
+                cJSON *data_obj = cJSON_GetObjectItem(res, "data");
+                if (!data_obj) data_obj = res; 
+
+                const char *winner = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "winer"));
+                const char *loser = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "card_owner"));
+                
+                if (winner) {
+                    if (loser && strcmp(winner, loser) == 0) {
+                        printf("%sWinner: %s (Self-Drawn 自摸)%s\n", CLR_SUCCESS, winner, CLR_RESET);
+                    } else {
+                        printf("%sWinner: %s%s | %sLoser: %s (Discarder 放槍)%s\n", 
+                               CLR_SUCCESS, winner, CLR_RESET, CLR_ERROR, loser ? loser : "Unknown", CLR_RESET);
+                    }
+                }
+
+                const char *tais = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "tais"));
+                if (tais) printf("Tai: %s\n", tais);
+
+                int base = 0, tai_val = 0;
+                if (cJSON_HasObjectItem(data_obj, "base_value")) base = cJSON_GetNumberValue(cJSON_GetObjectItem(data_obj, "base_value"));
+                if (cJSON_HasObjectItem(data_obj, "tai_value")) tai_val = cJSON_GetNumberValue(cJSON_GetObjectItem(data_obj, "tai_value"));
+                printf("Config: Base=%d, Tai=%d\n", base, tai_val);
+
+                cJSON *moneys = cJSON_GetObjectItem(data_obj, "moneys");
+                if (cJSON_IsArray(moneys)) {
+                    printf("Money Changes:\n");
+                    int sz = cJSON_GetArraySize(moneys);
+                    for (int i=0; i<sz; i++) {
+                        cJSON *m = cJSON_GetArrayItem(moneys, i);
+                        const char *name = cJSON_GetStringValue(cJSON_GetObjectItem(m, "name"));
+                        int change = (int)cJSON_GetNumberValue(cJSON_GetObjectItem(m, "change_money"));
+                        printf("  %-10s : %s%d%s\n", name, (change >= 0 ? CLR_SUCCESS : CLR_ERROR), change, CLR_RESET);
+                    }
+                }
+                cJSON_Delete(res);
+            }
+            bson_free(json);
+            continue; 
+        }
+
+        if (strcmp(level, "game_trace") != 0) continue;
+
         int serial = 0;
         const char *user = "Unknown";
         const char *action = "None";
@@ -196,17 +257,27 @@ void kifu_show(const char* match_id) {
         int dealer = -1;
 
         serial = count + 1;
-        // if (bson_iter_init_find(&iter, doc, "move_serial") && BSON_ITER_HOLDS_INT32(&iter)) serial = bson_iter_int32(&iter);
+        
+        bson_iter_t sub_iter;
         if (bson_iter_init_find(&iter, doc, "user_id") && BSON_ITER_HOLDS_UTF8(&iter)) user = bson_iter_utf8(&iter, NULL);
         if (bson_iter_init_find(&iter, doc, "action") && BSON_ITER_HOLDS_UTF8(&iter)) action = bson_iter_utf8(&iter, NULL);
         if (bson_iter_init_find(&iter, doc, "card") && BSON_ITER_HOLDS_INT32(&iter)) card = bson_iter_int32(&iter);
         if (bson_iter_init_find(&iter, doc, "is_ai") && BSON_ITER_HOLDS_BOOL(&iter)) is_ai = bson_iter_bool(&iter);
-        if (bson_iter_init_find(&iter, doc, "round_wind") && BSON_ITER_HOLDS_INT32(&iter)) wind = bson_iter_int32(&iter);
-        if (bson_iter_init_find(&iter, doc, "dealer") && BSON_ITER_HOLDS_INT32(&iter)) dealer = bson_iter_int32(&iter);
+        
+        bson_iter_init(&iter, doc);
+        if (bson_iter_find_descendant(&iter, "state.context.round_wind", &sub_iter) && BSON_ITER_HOLDS_INT32(&sub_iter)) {
+            wind = bson_iter_int32(&sub_iter);
+        }
+        
+        bson_iter_init(&iter, doc);
+        if (bson_iter_find_descendant(&iter, "state.context.dealer", &sub_iter) && BSON_ITER_HOLDS_INT32(&sub_iter)) {
+            dealer = bson_iter_int32(&sub_iter);
+        }
 
         if (wind != last_wind || dealer != last_dealer) {
             const char* wind_names[] = {"?", "東", "南", "西", "北"};
-            printf("\n%s>>> Round: %s風 %s家開莊 <<<%s\n", CLR_INFO, 
+            printf("\n%s----------------------------------------%s\n", CLR_INFO, CLR_RESET);
+            printf("%s>>> Round: %s風 %s家開莊 <<<%s\n", CLR_INFO, 
                    (wind >= 1 && wind <= 4) ? wind_names[wind] : "?",
                    (dealer >= 1 && dealer <= 4) ? wind_names[dealer] : "?",
                    CLR_RESET);
@@ -217,8 +288,17 @@ void kifu_show(const char* match_id) {
         bool is_diag = (strcmp(action, "DEADLOCK_DIAG") == 0 || strcmp(action, "CLIENT_STALL_DIAG") == 0);
         if (is_diag && !debug_enabled) continue;
 
-        printf("#%-3d %-10s %-4s | %-8s | %-4s", 
-               serial, user, is_ai ? "[AI]" : "", action, get_card_name(card));
+        const char *act_color = "";
+        const char *act_reset = "";
+        if (strcmp(action, "Win") == 0) {
+            act_color = CLR_SUCCESS;
+            act_reset = CLR_RESET;
+        }
+
+        printf("#%-3d %-10s %-4s | %s%-8s%s | %-4s", 
+               serial, user, is_ai ? "[AI]" : "", 
+               act_color, action, act_reset,
+               get_card_name(card));
 
         if ((strcmp(action, "Pass") == 0 || is_diag) && bson_iter_init_find(&iter, doc, "extra") && BSON_ITER_HOLDS_DOCUMENT(&iter)) {
             const uint8_t *data;
@@ -255,63 +335,7 @@ void kifu_show(const char* match_id) {
     bson_destroy(b_filter);
     bson_destroy(b_opts);
 
-    // Fetch Game Result (MSG_GAME_RECORD / Level "game_record")
-    cJSON *r_filter = cJSON_CreateObject();
-    cJSON_AddStringToObject(r_filter, "match_id", match_id);
-    cJSON_AddStringToObject(r_filter, "level", "game_record");
-
-    bson_t *br_filter = cjson_to_bson(r_filter);
-    cJSON_Delete(r_filter);
-
-    // Query for the specific result record
-    cursor = mongoc_collection_find_with_opts(collection, br_filter, NULL, NULL);
-    if (mongoc_cursor_next(cursor, &doc)) {
-        printf("\n%s--- Final Result ---%s\n", CLR_SUCCESS, CLR_RESET);
-        char *json = bson_as_canonical_extended_json(doc, NULL);
-        cJSON *res = cJSON_Parse(json);
-        if (res) {
-            // "data" contains the original payload from send_json
-            cJSON *data_obj = cJSON_GetObjectItem(res, "data");
-            if (!data_obj) data_obj = res; // Fallback if logged differently
-
-            const char *winner = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "winer"));
-            const char *loser = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "card_owner"));
-            
-            if (winner) {
-                if (loser && strcmp(winner, loser) == 0) {
-                    printf("%sWinner: %s (Self-Drawn 自摸)%s\n", CLR_SUCCESS, winner, CLR_RESET);
-                } else {
-                    printf("%sWinner: %s%s | %sLoser: %s (Discarder 放槍)%s\n", 
-                           CLR_SUCCESS, winner, CLR_RESET, CLR_ERROR, loser ? loser : "Unknown", CLR_RESET);
-                }
-            }
-
-            const char *tais = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "tais"));
-            if (tais) printf("Tai: %s\n", tais);
-
-            int base = 0, tai_val = 0;
-            if (cJSON_HasObjectItem(data_obj, "base_value")) base = cJSON_GetNumberValue(cJSON_GetObjectItem(data_obj, "base_value"));
-            if (cJSON_HasObjectItem(data_obj, "tai_value")) tai_val = cJSON_GetNumberValue(cJSON_GetObjectItem(data_obj, "tai_value"));
-            printf("Config: Base=%d, Tai=%d\n", base, tai_val);
-
-            cJSON *moneys = cJSON_GetObjectItem(data_obj, "moneys");
-            if (cJSON_IsArray(moneys)) {
-                printf("Money Changes:\n");
-                int sz = cJSON_GetArraySize(moneys);
-                for (int i=0; i<sz; i++) {
-                    cJSON *m = cJSON_GetArrayItem(moneys, i);
-                    const char *name = cJSON_GetStringValue(cJSON_GetObjectItem(m, "name"));
-                    int change = (int)cJSON_GetNumberValue(cJSON_GetObjectItem(m, "change_money"));
-                    printf("  %-10s : %s%d%s\n", name, (change >= 0 ? CLR_SUCCESS : CLR_ERROR), change, CLR_RESET);
-                }
-            }
-            cJSON_Delete(res);
-        }
-        bson_free(json);
-    }
-    mongoc_cursor_destroy(cursor);
-    bson_destroy(br_filter);
-
+    // Removed the secondary query block that was here
     if (count == 0) {
         printf("%sNo logs found for this Match ID.%s\n", CLR_WARN, CLR_RESET);
     }
