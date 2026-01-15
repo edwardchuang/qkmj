@@ -16,7 +16,14 @@ static std::vector<std::pair<int, std::string>> captured_json;
 
 // Mock send_json
 extern "C" int send_json(int fd, int msg_id, cJSON* data) {
+    if (!data) {
+        return 0;
+    }
     char* s = cJSON_PrintUnformatted(data);
+    if (!s) {
+        cJSON_Delete(data);
+        return 0;
+    }
     captured_json.push_back({msg_id, std::string(s)});
     free(s);
     cJSON_Delete(data);
@@ -59,12 +66,14 @@ TEST_F(LoggingTest, SendGameLogBasic) {
     EXPECT_STREQ(cJSON_GetObjectItem(log, "match_id")->valuestring, "TEST-MATCH-123");
     EXPECT_STREQ(cJSON_GetObjectItem(log, "action")->valuestring, "TestMove");
     EXPECT_EQ(cJSON_GetObjectItem(log, "card")->valueint, 23);
-    EXPECT_EQ(cJSON_GetObjectItem(log, "round_wind")->valueint, 1);
-    EXPECT_EQ(cJSON_GetObjectItem(log, "dealer")->valueint, 2);
-    
     cJSON* state = cJSON_GetObjectItem(log, "state");
     ASSERT_NE(state, nullptr);
     EXPECT_STREQ(cJSON_GetObjectItem(state, "cmd")->valuestring, "decision");
+
+    cJSON* context = cJSON_GetObjectItem(state, "context");
+    ASSERT_NE(context, nullptr);
+    EXPECT_EQ(cJSON_GetObjectItem(context, "round_wind")->valueint, 1);
+    EXPECT_EQ(cJSON_GetObjectItem(context, "dealer")->valueint, 2);
     
     cJSON* ext = cJSON_GetObjectItem(log, "extra");
     ASSERT_NE(ext, nullptr);
