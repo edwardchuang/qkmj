@@ -168,6 +168,14 @@ void process_make(int sit, int card) {
     else
       wprintw(stdscr, "連%2d拉%2d  %2d 台", info.cont_dealer, info.cont_dealer,
               info.cont_dealer * 2);
+
+    /* Record tai for log (Fix for missing consecutive dealer score) */
+    if (in_serv && sendlog == 1) {
+      char tmp_tai[100];
+      snprintf(tmp_tai, sizeof(tmp_tai), "%s::%d;;", tai[52].name,
+               card_comb[max_index].tai_score[52]);
+      strncat(tai_buf, tmp_tai, sizeof(tai_buf) - strlen(tai_buf) - 1);
+    }
   }
   set_color(31, 40);
   wmove(stdscr, THROW_Y + 6, THROW_X + 26);
