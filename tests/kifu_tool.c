@@ -167,7 +167,7 @@ void kifu_show(const char* match_id) {
     
     cJSON *opts = cJSON_CreateObject();
     cJSON *sort = cJSON_CreateObject();
-    cJSON_AddNumberToObject(sort, "move_serial", 1);
+    cJSON_AddNumberToObject(sort, "_id", 1);
     cJSON_AddItemToObject(opts, "sort", sort);
 
     bson_t *b_filter = cjson_to_bson(filter);
@@ -195,7 +195,8 @@ void kifu_show(const char* match_id) {
         int wind = -1;
         int dealer = -1;
 
-        if (bson_iter_init_find(&iter, doc, "move_serial") && BSON_ITER_HOLDS_INT32(&iter)) serial = bson_iter_int32(&iter);
+        serial = count + 1;
+        // if (bson_iter_init_find(&iter, doc, "move_serial") && BSON_ITER_HOLDS_INT32(&iter)) serial = bson_iter_int32(&iter);
         if (bson_iter_init_find(&iter, doc, "user_id") && BSON_ITER_HOLDS_UTF8(&iter)) user = bson_iter_utf8(&iter, NULL);
         if (bson_iter_init_find(&iter, doc, "action") && BSON_ITER_HOLDS_UTF8(&iter)) action = bson_iter_utf8(&iter, NULL);
         if (bson_iter_init_find(&iter, doc, "card") && BSON_ITER_HOLDS_INT32(&iter)) card = bson_iter_int32(&iter);
@@ -257,13 +258,12 @@ void kifu_show(const char* match_id) {
     // Fetch Game Result (MSG_GAME_RECORD / Level "game_record")
     cJSON *r_filter = cJSON_CreateObject();
     cJSON_AddStringToObject(r_filter, "match_id", match_id);
-    // The server logs these with CMD 900, but let's check level
-    // In mjgps.c, MSG_GAME_RECORD logs the object as-is.
-    // We added "match_id" to the root in checkscr.c
+    cJSON_AddStringToObject(r_filter, "level", "game_record");
+
     bson_t *br_filter = cjson_to_bson(r_filter);
     cJSON_Delete(r_filter);
 
-    // Query without level restriction first to find any record with this match_id
+    // Query for the specific result record
     cursor = mongoc_collection_find_with_opts(collection, br_filter, NULL, NULL);
     if (mongoc_cursor_next(cursor, &doc)) {
         printf("\n%s--- Final Result ---%s\n", CLR_SUCCESS, CLR_RESET);
@@ -288,6 +288,11 @@ void kifu_show(const char* match_id) {
 
             const char *tais = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "tais"));
             if (tais) printf("Tai: %s\n", tais);
+
+            int base = 0, tai_val = 0;
+            if (cJSON_HasObjectItem(data_obj, "base_value")) base = cJSON_GetNumberValue(cJSON_GetObjectItem(data_obj, "base_value"));
+            if (cJSON_HasObjectItem(data_obj, "tai_value")) tai_val = cJSON_GetNumberValue(cJSON_GetObjectItem(data_obj, "tai_value"));
+            printf("Config: Base=%d, Tai=%d\n", base, tai_val);
 
             cJSON *moneys = cJSON_GetObjectItem(data_obj, "moneys");
             if (cJSON_IsArray(moneys)) {
