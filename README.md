@@ -37,6 +37,7 @@ This will produce the following executables:
 *   `qkmj`: The client application.
 *   `mjgps`: The server application.
 *   `mjrec`: The record management utility.
+*   `kifu`: The MongoDB match record browser.
 
 ## Usage
 
@@ -60,6 +61,19 @@ Default server is 0.0.0.0 and port 7001.
 ./mjrec [record_file]
 ```
 
+### Running Match Browser (Kifu)
+
+To browse game records stored in MongoDB:
+
+```bash
+./kifu
+```
+Interactive commands:
+* `list`: Show recent matches.
+* `show <match_id>`: Replay moves and show final result/score.
+* `dump <match_id> [move_serial]`: Dump AI-ready JSON state for all moves or a specific move.
+* `debug on`: Enable verbose diagnostics.
+
 ## Environment Variables
 
 ### Server (`mjgps`)
@@ -70,7 +84,8 @@ Default server is 0.0.0.0 and port 7001.
 *   `MONGO_LOG_LEVEL`: Minimum log level for MongoDB (`DEBUG`, `INFO`, `WARN`, `ERROR`, `FATAL`; default: `INFO`).
 
 ### Client (`qkmj`)
-*   `HOME`: Used to locate the `.qkmjrc` configuration file.
+*   `QKMJRC_PATH`: Custom path to configuration file (overrides `~/.qkmjrc`).
+*   `HOME`: Used to locate the default `.qkmjrc` configuration file.
 *   `AI_MODE`: Enable AI features (`1` to enable).
 *   `AI_ENDPOINT`: Endpoint URL for the AI backend.
 *   `AI_DEBUG`: Enable verbose AI debugging logs (`1` to enable).
