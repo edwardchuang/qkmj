@@ -163,3 +163,93 @@ void mvwgetstring(WINDOW* win, int y, int x, int max_len,
     }
   }
 }
+
+void broadcast_game_result(int winner_sit, int loser_sit, const char* tai_str, long* money_diff) {
+  cJSON *root, *cards, *player_node, *card_array, *out_card_array, *out_card_group, *moneys_array, *money_node;
+  char msg_buf[16];
+  
+  if (current_match_id[0] == '\0') return;
+
+  root = cJSON_CreateObject();
+  
+  if (winner_sit > 0) {
+      cJSON_AddStringToObject(root, "winer", player[table[winner_sit]].name);
+      cJSON_AddStringToObject(root, "card_owner", player[table[loser_sit]].name);
+  } else {
+      cJSON_AddStringToObject(root, "winer", ""); // Draw
+      cJSON_AddStringToObject(root, "card_owner", "");
+      cJSON_AddBoolToObject(root, "is_draw", 1);
+  }
+
+  cards = cJSON_CreateObject();
+  cJSON_AddItemToObject(root, "cards", cards);
+
+  for (int sitInd = 1; sitInd <= 4; ++sitInd) {
+    player_node = cJSON_CreateObject();
+    cJSON_AddItemToObject(cards, player[table[sitInd]].name, player_node);
+
+    snprintf(msg_buf, sizeof(msg_buf), "%d", sitInd);
+    cJSON_AddStringToObject(player_node, "ind", msg_buf);
+
+    // Card array
+    card_array = cJSON_CreateArray();
+    for (int i = 0; i < pool[sitInd].num; i++) {
+      cJSON_AddItemToArray(card_array, cJSON_CreateNumber(pool[sitInd].card[i]));
+    }
+    cJSON_AddItemToObject(player_node, "card", card_array);
+
+    // Out card array
+    out_card_array = cJSON_CreateArray();
+    for (int i = 0; i < pool[sitInd].out_card_index; i++) {
+      out_card_group = cJSON_CreateArray();
+      for (int m = 1; m < 6; m++) {
+        cJSON_AddItemToArray(out_card_group, cJSON_CreateNumber(pool[sitInd].out_card[i][m]));
+      }
+      cJSON_AddItemToArray(out_card_array, out_card_group);
+    }
+    cJSON_AddItemToObject(player_node, "out_card", out_card_array);
+  }
+
+  if (tai_str) {
+      cJSON_AddStringToObject(root, "tais", tai_str);
+  } else {
+      cJSON_AddStringToObject(root, "tais", "Draw");
+  }
+
+  cJSON_AddNumberToObject(root, "cont_win", info.cont_dealer);
+  cJSON_AddNumberToObject(root, "cont_tai", info.cont_dealer * 2);
+  cJSON_AddNumberToObject(root, "count_win", info.cont_dealer);
+  cJSON_AddNumberToObject(root, "count_tai", info.cont_dealer * 2);
+
+  if (winner_sit > 0) {
+      if ((winner_sit == loser_sit && winner_sit != info.dealer) ||
+          (winner_sit != loser_sit && loser_sit == info.dealer)) {
+        cJSON_AddNumberToObject(root, "is_dealer", 1);
+        cJSON_AddStringToObject(root, "dealer", player[table[info.dealer]].name);
+      }
+  } else {
+      // For draw, dealer info might still be relevant
+      cJSON_AddStringToObject(root, "dealer", player[table[info.dealer]].name);
+  }
+
+  cJSON_AddNumberToObject(root, "base_value", info.base_value);
+  cJSON_AddNumberToObject(root, "tai_value", info.tai_value);
+
+  moneys_array = cJSON_CreateArray();
+  for (int i = 1; i <= 4; i++) {
+    if (table[i]) {
+      money_node = cJSON_CreateObject();
+      cJSON_AddStringToObject(money_node, "name", player[table[i]].name);
+      cJSON_AddNumberToObject(money_node, "now_money", player[table[i]].money);
+      cJSON_AddNumberToObject(money_node, "change_money", money_diff ? money_diff[i] : 0);
+      cJSON_AddItemToArray(moneys_array, money_node);
+    }
+  }
+  cJSON_AddItemToObject(root, "moneys", moneys_array);
+  cJSON_AddNumberToObject(root, "time", (double)time(NULL) * 1000.0);
+  if (current_match_id[0] != '\0') {
+      cJSON_AddStringToObject(root, "match_id", current_match_id);
+  }
+
+  send_json(gps_sockfd, MSG_GAME_RECORD, root);
+}

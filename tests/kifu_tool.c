@@ -338,8 +338,14 @@ void kifu_show(const char* match_id) {
 
                 const char *winner = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "winer"));
                 const char *loser = cJSON_GetStringValue(cJSON_GetObjectItem(data_obj, "card_owner"));
+                bool is_draw = false;
                 
-                if (winner) {
+                if (cJSON_IsTrue(cJSON_GetObjectItem(data_obj, "is_draw"))) is_draw = true;
+                if (winner && strlen(winner) == 0) is_draw = true;
+
+                if (is_draw) {
+                    printf("%sResult: Draw (Liu-Ju 流局)%s\n", CLR_WARN, CLR_RESET);
+                } else if (winner) {
                     if (loser && strcmp(winner, loser) == 0) {
                         printf("%sWinner: %s (Self-Drawn 自摸)%s\n", CLR_SUCCESS, winner, CLR_RESET);
                     } else {

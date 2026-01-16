@@ -242,77 +242,7 @@ void process_make(int sit, int card) {
 
   /* Generate JSON Log */
   if (in_serv && sendlog == 1) {
-    root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "card_owner", player[table[card_owner]].name);
-    cJSON_AddStringToObject(root, "winer", player[table[sit]].name);
-
-    cards = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "cards", cards);
-
-    for (int sitInd = 1; sitInd <= 4; ++sitInd) {
-      player_node = cJSON_CreateObject();
-      cJSON_AddItemToObject(cards, player[table[sitInd]].name, player_node);
-
-      snprintf(msg_buf, sizeof(msg_buf), "%d", sitInd);
-      cJSON_AddStringToObject(player_node, "ind",
-                              msg_buf);  // Keep string to match original
-
-      // Card array
-      card_array = cJSON_CreateArray();
-      for (int i = 0; i < pool[sitInd].num; i++) {
-        cJSON_AddItemToArray(card_array,
-                             cJSON_CreateNumber(pool[sitInd].card[i]));
-      }
-      cJSON_AddItemToObject(player_node, "card", card_array);
-
-      // Out card array
-      out_card_array = cJSON_CreateArray();
-      for (int i = 0; i < pool[sitInd].out_card_index; i++) {
-        out_card_group = cJSON_CreateArray();
-        for (int m = 1; m < 6; m++) {
-          cJSON_AddItemToArray(out_card_group,
-                               cJSON_CreateNumber(pool[sitInd].out_card[i][m]));
-        }
-        cJSON_AddItemToArray(out_card_array, out_card_group);
-      }
-      cJSON_AddItemToObject(player_node, "out_card", out_card_array);
-    }
-
-    cJSON_AddStringToObject(root, "tais", tai_buf);
-    cJSON_AddNumberToObject(root, "cont_win", info.cont_dealer);
-    cJSON_AddNumberToObject(root, "cont_tai", info.cont_dealer * 2);
-    cJSON_AddNumberToObject(root, "count_win",
-                            info.cont_dealer);  // Original had both?
-    cJSON_AddNumberToObject(root, "count_tai", info.cont_dealer * 2);
-
-    if ((sit == card_owner && sit != info.dealer) ||
-        (sit != card_owner && card_owner == info.dealer)) {
-      cJSON_AddNumberToObject(root, "is_dealer", 1);
-      cJSON_AddStringToObject(root, "dealer", player[table[info.dealer]].name);
-    }
-
-    cJSON_AddNumberToObject(root, "base_value", info.base_value);
-    cJSON_AddNumberToObject(root, "tai_value", info.tai_value);
-
-    moneys_array = cJSON_CreateArray();
-    for (int i = 1; i <= 4; i++) {
-      if (table[i]) {
-        money_node = cJSON_CreateObject();
-        cJSON_AddStringToObject(money_node, "name", player[table[i]].name);
-        cJSON_AddNumberToObject(money_node, "now_money",
-                                player[table[i]].money);
-        cJSON_AddNumberToObject(money_node, "change_money", change_money[i]);
-        cJSON_AddItemToArray(moneys_array, money_node);
-      }
-    }
-    cJSON_AddItemToObject(root, "moneys", moneys_array);
-    cJSON_AddNumberToObject(root, "time", (double)time(NULL) * 1000.0);
-    if (current_match_id[0] != '\0') {
-      cJSON_AddStringToObject(root, "match_id", current_match_id);
-    }
-
-    send_json(gps_sockfd, MSG_GAME_RECORD, root);
-    /* Do not cJSON_Delete(root) as send_json takes ownership */
+      broadcast_game_result(sit, card_owner, tai_buf, change_money);
   }
 
   /* Send money info to GPS (Update money) */

@@ -987,6 +987,7 @@ void gps() {
           for (i = 2; i < MAX_PLAYER; i++) {
              if (player[i].in_table && i != 1) send_json(player[i].sockfd, MSG_SEA_BOTTOM, NULL);
           }
+          broadcast_game_result(0, 0, NULL, NULL);
           clear_screen_area(THROW_Y, THROW_X, 8, 34);
           wmvaddstr(stdscr, THROW_Y + 3, THROW_X + 12, "海 底 流 局");
           return_cursor();
