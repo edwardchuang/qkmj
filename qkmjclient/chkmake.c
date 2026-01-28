@@ -352,13 +352,13 @@ int check_make(int sit, int card,
   int j = 0;
   for (suit = 0; suit < 5; suit++) {
     int k = 0;
-    while (pool_buf[j] < suit * 10 + 10 && pool_buf[j] > suit * 10) {
+    while (k < 20 && pool_buf[j] < suit * 10 + 10 && pool_buf[j] > suit * 10) {
       card_info[k].info = pool_buf[j];
       card_info[k].flag = 1;
       j++;
       k++;
     }
-    card_info[k].info = 0;
+    if (k < 20) card_info[k].info = 0;
 
     p[suit] = maketree(NULL); /* Root of the tree */
     card_component[suit][0].type = 0;

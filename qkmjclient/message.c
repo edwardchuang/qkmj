@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -496,25 +497,27 @@ void handle_client_message(int player_id, int msg_id, cJSON* data) {
             break;
           }
       } else {
-        for (i = 0; i <= 3; i++)
-          pool[turn].out_card[pool[turn].out_card_index][i] =
-              0;  // Clear or what?
-        // Original: pool[turn].out_card[pool[turn].out_card_index][i] =
-        // buf[i+4];
-        // buf[4]=type, buf[5]=c1, buf[6]=c2, buf[7]=c3
+        if (pool[turn].out_card_index < 10) {
+          for (i = 0; i <= 3; i++)
+            pool[turn].out_card[pool[turn].out_card_index][i] =
+                0;  // Clear or what?
+          // Original: pool[turn].out_card[pool[turn].out_card_index][i] =
+          // buf[i+4];
+          // buf[4]=type, buf[5]=c1, buf[6]=c2, buf[7]=c3
 
-        pool[turn].out_card[pool[turn].out_card_index][0] = type;
-        pool[turn].out_card[pool[turn].out_card_index][1] = c[0];
-        pool[turn].out_card[pool[turn].out_card_index][2] = c[1];
-        pool[turn].out_card[pool[turn].out_card_index][3] = c[2];
+          pool[turn].out_card[pool[turn].out_card_index][0] = type;
+          pool[turn].out_card[pool[turn].out_card_index][1] = c[0];
+          pool[turn].out_card[pool[turn].out_card_index][2] = c[1];
+          pool[turn].out_card[pool[turn].out_card_index][3] = c[2];
 
-        if (type == 3 || type == 11) /* 槓牌 */
-        {
-          pool[turn].out_card[pool[turn].out_card_index][4] = c[2];  // buf[7]
-          pool[turn].out_card[pool[turn].out_card_index][5] = 0;
-        } else
-          pool[turn].out_card[pool[turn].out_card_index][4] = 0;
-        pool[turn].out_card_index++;
+          if (type == 3 || type == 11) /* 槓牌 */
+          {
+            pool[turn].out_card[pool[turn].out_card_index][4] = c[2];  // buf[7]
+            pool[turn].out_card[pool[turn].out_card_index][5] = 0;
+          } else
+            pool[turn].out_card[pool[turn].out_card_index][4] = 0;
+          pool[turn].out_card_index++;
+        }
       }
 
       draw_epk(sit, type, c[0], c[1], c[2]);
@@ -893,22 +896,24 @@ void handle_serv_message(int msg_id, cJSON* data) {
           }
       } else {
         // ... Logic similar to client msg 530 ...
-        for (i = 0; i <= 3; i++)
-          pool[turn].out_card[pool[turn].out_card_index][i] = 0;
-        pool[turn].out_card[pool[turn].out_card_index][0] = type;
-        pool[turn].out_card[pool[turn].out_card_index][1] = c[0];
-        pool[turn].out_card[pool[turn].out_card_index][2] = c[1];
-        pool[turn].out_card[pool[turn].out_card_index][3] = c[2];
+        if (pool[turn].out_card_index < 10) {
+          for (i = 0; i <= 3; i++)
+            pool[turn].out_card[pool[turn].out_card_index][i] = 0;
+          pool[turn].out_card[pool[turn].out_card_index][0] = type;
+          pool[turn].out_card[pool[turn].out_card_index][1] = c[0];
+          pool[turn].out_card[pool[turn].out_card_index][2] = c[1];
+          pool[turn].out_card[pool[turn].out_card_index][3] = c[2];
 
-        if (type == 3 || type == 11) {
-          pool[turn].out_card[pool[turn].out_card_index][4] = c[2];
-          pool[turn].out_card[pool[turn].out_card_index][5] = 0;
-        } else
-          pool[turn].out_card[pool[turn].out_card_index][4] = 0;
+          if (type == 3 || type == 11) {
+            pool[turn].out_card[pool[turn].out_card_index][4] = c[2];
+            pool[turn].out_card[pool[turn].out_card_index][5] = 0;
+          } else
+            pool[turn].out_card[pool[turn].out_card_index][4] = 0;
 
-        draw_epk(sit, type, c[0], c[1], c[2]);
-        pool[turn].out_card_index++;
-        pool[turn].num -= 3;
+          draw_epk(sit, type, c[0], c[1], c[2]);
+          pool[turn].out_card_index++;
+          pool[turn].num -= 3;
+        }
       }
       return_cursor();
     } break;

@@ -127,7 +127,7 @@ struct pool_info {
   char name[30];
   int num;
   char card[20];
-  char out_card_index;
+  int out_card_index;
   char out_card[10][6];
   char flower[10];
   char door_wind;

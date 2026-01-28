@@ -391,17 +391,19 @@ void process_epk(int check) {
       break;
   }
   if (check != 12) {
-    pool[my_sit].out_card[pool[my_sit].out_card_index][0] = (char)check;
-    pool[my_sit].out_card[pool[my_sit].out_card_index][1] = card1;
-    pool[my_sit].out_card[pool[my_sit].out_card_index][2] = card2;
-    pool[my_sit].out_card[pool[my_sit].out_card_index][3] = card3;
-    if (check == 3 || check == 11) {
-      pool[my_sit].out_card[pool[my_sit].out_card_index][4] = card3;
-      pool[my_sit].out_card[pool[my_sit].out_card_index][5] = 0;
-    } else {
-      pool[my_sit].out_card[pool[my_sit].out_card_index][4] = 0;
+    if (pool[my_sit].out_card_index < 10) {
+      pool[my_sit].out_card[pool[my_sit].out_card_index][0] = (char)check;
+      pool[my_sit].out_card[pool[my_sit].out_card_index][1] = card1;
+      pool[my_sit].out_card[pool[my_sit].out_card_index][2] = card2;
+      pool[my_sit].out_card[pool[my_sit].out_card_index][3] = card3;
+      if (check == 3 || check == 11) {
+        pool[my_sit].out_card[pool[my_sit].out_card_index][4] = card3;
+        pool[my_sit].out_card[pool[my_sit].out_card_index][5] = 0;
+      } else {
+        pool[my_sit].out_card[pool[my_sit].out_card_index][4] = 0;
+      }
+      pool[my_sit].out_card_index++;
     }
-    pool[my_sit].out_card_index++;
   }
 
   /* Construct JSON payload for 530 MSG_SHOW_EPK */

@@ -3,6 +3,7 @@
 #include "logger.h"
 #include <bson/bson.h>
 #include <stdio.h>
+#include <time.h>
 
 #define COL_SESSIONS "active_sessions"
 
