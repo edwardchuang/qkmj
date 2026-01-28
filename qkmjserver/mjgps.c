@@ -73,6 +73,10 @@ struct ask_mode_info ask;
 
 struct rlimit fd_limit;
 
+static int cached_total_players_16 = 0;
+static time_t last_cache_update_16 = 0;
+#define CACHE_DURATION 60
+
 /* Log local IP addresses */
 void log_local_ips() {
   struct ifaddrs *ifaddr, *ifa;
@@ -233,10 +237,17 @@ void list_stat(int fd, char* name) {
     bson_destroy(query);
 
     /* Count total players with >= 16 games */
-    query = BCON_NEW("game_count", BCON_INT32(16));
-    total_num = (int)mongo_count_documents(MONGO_DB_NAME,
-                                           MONGO_COLLECTION_USERS, query);
-    bson_destroy(query);
+    time_t current_time = time(NULL);
+    if (current_time - last_cache_update_16 > CACHE_DURATION) {
+      query = BCON_NEW("game_count", BCON_INT32(16));
+      total_num = (int)mongo_count_documents(MONGO_DB_NAME,
+                                             MONGO_COLLECTION_USERS, query);
+      bson_destroy(query);
+      cached_total_players_16 = total_num;
+      last_cache_update_16 = current_time;
+    } else {
+      total_num = cached_total_players_16;
+    }
   }
 
   if (record.game_count < 16) {
