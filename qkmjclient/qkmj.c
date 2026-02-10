@@ -804,13 +804,8 @@ void gps() {
     struct timeval ai_tv;
     struct timeval* tv_ptr = &ai_tv;
 
-    if (ai_is_enabled()) {
-      ai_tv.tv_sec = 0;
-      ai_tv.tv_usec = 100000;  // 0.1s timeout for AI polling
-    } else {
-      ai_tv.tv_sec = 1;
-      ai_tv.tv_usec = 0;  // 1s fallback
-    }
+    ai_tv.tv_sec = 1;
+    ai_tv.tv_usec = 0;
 
     // fprintf(stderr, "[DEBUG] select() nfds=%d\n", nfds);
     if (select(nfds, &rfds, (fd_set*)0, (fd_set*)0, tv_ptr) < 0) {
@@ -825,56 +820,6 @@ void gps() {
       if (input_mode) process_key();
     }
     
-    /* AI Hook: Auto-Draw */
-    if (input_mode == PLAY_MODE && play_mode == GET_CARD && ai_is_enabled()) {
-        action_draw_card();
-    }
-
-    /* AI Hook: Check Mode (Self-Draw Win/Kang) */
-    if (input_mode == CHECK_MODE && in_check[my_sit] && ai_is_enabled()) {
-        ai_decision_t dec = ai_get_decision(AI_PHASE_DISCARD, current_card, 0);
-        if (dec.action == AI_ACTION_WIN) {
-             write_check(4);
-             input_mode = PLAY_MODE;
-             return_cursor();
-        } else if (dec.action == AI_ACTION_KANG) {
-             write_check(3);
-             input_mode = PLAY_MODE;
-             return_cursor();
-        } else {
-             write_check(0);
-             input_mode = PLAY_MODE;
-             return_cursor();
-        }
-    }
-    
-    /* AI Hook: Discard Phase */
-    if (input_mode == PLAY_MODE && play_mode == THROW_CARD && ai_is_enabled()) {
-        ai_decision_t dec = ai_get_decision(AI_PHASE_DISCARD, current_card, 0);
-        if (dec.action == AI_ACTION_DISCARD) {
-            int idx = -1;
-            // Search in hand (cards 0 to num-1)
-            for(i=0; i<pool[my_sit].num; i++) {
-                if(pool[my_sit].card[i] == dec.card) { 
-                    idx = i; 
-                    break; 
-                }
-            }
-            // If not found, check if it's the new card (which might be at index `num` or `current_item`?)
-            // In qkmj, when we get a card, it is at `pool[my_sit].card[pool[my_sit].num]`.
-            // But `pool[my_sit].num` is usually 16. The 17th card is at index 16.
-            // `process_new_card` puts it there.
-            if (idx == -1 && pool[my_sit].card[pool[my_sit].num] == dec.card) {
-                idx = pool[my_sit].num;
-            }
-
-            if (idx != -1) {
-                current_item = idx;
-                action_throw_card(idx);
-            }
-        }
-    }
-
     /* Check for data from GPS */
     if (FD_ISSET(gps_sockfd, &rfds)) {
       int msg_id_val = 0;
@@ -1044,6 +989,56 @@ void gps() {
           if (data) cJSON_Delete(data);
         }
       }
+    }
+
+    /* AI Hook: Auto-Draw */
+    if (input_mode == PLAY_MODE && play_mode == GET_CARD && ai_is_enabled()) {
+        action_draw_card();
+    }
+
+    /* AI Hook: Check Mode (Self-Draw Win/Kang) */
+    if (input_mode == CHECK_MODE && in_check[my_sit] && ai_is_enabled()) {
+        ai_decision_t dec = ai_get_decision(AI_PHASE_DISCARD, current_card, 0);
+        if (dec.action == AI_ACTION_WIN) {
+             write_check(4);
+             input_mode = PLAY_MODE;
+             return_cursor();
+        } else if (dec.action == AI_ACTION_KANG) {
+             write_check(3);
+             input_mode = PLAY_MODE;
+             return_cursor();
+        } else {
+             write_check(0);
+             input_mode = PLAY_MODE;
+             return_cursor();
+        }
+    }
+
+    /* AI Hook: Discard Phase */
+    if (input_mode == PLAY_MODE && play_mode == THROW_CARD && ai_is_enabled()) {
+        ai_decision_t dec = ai_get_decision(AI_PHASE_DISCARD, current_card, 0);
+        if (dec.action == AI_ACTION_DISCARD) {
+            int idx = -1;
+            // Search in hand (cards 0 to num-1)
+            for(i=0; i<pool[my_sit].num; i++) {
+                if(pool[my_sit].card[i] == dec.card) {
+                    idx = i;
+                    break;
+                }
+            }
+            // If not found, check if it's the new card (which might be at index `num` or `current_item`?)
+            // In qkmj, when we get a card, it is at `pool[my_sit].card[pool[my_sit].num]`.
+            // But `pool[my_sit].num` is usually 16. The 17th card is at index 16.
+            // `process_new_card` puts it there.
+            if (idx == -1 && pool[my_sit].card[pool[my_sit].num] == dec.card) {
+                idx = pool[my_sit].num;
+            }
+
+            if (idx != -1) {
+                current_item = idx;
+                action_throw_card(idx);
+            }
+        }
     }
   }
 }
